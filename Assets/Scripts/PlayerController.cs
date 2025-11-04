@@ -76,6 +76,21 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     float moveInputVertical = 0f;
 
+    /// <summary>爬墙输入向量
+    ///
+    /// 说明: 用于爬墙时的上下输入，与moveInput相同但用于爬墙逻辑
+    /// 用途: 在爬墙状态下控制垂直方向的速度
+    /// </summary>
+    Vector2 climbInput;
+
+    /// <summary>爬墙速度(m/s)
+    ///
+    /// 说明: 角色爬墙时的上下移动速度
+    /// 配置: 建议设置为2-4f，比行走速度(5f)略慢，给予玩家充足的反应时间
+    /// 用途: 在FixedUpdate中计算爬墙时的Y轴速度
+    /// </summary>
+    public float climbSpeed = 3f;
+
     /// <summary>碰撞检测组件的引用</summary>
     TouchingDirections touchingDirections;
 
@@ -231,6 +246,47 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>是否正在爬墙的内部字段</summary>
+    [SerializeField]
+    private bool _isClimbing = false;
+
+    /// <summary>
+    /// 是否正在爬墙的属性
+    ///
+    /// 定义: 当前角色是否接触墙壁并进行爬墙操作
+    ///
+    /// getter: 返回当前爬墙状态
+    /// setter: 设置爬墙状态并同步到Animator的isClimbing参数
+    ///
+    /// 用途:
+    /// - 在OnMove中判断是否进入爬墙状态
+    /// - 在FixedUpdate中判断是否使用爬墙物理
+    /// - 在OnJump中判断是否进行壁跳
+    ///
+    /// 进入条件:
+    /// - 接触墙壁(IsOnWall = true)
+    /// - 有垂直方向的输入(moveInputVertical ≠ 0)
+    /// - 允许移动(CanMove = true)
+    ///
+    /// 退出条件:
+    /// - 释放垂直输入(moveInputVertical = 0)
+    /// - 离开墙壁(IsOnWall = false)
+    /// - 执行跳跃(OnJump触发)
+    /// </summary>
+    public bool IsClimbing
+    {
+        get
+        {
+            return _isClimbing;
+        }
+        private set
+        {
+            _isClimbing = value;
+            // 同步爬墙状态到Animator
+            animator.SetBool(AnimationStrings.isClimbing, value);
+        }
+    }
+
 
     /// <summary>刚体组件引用(用于应用速度)</summary>
     Rigidbody2D rb;
@@ -272,18 +328,36 @@ public class PlayerController : MonoBehaviour
     /// 每个物理帧调用一次，用于更新物理相关的逻辑
     ///
     /// 功能:
-    /// - 根据CurrentMoveSpeed和水平输入更新Rigidbody2D的X轴速度
-    /// - Y轴速度保持不变(由跳跃和重力控制)
+    /// - 判断是否在爬墙：IsClimbing
+    /// - 如果爬墙: 使用climbInput和climbSpeed控制垂直速度
+    /// - 如果正常: 根据CurrentMoveSpeed和水平输入更新速度
     /// - 将Y轴速度同步到Animator，用于控制下落/上升动画
     ///
-    /// 注意: 使用分离后的moveInputHorizontal而非原始moveInput.x
-    ///       这样确保W/S键不会影响水平移动
+    /// 爬墙物理:
+    /// - X轴速度 = 0 (完全贴住墙壁)
+    /// - Y轴速度 = climbInput.y × climbSpeed (由玩家输入控制)
+    ///
+    /// 正常物理:
+    /// - X轴速度 = moveInputHorizontal × CurrentMoveSpeed
+    /// - Y轴速度 = 保持不变(由重力和跳跃控制)
     /// </summary>
     private void FixedUpdate()
     {
-        // 使用水平输入分量计算X轴速度 = 水平输入 × 当前速度
-        // Y轴速度保持不变，由重力自动处理
-        rb.velocity = new Vector2(moveInputHorizontal * CurrentMoveSpeed, rb.velocity.y);
+        // 判断爬墙状态并应用对应的物理
+        if (IsClimbing)
+        {
+            // 爬墙模式: X轴锁定为0(贴在墙上), Y轴由爬墙输入控制
+            rb.velocity = new Vector2(0, climbInput.y * climbSpeed);
+
+            // 同步爬墙速度到Animator的climbSpeed参数
+            // 用于驱动爬墙动画的混合(向上/停止/向下)
+            animator.SetFloat(AnimationStrings.climbSpeed, climbInput.y);
+        }
+        else
+        {
+            // 正常模式: 使用水平输入和当前速度
+            rb.velocity = new Vector2(moveInputHorizontal * CurrentMoveSpeed, rb.velocity.y);
+        }
 
         // 将当前Y轴速度同步到Animator
         // 用于控制下落/上升动画，以及到达最高点时的转换
@@ -301,12 +375,14 @@ public class PlayerController : MonoBehaviour
     /// - 读取移动输入的Vector2值(WASD或摇杆)
     /// - 分离处理水平输入(X轴/A/D)和垂直输入(Y轴/W/S)
     /// - 水平输入驱动行走/奔跑动画和角色朝向
-    /// - 垂直输入保留给爬墙系统使用(当前预留，未来使用)
+    /// - 垂直输入用于爬墙系统(W/S控制上下爬行)
     ///
-    /// 修复说明:
-    /// 原问题: 按W/S时IsMoving=true，导致播放行走动画
-    /// 修复: 只根据moveInputHorizontal(水平输入)判断IsMoving
-    ///      这样W/S不会触发行走动画
+    /// 爬墙逻辑:
+    /// - 检查是否接触墙壁(IsOnWall)
+    /// - 检查是否有垂直输入(moveInputVertical ≠ 0)
+    /// - 如果两者都满足，进入爬墙状态(IsClimbing = true)
+    /// - 爬墙时禁止水平移动，IsMoving = false
+    /// - 爬墙时保持朝向，不改变facing
     /// </summary>
     public void OnMove(InputAction.CallbackContext context)
     {
@@ -317,19 +393,38 @@ public class PlayerController : MonoBehaviour
         // 水平输入(A/D): 用于行走/奔跑
         moveInputHorizontal = moveInput.x;
 
-        // 垂直输入(W/S): 预留给爬墙系统使用
-        // 当爬墙系统实现后，此值会被爬墙逻辑使用
+        // 垂直输入(W/S): 用于爬墙系统
         moveInputVertical = moveInput.y;
 
-        // 仅基于水平输入判断IsMoving
-        // 这样W/S键不会导致行走动画播放
-        // 修复: 从原来的 moveInput != Vector2.zero
-        //      改为 moveInputHorizontal != 0
-        IsMoving = moveInputHorizontal != 0;
+        // 同时保存给爬墙使用
+        climbInput = moveInput;
 
-        // 根据水平移动方向调整角色朝向
-        // (SetFacingDirection会检查moveInput.x，保持不变)
-        SetFacingDirection(moveInput);
+        // 爬墙逻辑判断
+        // 条件: 接触墙壁 && 有垂直输入 && 允许移动
+        if (touchingDirections.IsOnWall && moveInputVertical != 0 && CanMove)
+        {
+            // 进入爬墙状态
+            IsClimbing = true;
+        }
+        else if (!touchingDirections.IsOnWall || moveInputVertical == 0)
+        {
+            // 退出爬墙状态: 离开墙壁 或 没有垂直输入
+            IsClimbing = false;
+        }
+
+        // 根据爬墙状态更新行走状态和朝向
+        if (!IsClimbing)
+        {
+            // 正常模式: 判断是否行走，更新朝向
+            IsMoving = moveInputHorizontal != 0;
+            SetFacingDirection(moveInput);
+        }
+        else
+        {
+            // 爬墙模式: 禁止水平移动，保持朝向
+            IsMoving = false;
+            // 朝向保持不变，不调用SetFacingDirection
+        }
     }
 
     /// <summary>
@@ -395,35 +490,54 @@ public class PlayerController : MonoBehaviour
     /// 跳跃输入回调函数
     /// 由Input System在按下空格键时调用
     ///
-    /// 跳跃条件:
+    /// 跳跃条件(二选一):
+    /// - 地面跳跃: 在地面上(IsGrounded = true)
+    /// - 壁跳: 正在爬墙(IsClimbing = true)且接触墙壁(IsOnWall = true)
+    ///
+    /// 前置条件:
     /// - context.started: 空格键刚按下
-    /// - touchingDirections.IsGrounded: 必须在地面上
-    /// - CanMove: 必须允许移动(不在攻击等特殊状态)
+    /// - CanMove: 允许移动(不在攻击等特殊状态)
     ///
     /// 功能:
-    /// - 触发跳跃动画
-    /// - 给予Y轴速度(jumpImpules)实现向上移动
-    ///
-    /// 扩展预留(为爬墙系统):
-    /// - 当爬墙系统实现后，可扩展为支持壁跳
-    /// - 从墙上跳跃时给予横向冲力，用于离墙
+    /// - 触发Animator的跳跃动画
+    /// - 给予Y轴速度(jumpImpules)实现向上运动
+    /// - 如果是壁跳，给予横向冲力(离墙方向)，实现推离墙壁
+    /// - 壁跳后立即退出爬墙状态
     /// </summary>
     public void OnJump(InputAction.CallbackContext context)
     {
-        // TODO: 后续爬墙系统实现时添加壁跳支持
-        // - 条件: IsClimbing && IsOnWall
-        // - 行为: 给予横向冲力(离墙方向)
-        // - 同时给予向上冲力
-
         // 检查是否满足跳跃条件
-        if (context.started && touchingDirections.IsGrounded && CanMove)
+        if (context.started && CanMove)
         {
-            // 触发Animator的跳跃动画
-            animator.SetTrigger(AnimationStrings.jumpTrigger);
+            // 支持地面跳跃或壁跳
+            bool canJumpFromGround = touchingDirections.IsGrounded;
+            bool canJumpFromWall = IsClimbing && touchingDirections.IsOnWall;
 
-            // 施加向上的冲力，实现跳跃上升
-            // X轴速度保持不变，Y轴速度设置为jumpImpules
-            rb.velocity = new Vector2(rb.velocity.x, jumpImpules);
+            if (canJumpFromGround || canJumpFromWall)
+            {
+                // 触发Animator的跳跃动画
+                animator.SetTrigger(AnimationStrings.jumpTrigger);
+
+                if (canJumpFromWall)
+                {
+                    // 壁跳逻辑: 给予离墙的横向冲力 + 向上冲力
+                    // 横向冲力大小: 8f(可在Inspector中调整)
+                    // 方向: 与当前朝向相反(推离墙壁)
+                    float wallJumpForce = 8f;
+                    float horizontalForce = IsFacingRight ? -wallJumpForce : wallJumpForce;
+
+                    // 设置速度: 横向冲力 + 向上冲力
+                    rb.velocity = new Vector2(horizontalForce, jumpImpules);
+
+                    // 立即退出爬墙状态
+                    IsClimbing = false;
+                }
+                else
+                {
+                    // 地面跳跃: 保持X轴速度，只改变Y轴
+                    rb.velocity = new Vector2(rb.velocity.x, jumpImpules);
+                }
+            }
         }
     }
 

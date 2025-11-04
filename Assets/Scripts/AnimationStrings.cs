@@ -111,4 +111,28 @@ internal class AnimationStrings
     /// 好处: 将角色行为控制权交给动画系统，便于在编辑器中微调
     /// </summary>
     internal static string canMove = "canMove";
+
+    /// <summary>
+    /// 爬墙状态参数
+    /// 类型: Bool
+    /// 说明: 标记角色是否正在爬墙
+    /// 用途: PlayerController 在OnMove中设置
+    /// 影响: 控制爬墙/非爬墙动画切换
+    /// 配合参数: climbSpeed - 指示爬墙方向(上/停止/下)
+    /// </summary>
+    internal static string isClimbing = "isClimbing";
+
+    /// <summary>
+    /// 爬墙速度参数
+    /// 类型: Float
+    /// 说明: 爬墙时的Y轴速度方向和大小(玩家意图的控制值)
+    /// 用途: PlayerController 在FixedUpdate中设置
+    /// 值说明:
+    /// - 正数(> 0.1): 向上爬
+    /// - 接近0(-0.1 ~ 0.1): 停止爬(贴在墙上)
+    /// - 负数(< -0.1): 向下爬
+    /// 影响: 控制爬墙的上升/下降/停止动画
+    /// 注意: 与yVelocity不同，climbSpeed是玩家的"意图"而非实际物理速度
+    /// </summary>
+    internal static string climbSpeed = "climbSpeed";
 }
