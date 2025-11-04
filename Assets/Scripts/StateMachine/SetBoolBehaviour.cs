@@ -136,7 +136,7 @@ public class SetBoolBehaviour : StateMachineBehaviour
         if (updateOnState)
         {
             // 退出状态时也设置为valueOnEnter(这里可能需要改为valueOnExit)
-            animator.SetBool(boolName, valueOnEnter);
+            animator.SetBool(boolName, valueOnExit);
         }
     }
 
