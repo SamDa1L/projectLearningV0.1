@@ -135,4 +135,5 @@ internal class AnimationStrings
     /// 注意: 与yVelocity不同，climbSpeed是玩家的"意图"而非实际物理速度
     /// </summary>
     internal static string climbSpeed = "climbSpeed";
+    internal static string hasTarget = "hasTarget";
 }
