@@ -136,4 +136,5 @@ internal class AnimationStrings
     /// </summary>
     internal static string climbSpeed = "climbSpeed";
     internal static string hasTarget = "hasTarget";
+    internal static string isAlive = "isAlive";
 }

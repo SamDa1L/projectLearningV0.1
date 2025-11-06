@@ -246,6 +246,15 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public bool IsAlive
+    {
+        get 
+        { 
+            return animator.GetBool(AnimationStrings.isAlive);
+        }
+    }
+
+
     /// <summary>是否正在爬墙的内部字段</summary>
     [SerializeField]
     private bool _isClimbing = false;
@@ -389,42 +398,52 @@ public class PlayerController : MonoBehaviour
         // 从输入事件读取Vector2值(来自WASD键或左摇杆)
         moveInput = context.ReadValue<Vector2>();
 
-        // 分离水平和垂直输入分量
-        // 水平输入(A/D): 用于行走/奔跑
-        moveInputHorizontal = moveInput.x;
 
-        // 垂直输入(W/S): 用于爬墙系统
-        moveInputVertical = moveInput.y;
 
-        // 同时保存给爬墙使用
-        climbInput = moveInput;
-
-        // 爬墙逻辑判断
-        // 条件: 接触墙壁 && 有垂直输入 && 允许移动
-        if (touchingDirections.IsOnWall && moveInputVertical != 0 && CanMove)
+        if (IsAlive)
         {
-            // 进入爬墙状态
-            IsClimbing = true;
+            // 分离水平和垂直输入分量
+            // 水平输入(A/D): 用于行走/奔跑
+            moveInputHorizontal = moveInput.x;
+
+            // 垂直输入(W/S): 用于爬墙系统
+            moveInputVertical = moveInput.y;
+
+            // 同时保存给爬墙使用
+            climbInput = moveInput;
+            // 爬墙逻辑判断
+            // 条件: 接触墙壁 && 有垂直输入 && 允许移动
+            if (touchingDirections.IsOnWall && moveInputVertical != 0 && CanMove)
+            {
+                // 进入爬墙状态
+                IsClimbing = true;
+            }
+            else if (!touchingDirections.IsOnWall || moveInputVertical == 0)
+            {
+                // 退出爬墙状态: 离开墙壁 或 没有垂直输入
+                IsClimbing = false;
+            }
+
+            // 根据爬墙状态更新行走状态和朝向
+            if (!IsClimbing)
+            {
+                // 正常模式: 判断是否行走，更新朝向
+                IsMoving = moveInputHorizontal != 0;
+                SetFacingDirection(moveInput);
+            }
+            else
+            {
+                // 爬墙模式: 禁止水平移动，保持朝向
+                IsMoving = false;
+                // 朝向保持不变，不调用SetFacingDirection
+            }
         }
-        else if (!touchingDirections.IsOnWall || moveInputVertical == 0)
+        else 
         {
-            // 退出爬墙状态: 离开墙壁 或 没有垂直输入
-            IsClimbing = false;
-        }
-
-        // 根据爬墙状态更新行走状态和朝向
-        if (!IsClimbing)
-        {
-            // 正常模式: 判断是否行走，更新朝向
-            IsMoving = moveInputHorizontal != 0;
-            SetFacingDirection(moveInput);
-        }
-        else
-        {
-            // 爬墙模式: 禁止水平移动，保持朝向
             IsMoving = false;
-            // 朝向保持不变，不调用SetFacingDirection
         }
+
+        
     }
 
     /// <summary>
