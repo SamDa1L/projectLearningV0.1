@@ -10411,7 +10411,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 937934053286775613, guid: fd4e7f0ab6ba9004d881d9b0e8756bbb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.8
+      value: -0.87
       objectReference: {fileID: 0}
     - target: {fileID: 937934053286775613, guid: fd4e7f0ab6ba9004d881d9b0e8756bbb, type: 3}
       propertyPath: m_LocalPosition.z
@@ -10466,6 +10466,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 429254505729700459, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 575829110812012758, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
       propertyPath: m_Name
       value: Player
@@ -10513,6 +10517,10 @@ PrefabInstance:
     - target: {fileID: 5688832267645984175, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
       propertyPath: castFilter.useOutsideDepth
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8042548726888523234, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
+      propertyPath: _health
+      value: 100
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

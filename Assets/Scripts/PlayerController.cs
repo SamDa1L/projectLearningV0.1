@@ -27,7 +27,7 @@ using UnityEngine.InputSystem;
 /// - IsFacingRight: 是否朝向右侧
 /// - CanMove: 是否允许移动(由动画控制，防止攻击时移动)
 /// </summary>
-[RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections))]
+[RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections), typeof(Damageable))]
 
 public class PlayerController : MonoBehaviour
 {
@@ -93,6 +93,8 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>碰撞检测组件的引用</summary>
     TouchingDirections touchingDirections;
+    Damageable damageable;
+
 
     /// <summary>
     /// 计算当前水平移动速度属性
@@ -297,6 +299,8 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
+
     /// <summary>刚体组件引用(用于应用速度)</summary>
     Rigidbody2D rb;
 
@@ -318,6 +322,7 @@ public class PlayerController : MonoBehaviour
 
         // 获取当前GameObject上的TouchingDirections组件(碰撞检测)
         touchingDirections = GetComponent<TouchingDirections>();
+        damageable = GetComponent<Damageable>();
     }
 
     // Start is called before the first frame update
@@ -362,7 +367,7 @@ public class PlayerController : MonoBehaviour
             // 用于驱动爬墙动画的混合(向上/停止/向下)
             animator.SetFloat(AnimationStrings.climbSpeed, climbInput.y);
         }
-        else
+        else if (!damageable.LockVelocity)
         {
             // 正常模式: 使用水平输入和当前速度
             rb.velocity = new Vector2(moveInputHorizontal * CurrentMoveSpeed, rb.velocity.y);
@@ -580,5 +585,10 @@ public class PlayerController : MonoBehaviour
             // 触发Animator的攻击动画
             animator.SetTrigger(AnimationStrings.attackTrigger);
         }
+    }
+
+    public void OnHit(int damage, Vector2 knockback)
+    {
+        rb.velocity = new Vector2(knockback.x, rb.velocity.y + knockback.y);
     }
 }
