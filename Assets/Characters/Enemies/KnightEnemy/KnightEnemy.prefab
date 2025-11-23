@@ -272,7 +272,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 110219e6c5e7aca4c808d07e7f063668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 5
+  walkAcceleration: 30
+  maxSpeed: 3
   walkStopRate: 0.05
   attackZone: {fileID: 524857065163868199}
   cliffDetectionZone: {fileID: 6277536773260209252}
@@ -533,7 +534,7 @@ BoxCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -0.10110283, y: -0.17193139}
+  m_Offset: {x: -0.5539563, y: -0.17193139}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -544,7 +545,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 2.8843784, y: 2.0107486}
+  m_Size: {x: 1.9786716, y: 2.0107486}
   m_EdgeRadius: 0
 --- !u!114 &524857065163868199
 MonoBehaviour:

@@ -587,6 +587,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+
+    public void OnRangedAttack(InputAction.CallbackContext context)
+    {
+        // 远程攻击
+        if (context.started)
+        {
+            // 触发Animator的攻击动画
+            animator.SetTrigger(AnimationStrings.rangedAttackTrigger);
+        }
+    }
+
+
+
     public void OnHit(int damage, Vector2 knockback)
     {
         rb.velocity = new Vector2(knockback.x, rb.velocity.y + knockback.y);
