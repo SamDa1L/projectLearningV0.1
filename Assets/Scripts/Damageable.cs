@@ -112,6 +112,25 @@ public class Damageable : MonoBehaviour
     }
 
 
+    //角色是否被回血
+    public bool Heal(int healthRestore)
+    {
+        if (IsAlive && Health < MaxHealth) 
+        {
+            int maxHeal = Mathf.Max(MaxHealth - Health, 0);
+            int actualHeal = Mathf.Min(maxHeal, healthRestore);
+            Health += actualHeal;
+            CharacterEvents.characterHealed(gameObject, actualHeal);
+            return true;
+
+
+        }
+        return false;
+
+
+    }
+
+
     // Start is called before the first frame update
     void Start()
     {
