@@ -11080,6 +11080,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 879316724881248456, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1191046581626477878, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -11130,6 +11134,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5688832267645984175, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
       propertyPath: castFilter.useOutsideDepth
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5988691928394194637, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8042548726888523234, guid: 3ac4765da71512e4ba5491f3dec41d74, type: 3}
