@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f545e52751d372549b535a307768289f, type: 3}
+  m_Name: GameplayConfig
+  m_EditorClassIdentifier: 
+  version: 0.2.0
+  changelog: "Stage1: \u654C\u4EBA\u67B6\u6784\u4F18\u5316\u4E0E\u53C2\u6570\u96C6\u4E2D\u5316"
+  enemyMaxHealth: 30
+  enemyBaseSpeed: 3
+  enemyBasePerceptionRadius: 5
+  enemyBaseDamage: 10
+  playerMaxHealth: 100
+  playerMoveSpeed: 5
+  playerAttackDamage: 15
+  gravityScale: 9.8
+  knockbackMultiplier: 1
+  fixedDeltaTime: 0.016
+  timeScale: 1
+  enemyHealthMultiplier: 1
+  enemyDamageMultiplier: 1
+  enemySpeedMultiplier: 1
+  debugMode: 1
+  debugEnemyStateOverlay: 1
+  debugPerformanceMonitor: 0

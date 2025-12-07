@@ -32,6 +32,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     // ===== 序列化字段（参数） =====
     [Header("配置")]
     [SerializeField] private EnemyTuningProfile tuningProfile;
+    [SerializeField] private DetectionZone primaryDetectionZone;
 
     [Header("调试")]
     [SerializeField] protected bool debugStateOverlay = true;
@@ -57,6 +58,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     {
         // ===== 组件缓存 =====
         CacheComponents();
+
+        // ===== 解决检测区依赖 =====
+        ResolveDetectionZone();
 
         // ===== 初始化钩子 =====
         Initialize();
@@ -104,8 +108,76 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (damageable == null)
             Debug.LogError($"[{gameObject.name}] Missing Damageable component", gameObject);
 
-        if (detectionZone == null)
-            Debug.LogWarning($"[{gameObject.name}] Missing DetectionZone component (optional)", gameObject);
+        // 注意：DetectionZone的检查移至ResolveDetectionZone()中执行
+    }
+
+    /// <summary>
+    /// 解决检测区依赖
+    /// 在Awake中CacheComponents()之后调用
+    ///
+    /// 设计说明：
+    /// - 敌人可能有多个DetectionZone子物体（攻击范围、崖边检测等）
+    /// - primaryDetectionZone是"显式指定的主检测区"，用于目标感知
+    /// - 本方法确保primaryDetectionZone有有效的值，通过以下优先级：
+    ///   1. 如果已通过Inspector赋值了primaryDetectionZone，使用它
+    ///   2. 否则尝试使用根GameObject上的detectionZone
+    ///   3. 否则自动查找子物体中的DetectionZone
+    ///   4. 都找不到才警告用户
+    /// </summary>
+    private void ResolveDetectionZone()
+    {
+        // 优先级1：已显式指定的primaryDetectionZone
+        if (primaryDetectionZone != null)
+        {
+            detectionZone = primaryDetectionZone;
+            return;
+        }
+
+        // 优先级2：根GameObject上的DetectionZone
+        if (detectionZone != null)
+        {
+            primaryDetectionZone = detectionZone;
+            return;
+        }
+
+        // 优先级3：尝试自动查找子物体中的DetectionZone
+        var childDetectionZones = GetComponentsInChildren<DetectionZone>();
+
+        if (childDetectionZones.Length == 0)
+        {
+            // 都找不到，警告用户
+            Debug.LogWarning(
+                $"[{gameObject.name}] No DetectionZone found in root or children. " +
+                $"Please assign a DetectionZone to the 'Primary Detection Zone' field in the Inspector, " +
+                $"or ensure at least one child GameObject has a DetectionZone component.",
+                gameObject
+            );
+            return;
+        }
+
+        if (childDetectionZones.Length == 1)
+        {
+            // 只找到一个，自动使用
+            primaryDetectionZone = childDetectionZones[0];
+            detectionZone = primaryDetectionZone;
+            if (debugStateOverlay)
+                Debug.Log(
+                    $"[{gameObject.name}] Auto-assigned Primary Detection Zone from child object '{childDetectionZones[0].gameObject.name}'",
+                    gameObject
+                );
+            return;
+        }
+
+        // 找到多个，使用第一个但提示用户
+        primaryDetectionZone = childDetectionZones[0];
+        detectionZone = primaryDetectionZone;
+        Debug.LogWarning(
+            $"[{gameObject.name}] Found {childDetectionZones.Length} DetectionZones in children, " +
+            $"but 'Primary Detection Zone' field is not explicitly assigned. " +
+            $"Using the first one ('{childDetectionZones[0].gameObject.name}'). " +
+            $"Please explicitly assign the intended DetectionZone to avoid ambiguity.",
+            gameObject
+        );
     }
 
     // ===== 初始化钩子 =====
@@ -188,10 +260,26 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     // ===== IAgentPerception 接口实现 =====
 
+    /// <summary>
+    /// 获取用于目标检测的主DetectionZone。
+    /// 返回显式指定的primaryDetectionZone，如果为空则回退到根GameObject上的detectionZone。
+    ///
+    /// 设计说明：
+    /// - primaryDetectionZone通过以下方式获得：
+    ///   1. 在Inspector中显式赋值（推荐）
+    ///   2. ResolveDetectionZone()自动发现并赋值
+    /// - 子类仍可覆写此方法以提供额外逻辑，但通常不需要
+    /// </summary>
+    protected virtual DetectionZone GetPrimaryDetectionZone()
+    {
+        return primaryDetectionZone ?? detectionZone;
+    }
+
     public virtual List<Collider2D> GetDetectedTargets()
     {
-        if (detectionZone != null)
-            return detectionZone.detectedColliders;
+        DetectionZone primaryZone = GetPrimaryDetectionZone();
+        if (primaryZone != null)
+            return primaryZone.detectedColliders;
 
         return detectedTargets;
     }

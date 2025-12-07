@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections),typeof(Damageable))]
+[RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections), typeof(Damageable))]
 
-public class Knight : MonoBehaviour
+public class Knight : EnemyAgentBase
 {
     public float walkAcceleration = 3f;
     public float maxSpeed = 3f;
@@ -13,10 +13,7 @@ public class Knight : MonoBehaviour
     public DetectionZone attackZone;
     public DetectionZone cliffDetectionZone;
 
-    Rigidbody2D rb;
     TouchingDirections touchingDirections;
-    Animator animator;
-    Damageable damageable;
 
     public enum WalkableDirection { Right,Left};
 
@@ -32,14 +29,14 @@ public class Knight : MonoBehaviour
         }
         set
         {
-            if (_walkDirection != value) 
+            if (_walkDirection != value)
             {
                 gameObject.transform.localScale = new Vector2(gameObject.transform.localScale.x * -1, gameObject.transform.localScale.y);
-                if (value == WalkableDirection.Right) 
+                if (value == WalkableDirection.Right)
                 {
                     walkDirectionVector = Vector2.right;
                 }
-                else if(value == WalkableDirection.Left) 
+                else if(value == WalkableDirection.Left)
                 {
                     walkDirectionVector = Vector2.left;
                 }
@@ -48,83 +45,73 @@ public class Knight : MonoBehaviour
         }
     }
 
-    public bool _hasTarget = false;
-
-    public bool HasTarget 
+    /// <summary>
+    /// 初始化Knight特有的组件和参数
+    /// </summary>
+    protected override void Initialize()
     {
-        get 
-        {
-            return _hasTarget;
-        }
-        private set
-        {
-            _hasTarget = value;
-            animator.SetBool(AnimationStrings.hasTarget, value);
-        }
-    }
+        base.Initialize();
 
-    public bool CanMove
-    {
-        get
-        {
-            return animator.GetBool(AnimationStrings.canMove);
-        }
-    }
-
-    public float AttackCoolDown 
-    {
-        get 
-        {
-            return animator.GetFloat(AnimationStrings.attackCooldown);
-        }
-        private set
-        {
-            animator.SetFloat(AnimationStrings.attackCooldown, Mathf.Max(value, 0));
-        }
-    }
-
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody2D>();
+        // 缓存Knight特有的组件
         touchingDirections = GetComponent<TouchingDirections>();
-        animator = GetComponent<Animator>();
-        damageable = GetComponent<Damageable>();
+
+        // 初始化默认方向
+        WalkDirection = WalkableDirection.Right;
     }
 
-    // Update is called once per frame
-    void Update()
+    /// <summary>
+    /// 状态逻辑更新
+    /// </summary>
+    protected override void TickState(float deltaTime)
     {
-        HasTarget = attackZone.detectedColliders.Count > 0;
-        if(AttackCoolDown > 0)
+        // 根据DetectionZone更新HasTarget
+        bool hasTarget = GetDetectedTargets().Count > 0;
+        if (hasTarget != (currentState == EnemyState.Chase))
         {
-            AttackCoolDown -= Time.deltaTime;
+            if (hasTarget)
+            {
+                SetState(EnemyState.Chase);
+            }
+            else
+            {
+                SetState(EnemyState.Idle);
+            }
         }
 
-
+        // 设置Animator参数
+        animator.SetBool(AnimationStrings.hasTarget, hasTarget);
     }
 
-
-
-    private void FixedUpdate()
+    /// <summary>
+    /// 物理更新
+    /// </summary>
+    protected override void TickPhysics(float fixedDeltaTime)
     {
+        // 崖边检测和转身
         if (touchingDirections.IsGrounded && touchingDirections.IsOnWall)
         {
             FlipDirection();
         }
 
+        // 移动逻辑
         if (!damageable.LockVelocity)
         {
-            if (CanMove && touchingDirections.IsGrounded)
+            if (animator.GetBool(AnimationStrings.canMove) && touchingDirections.IsGrounded)
             {
-
-                rb.velocity = new Vector2(Mathf.Clamp(rb.velocity.x + (walkAcceleration * walkDirectionVector.x * Time.fixedDeltaTime), -maxSpeed, maxSpeed), rb.velocity.y);
+                rb2d.velocity = new Vector2(
+                    Mathf.Clamp(
+                        rb2d.velocity.x + (walkAcceleration * walkDirectionVector.x * Time.fixedDeltaTime),
+                        -maxSpeed,
+                        maxSpeed
+                    ),
+                    rb2d.velocity.y
+                );
             }
             else
             {
-                rb.velocity = new Vector2(Mathf.Lerp(rb.velocity.x, 0, walkStopRate), rb.velocity.y);
+                rb2d.velocity = new Vector2(Mathf.Lerp(rb2d.velocity.x, 0, walkStopRate), rb2d.velocity.y);
             }
         }
-
     }
 
     private void FlipDirection()
@@ -139,15 +126,9 @@ public class Knight : MonoBehaviour
         }
         else
         {
-            Debug.LogError("��ǰ�ƶ����򲻺Ϸ����Ȳ�����Ҳ������");
+            Debug.LogError("��ǰ�ƶ����򲻺Ϸ����Ȳ�����Ҳ������");
         }
     }
-
-    public void OnHit(int damage, Vector2 knockback)
-    {
-        rb.velocity = new Vector2(knockback.x, rb.velocity.y + knockback.y);
-    }
-
 
     public void OnCliffDetected()
     {
@@ -156,14 +137,4 @@ public class Knight : MonoBehaviour
             FlipDirection();
         }
     }
-
-
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-
 }

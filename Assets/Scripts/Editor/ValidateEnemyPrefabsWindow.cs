@@ -206,9 +206,9 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         {
             string scenePath = AssetDatabase.GUIDToAssetPath(guid);
 
-            // 过滤测试场景（可选）
-            // if (scenePath.Contains("Test") || scenePath.Contains("test"))
-            //     continue;
+            // 只处理项目自身的场景，过滤掉包内的模板场景
+            if (!scenePath.Contains("Assets/Scenes/NPCTestScenes"))
+                continue;
 
             // 只读模式加载场景（不改变当前编辑器状态）
             var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
@@ -297,11 +297,19 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             }
         }
 
-        // 检查3：是否有DetectionZone
-        var detectionZone = prefab.GetComponent<DetectionZone>();
-        if (detectionZone == null)
+        // 检查3：是否正确配置了DetectionZone（通过primaryDetectionZone字段或子物体）
+        if (baseEnemy != null)
         {
-            issueList.Add("Missing DetectionZone");
+            var serializedObject = new SerializedObject(baseEnemy);
+            var primaryZoneProp = serializedObject.FindProperty("primaryDetectionZone");
+
+            bool hasPrimaryZone = primaryZoneProp != null && primaryZoneProp.objectReferenceValue != null;
+            bool hasChildDetectionZone = prefab.GetComponentInChildren<DetectionZone>() != null;
+
+            if (!hasPrimaryZone && !hasChildDetectionZone)
+            {
+                issueList.Add("Missing DetectionZone (not assigned to 'Primary Detection Zone' field and no child DetectionZone found)");
+            }
         }
 
         // 检查4：是否有Animator
@@ -350,11 +358,14 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             issueList.Add("Missing TuningProfile");
         }
 
-        // 检查2：是否有DetectionZone
-        var detectionZone = enemy.GetComponent<DetectionZone>();
-        if (detectionZone == null)
+        // 检查2：是否正确配置了DetectionZone（通过primaryDetectionZone字段或子物体）
+        var primaryZoneProp = serializedObject.FindProperty("primaryDetectionZone");
+        bool hasPrimaryZone = primaryZoneProp != null && primaryZoneProp.objectReferenceValue != null;
+        bool hasChildDetectionZone = enemy.GetComponentInChildren<DetectionZone>() != null;
+
+        if (!hasPrimaryZone && !hasChildDetectionZone)
         {
-            issueList.Add("Missing DetectionZone");
+            issueList.Add("Missing DetectionZone (not assigned to 'Primary Detection Zone' field and no child DetectionZone found)");
         }
 
         // 检查3：是否是LegacyEnemyAdapter且尚未完全迁移

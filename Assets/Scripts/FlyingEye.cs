@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FlyingEye : MonoBehaviour
+public class FlyingEye : EnemyAgentBase
 {
     public float flightSpeed = 2f;
     public float waypointReachedDistance = 0.1f;
@@ -11,94 +11,78 @@ public class FlyingEye : MonoBehaviour
     public DetectionZone bitDetectionZone;
     public List<Transform> waypoints;
 
-
-    Animator animator;
-    Rigidbody2D rb;
-    Damageable damageable;
-
-
     Transform nextWaypoint;
     int waypointNum = 0;
 
 
-    public bool _hasTarget = false;
 
-
-    public bool HasTarget
+    /// <summary>
+    /// åˆå§‹åŒ–FlyingEyeç‰¹æœ‰çš„å‚æ•°
+    /// </summary>
+    protected override void Initialize()
     {
-        get
-        {
-            return _hasTarget;
-        }
-        private set
-        {
-            _hasTarget = value;
-            animator.SetBool(AnimationStrings.hasTarget, value);
-        }
-    }
+        base.Initialize();
 
-    public bool CanMove
-    {
-        get
+        // åˆå§‹åŒ–èˆªç‚¹
+        if (waypoints != null && waypoints.Count > 0)
         {
-            return animator.GetBool(AnimationStrings.canMove);
+            nextWaypoint = waypoints[waypointNum];
         }
     }
 
-    private void Awake()
+    /// <summary>
+    /// çŠ¶æ€é€»è¾‘æ›´æ–°
+    /// </summary>
+    protected override void TickState(float deltaTime)
     {
-        rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
-        damageable = GetComponent<Damageable>();
+        // æ ¹æ®DetectionZoneæ›´æ–°HasTarget
+        bool hasTarget = GetDetectedTargets().Count > 0;
+
+        // è®¾ç½®Animatorå‚æ•°
+        animator.SetBool(AnimationStrings.hasTarget, hasTarget);
     }
 
-
-
-    // Start is called before the first frame update
-    void Start()
+    /// <summary>
+    /// ç‰©ç†æ›´æ–°
+    /// </summary>
+    protected override void TickPhysics(float fixedDeltaTime)
     {
-        nextWaypoint = waypoints[waypointNum];
-    }
-
-
-    private void OnEnable()
-    {
-        damageable.damageableDeath.AddListener(OnDeath);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        HasTarget = bitDetectionZone.detectedColliders.Count > 0;
-    }
-
-    private void FixedUpdate()
-    {
-        if (damageable.IsAlive)
+        // åªåœ¨æ´»ç€ä¸”èƒ½ç§»åŠ¨æ—¶æ‰§è¡Œé£è¡Œé€»è¾‘
+        if (damageable.IsAlive && animator.GetBool(AnimationStrings.canMove))
         {
-            if (CanMove)
-            {
-                Flight();
-            }
-            else
-            {
-                rb.velocity = Vector3.zero;
-            }
+            Flight();
+        }
+        else
+        {
+            rb2d.velocity = Vector3.zero;
+        }
+    }
+
+    /// <summary>
+    /// æ­»äº¡æ—¶å¤„ç†
+    /// </summary>
+    protected override void ExitState(EnemyState oldState)
+    {
+        base.ExitState(oldState);
+
+        if (oldState == EnemyState.Dead)
+        {
+            OnDeath();
         }
     }
 
     private void Flight()
     {
-        //·ÉÏòÏÂÒ»¸öÄ¿±êµã
+        //è®¡ç®—æŒ‡å‘ä¸‹ä¸€ä¸ªç›®æ ‡ç‚¹çš„æ–¹å‘
         Vector2 directionToWaypoint = (nextWaypoint.position - transform.position).normalized;
 
-        //¼ì²éÊÇ·ñÒÑ¾­µ½´ïÏÂÒ»¸öÄ¿±êµã
+        //è®¡ç®—æ˜¯å¦å·²ç»åˆ°è¾¾äº†ä¸€ä¸ªç›®æ ‡ç‚¹
         float distance = Vector2.Distance(nextWaypoint.position, transform.position);
 
-        rb.velocity = directionToWaypoint * flightSpeed;
+        rb2d.velocity = directionToWaypoint * flightSpeed;
         UpdateDirection();
 
-        //¼ì²éÊÇ·ñĞèÒªÇĞ»»Ä¿±êµã
+        //è®¡ç®—æ˜¯å¦éœ€è¦åˆ‡æ¢ç›®æ ‡ç‚¹
         if(distance <= waypointReachedDistance)
         {
             waypointNum++;
@@ -118,22 +102,21 @@ public class FlyingEye : MonoBehaviour
     {
         Vector3 locScale = transform.localScale;
 
-
         if(transform.localScale.x > 0)
         {
-            //ÃæÏòÓÒ
-            if(rb.velocity.x < 0)
+            //å‘å³é£
+            if(rb2d.velocity.x < 0)
             {
-                //·­×ª
+                //ç¿»è½¬
                 transform.localScale = new Vector3(-1 * locScale.x, locScale.y, locScale.z);
             }
         }
         else
         {
-            //ÃæÏà×ó
-            if (rb.velocity.x > 0)
+            //å‘å·¦é£
+            if (rb2d.velocity.x > 0)
             {
-                //·­×ª
+                //ç¿»è½¬
                 transform.localScale = new Vector3(-1 * locScale.x, locScale.y, locScale.z);
             }
 
@@ -142,10 +125,9 @@ public class FlyingEye : MonoBehaviour
 
     public void OnDeath()
     {
-        //ËÀÍöºó×¹Âäµ½µØÃæ
-        rb.gravityScale = 2f;
-        rb.velocity = new Vector2(0, rb.velocity.y);
+        //æ‰è½æ—¶å¢åŠ é‡åŠ›
+        rb2d.gravityScale = 2f;
+        rb2d.velocity = new Vector2(0, rb2d.velocity.y);
         deathCollider.enabled = true;
     }
-
 }
