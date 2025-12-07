@@ -2,6 +2,37 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
+/// 检测区域绑定结构
+/// 用于在Inspector中配置多个DetectionZone及其角色
+/// </summary>
+[System.Serializable]
+public struct DetectionZoneBinding
+{
+    /// <summary>
+    /// 检测区域的角色/用途
+    /// </summary>
+    public enum Role
+    {
+        PrimaryAttack,  // 主攻击检测（用于GetDetectedTargets）
+        SecondaryAttack,// 副攻击检测
+        Cliff,          // 崖边检测
+        Alert,          // 警戒范围
+        Lookout,        // 视野范围
+        Custom          // 自定义用途
+    }
+
+    [Tooltip("该检测区的角色/用途")]
+    public Role role;
+
+    [Tooltip("拖拽子物体上的DetectionZone组件")]
+    public DetectionZone zone;
+
+    [TextArea(1, 3)]
+    [Tooltip("对该检测区的说明，便于维护（如'攻击判定'、'崖边检测'等）")]
+    public string note;
+}
+
+/// <summary>
 /// 敌人代理基类
 /// 为所有敌人提供统一的架构框架
 ///
@@ -33,6 +64,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     [Header("配置")]
     [SerializeField] private EnemyTuningProfile tuningProfile;
     [SerializeField] private DetectionZone primaryDetectionZone;
+    [SerializeField] private List<DetectionZoneBinding> zoneBindings = new List<DetectionZoneBinding>();
 
     [Header("调试")]
     [SerializeField] protected bool debugStateOverlay = true;
@@ -100,13 +132,23 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
         // 验证关键组件
         if (rb2d == null)
-            Debug.LogError($"[{gameObject.name}] Missing Rigidbody2D component", gameObject);
+            Debug.LogError($"[{gameObject.name}] 缺少Rigidbody2D组件", gameObject);
 
         if (animator == null)
-            Debug.LogError($"[{gameObject.name}] Missing Animator component", gameObject);
+            Debug.LogError($"[{gameObject.name}] 缺少Animator组件", gameObject);
 
         if (damageable == null)
-            Debug.LogError($"[{gameObject.name}] Missing Damageable component", gameObject);
+            Debug.LogError($"[{gameObject.name}] 缺少Damageable组件", gameObject);
+
+        // 改进2：检查根物体是否有DetectionZone，如有则建议迁至子物体
+        if (detectionZone != null && GetComponentsInChildren<DetectionZone>().Length > 1)
+        {
+            Debug.LogWarning(
+                $"[{gameObject.name}] ⚠ 根物体包含DetectionZone组件。" +
+                $"建议：将其移至子物体（如'DZ_Attack'）以保持命名规范的一致性。",
+                gameObject
+            );
+        }
 
         // 注意：DetectionZone的检查移至ResolveDetectionZone()中执行
     }
@@ -130,6 +172,12 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (primaryDetectionZone != null)
         {
             detectionZone = primaryDetectionZone;
+            if (debugStateOverlay)
+                Debug.Log(
+                    $"[{gameObject.name}] ✓ 检测区解析成功（优先级1）: " +
+                    $"使用Inspector中显式指定的'{primaryDetectionZone.gameObject.name}'",
+                    gameObject
+                );
             return;
         }
 
@@ -137,6 +185,12 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (detectionZone != null)
         {
             primaryDetectionZone = detectionZone;
+            Debug.LogWarning(
+                $"[{gameObject.name}] ⚠ 检测区解析成功（优先级2）: " +
+                $"在根物体上找到DetectionZone'{detectionZone.gameObject.name}'。" +
+                $"建议：将DetectionZone移至子物体（如'DZ_Attack'）以保持一致的命名规范。",
+                gameObject
+            );
             return;
         }
 
@@ -147,9 +201,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         {
             // 都找不到，警告用户
             Debug.LogWarning(
-                $"[{gameObject.name}] No DetectionZone found in root or children. " +
-                $"Please assign a DetectionZone to the 'Primary Detection Zone' field in the Inspector, " +
-                $"or ensure at least one child GameObject has a DetectionZone component.",
+                $"[{gameObject.name}] ✗ 未找到任何检测区。" +
+                $"请在Inspector中为'主检测区'字段赋值DetectionZone，" +
+                $"或确保至少有一个子物体包含DetectionZone组件。",
                 gameObject
             );
             return;
@@ -162,7 +216,8 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             detectionZone = primaryDetectionZone;
             if (debugStateOverlay)
                 Debug.Log(
-                    $"[{gameObject.name}] Auto-assigned Primary Detection Zone from child object '{childDetectionZones[0].gameObject.name}'",
+                    $"[{gameObject.name}] ✓ 检测区解析成功（优先级3）: " +
+                    $"自动使用子物体中唯一的检测区'{childDetectionZones[0].gameObject.name}'",
                     gameObject
                 );
             return;
@@ -171,11 +226,12 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         // 找到多个，使用第一个但提示用户
         primaryDetectionZone = childDetectionZones[0];
         detectionZone = primaryDetectionZone;
+        var zoneList = string.Join("、", System.Linq.Enumerable.Select(childDetectionZones, z => $"'{z.gameObject.name}'"));
         Debug.LogWarning(
-            $"[{gameObject.name}] Found {childDetectionZones.Length} DetectionZones in children, " +
-            $"but 'Primary Detection Zone' field is not explicitly assigned. " +
-            $"Using the first one ('{childDetectionZones[0].gameObject.name}'). " +
-            $"Please explicitly assign the intended DetectionZone to avoid ambiguity.",
+            $"[{gameObject.name}] ⚠ 检测区解析成功（优先级3）: " +
+            $"在子物体中找到{childDetectionZones.Length}个检测区：{zoneList}。" +
+            $"使用第一个'{childDetectionZones[0].gameObject.name}'作为主检测区。" +
+            $"为避免歧义，请在Inspector中显式指定主检测区。",
             gameObject
         );
     }
@@ -293,6 +349,34 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         return distance <= range;
     }
 
+    /// <summary>
+    /// 根据角色/用途获取对应的DetectionZone
+    /// 这是第二阶段新增的统一API，用于支持多检测区场景
+    ///
+    /// 使用示例：
+    /// - GetZone(DetectionZoneBinding.Role.Cliff) 获取崖边检测区
+    /// - GetZone(DetectionZoneBinding.Role.Alert) 获取警戒范围
+    ///
+    /// 设计说明：
+    /// - 支持无限扩展新的检测区角色，无需修改代码
+    /// - 与primaryDetectionZone兼容（向后兼容）
+    /// - 如果zone为null，返回null而不是报错
+    /// </summary>
+    /// <param name="role">检测区的角色/用途</param>
+    /// <returns>对应的DetectionZone，如果未找到则返回null</returns>
+    public virtual DetectionZone GetZone(DetectionZoneBinding.Role role)
+    {
+        // 在zoneBindings列表中查找对应的binding
+        foreach (var binding in zoneBindings)
+        {
+            if (binding.role == role && binding.zone != null)
+                return binding.zone;
+        }
+
+        // 如果查找不到，返回null
+        return null;
+    }
+
     // ===== IDamageResponder 接口实现 =====
 
     public virtual void OnDamageTaken(int damage, Vector2 knockbackDirection)
@@ -318,6 +402,13 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     // ===== 调试可视化 =====
 
+    /// <summary>
+    /// 在编辑器中显示Gizmos的选项开关
+    /// </summary>
+    [Header("Gizmos可视化")]
+    [SerializeField] private bool showDetectionZoneGizmos = true;
+    [SerializeField] private bool showGizmosInPlayMode = false;
+
     #if UNITY_EDITOR
 
     protected virtual void OnDrawGizmosSelected()
@@ -329,7 +420,170 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(cacheTransform.position, 0.1f);
 
-        // 子类可以在这里扩展更多的Gizmos绘制
+        // 绘制检测区Gizmos
+        DrawDetectionZoneGizmos();
+    }
+
+    protected virtual void OnDrawGizmos()
+    {
+        // 在Play模式下，仅当启用选项时才绘制
+        if (Application.isPlaying && !showGizmosInPlayMode)
+            return;
+
+        // 非Play模式或已启用Play模式显示时，绘制检测区
+        if (!Application.isPlaying || showGizmosInPlayMode)
+        {
+            DrawDetectionZoneGizmos();
+        }
+    }
+
+    /// <summary>
+    /// 绘制所有检测区的Gizmos
+    ///
+    /// 颜色方案：
+    /// - PrimaryAttack: 红色
+    /// - SecondaryAttack: 橙色
+    /// - Cliff: 蓝色
+    /// - Alert: 绿色
+    /// - Lookout: 黄色
+    /// - Custom: 灰色
+    /// </summary>
+    private void DrawDetectionZoneGizmos()
+    {
+        if (!showDetectionZoneGizmos || zoneBindings == null || zoneBindings.Count == 0)
+            return;
+
+        foreach (var binding in zoneBindings)
+        {
+            if (binding.zone == null)
+                continue;
+
+            // 根据Role选择颜色
+            Color zoneColor = GetColorForRole(binding.role);
+            Gizmos.color = zoneColor;
+
+            // 获取检测区的Collider2D
+            var collider = binding.zone.GetComponent<Collider2D>();
+            if (collider != null)
+            {
+                DrawCollider2DGizmo(collider, zoneColor);
+            }
+
+            // 绘制标签和检测目标数量
+            DrawDetectionZoneLabel(binding);
+        }
+    }
+
+    /// <summary>
+    /// 根据Role获取对应的颜色
+    /// </summary>
+    private Color GetColorForRole(DetectionZoneBinding.Role role)
+    {
+        return role switch
+        {
+            DetectionZoneBinding.Role.PrimaryAttack => new Color(1f, 0f, 0f, 0.3f),      // 红色
+            DetectionZoneBinding.Role.SecondaryAttack => new Color(1f, 0.5f, 0f, 0.3f),  // 橙色
+            DetectionZoneBinding.Role.Cliff => new Color(0f, 0f, 1f, 0.3f),             // 蓝色
+            DetectionZoneBinding.Role.Alert => new Color(0f, 1f, 0f, 0.3f),             // 绿色
+            DetectionZoneBinding.Role.Lookout => new Color(1f, 1f, 0f, 0.3f),           // 黄色
+            _ => new Color(0.5f, 0.5f, 0.5f, 0.3f)                                       // 灰色（Custom）
+        };
+    }
+
+    /// <summary>
+    /// 绘制Collider2D的Gizmo
+    /// 支持BoxCollider2D和CircleCollider2D
+    /// </summary>
+    private void DrawCollider2DGizmo(Collider2D collider, Color color)
+    {
+        Gizmos.color = color;
+        var transform = collider.transform;
+
+        if (collider is BoxCollider2D boxCollider)
+        {
+            // 绘制Box
+            Vector2 offset = boxCollider.offset;
+            Vector2 size = boxCollider.size;
+            Vector3 center = transform.position + (Vector3)offset;
+
+            Vector3[] corners = new Vector3[4]
+            {
+                center + new Vector3(-size.x / 2, -size.y / 2, 0),
+                center + new Vector3(size.x / 2, -size.y / 2, 0),
+                center + new Vector3(size.x / 2, size.y / 2, 0),
+                center + new Vector3(-size.x / 2, size.y / 2, 0)
+            };
+
+            // 绘制矩形边界
+            Gizmos.DrawLine(corners[0], corners[1]);
+            Gizmos.DrawLine(corners[1], corners[2]);
+            Gizmos.DrawLine(corners[2], corners[3]);
+            Gizmos.DrawLine(corners[3], corners[0]);
+
+            // 绘制填充
+            DrawFilledBox(corners, color);
+        }
+        else if (collider is CircleCollider2D circleCollider)
+        {
+            // 绘制Circle
+            Vector2 offset = circleCollider.offset;
+            float radius = circleCollider.radius;
+            Vector3 center = transform.position + (Vector3)offset;
+
+            Gizmos.DrawWireSphere(center, radius);
+
+            // 绘制填充圆形
+            DrawFilledCircle(center, radius, color, 20);
+        }
+    }
+
+    /// <summary>
+    /// 绘制检测区的标签和信息
+    /// </summary>
+    private void DrawDetectionZoneLabel(DetectionZoneBinding binding)
+    {
+        if (binding.zone == null)
+            return;
+
+        var transform = binding.zone.transform;
+        Vector3 labelPos = transform.position + Vector3.up * 0.5f;
+
+        // 获取检测到的目标数量
+        int targetCount = binding.zone.detectedColliders.Count;
+        string label = $"{binding.role}\n({targetCount})";
+
+        // 在编辑器中显示标签
+        #if UNITY_EDITOR
+        UnityEditor.Handles.Label(labelPos, label);
+        #endif
+    }
+
+    /// <summary>
+    /// 辅助方法：绘制填充的Box
+    /// </summary>
+    private void DrawFilledBox(Vector3[] corners, Color color)
+    {
+        // 这里简化处理，只绘制边框
+        // 如需填充，可使用Mesh Gizmos (需要更复杂的实现)
+    }
+
+    /// <summary>
+    /// 辅助方法：绘制填充的圆形
+    /// </summary>
+    private void DrawFilledCircle(Vector3 center, float radius, Color color, int segments)
+    {
+        Vector3[] points = new Vector3[segments + 1];
+        for (int i = 0; i <= segments; i++)
+        {
+            float angle = (i / (float)segments) * 360f * Mathf.Deg2Rad;
+            points[i] = center + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * radius;
+        }
+
+        // 绘制圆形线条
+        for (int i = 0; i < segments; i++)
+        {
+            Gizmos.DrawLine(points[i], points[i + 1]);
+        }
     }
 
     /// <summary>

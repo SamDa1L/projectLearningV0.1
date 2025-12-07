@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// 敌人Prefab与场景验证工具
@@ -310,6 +311,21 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             {
                 issueList.Add("Missing DetectionZone (not assigned to 'Primary Detection Zone' field and no child DetectionZone found)");
             }
+        }
+
+        // 改进3-检查4：检查根物体是否有DetectionZone（应该迁至子物体）
+        var rootDetectionZone = prefab.GetComponent<DetectionZone>();
+        if (rootDetectionZone != null)
+        {
+            issueList.Add("根物体包含DetectionZone（应该迁至子物体如'DZ_Attack'）");
+        }
+
+        // 改进3-检查5：列出所有找到的检测区
+        var allChildZones = prefab.GetComponentsInChildren<DetectionZone>();
+        if (allChildZones.Length > 0 && showDetailedLog)
+        {
+            var zoneNames = string.Join("、", allChildZones.Select(z => $"'{z.gameObject.name}'"));
+            Debug.Log($"  ℹ {prefabPath}：可用的检测区包括：{zoneNames}");
         }
 
         // 检查4：是否有Animator
