@@ -39,7 +39,7 @@ public class Damageable : MonoBehaviour
         {
             _health = value;
 
-            //Èç¹ûÑªÁ¿½µµ½0ÒÔÏÂ£¬Ôò½ÇÉ«ËÀÍö
+            // å½“ç”Ÿå‘½å€¼å°äºç­‰äº0æ—¶ï¼Œè§’è‰²æ­»äº¡
             if(_health <= 0)
             {
                 IsAlive = false;
@@ -51,8 +51,16 @@ public class Damageable : MonoBehaviour
     private bool _isAlive = true;
 
     [SerializeField]
-    private bool isInvincible = false;
+    public bool isInvincible = false;
 
+    /// <summary>
+    /// æ— æ•ŒçŠ¶æ€å±æ€§ï¼ˆç¬¦åˆC#å‘½åè§„èŒƒï¼‰
+    /// ç”¨äºæŸ¥è¯¢å½“å‰æ˜¯å¦å¤„äºæ— æ•Œå¸§å†…
+    /// </summary>
+    public bool IsInvulnerable
+    {
+        get { return isInvincible; }
+    }
 
     private float timeSinceHit = 0;
     public float invincibilityTime = 0.25f;
@@ -67,7 +75,7 @@ public class Damageable : MonoBehaviour
         {
             _isAlive = value;
             animator.SetBool(AnimationStrings.isAlive, value);
-            Debug.Log("´æ»î" +  value);
+            Debug.Log("æ­»äº¡: " +  value);
 
             if(value == false )
             {
@@ -114,12 +122,12 @@ public class Damageable : MonoBehaviour
             return true;
         }
 
-        //²»ÄÜ±»¹¥»÷
+        // æ— æ³•è¢«ä¼¤å®³
         return false;
     }
 
 
-    //½ÇÉ«ÊÇ·ñ±»»ØÑª
+    // è§’è‰²æ˜¯å¦è¢«æ¢å¤è¡€
     public bool Heal(int healthRestore)
     {
         if (IsAlive && Health < MaxHealth) 
@@ -151,7 +159,7 @@ public class Damageable : MonoBehaviour
         {
             if(timeSinceHit > invincibilityTime)
             {
-                //È¡ÏûÎŞµĞ
+                // å–æ¶ˆæ— æ•ŒçŠ¶æ€
                 isInvincible = false ;
                 timeSinceHit = 0;
             }
