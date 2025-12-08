@@ -271,10 +271,16 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 110219e6c5e7aca4c808d07e7f063668, type: 3}
   m_Name: 
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   tuningProfile: {fileID: 11400000, guid: c6fdbe054f0e4894c926313f7ff8bfd3, type: 2}
   primaryDetectionZone: {fileID: 524857065163868199}
+  zoneBindings:
+  - role: 0
+    zone: {fileID: 524857065163868199}
+    note: 
   debugStateOverlay: 1
+  showDetectionZoneGizmos: 1
+  showGizmosInPlayMode: 0
   walkAcceleration: 30
   maxSpeed: 3
   walkStopRate: 0.05

@@ -63,7 +63,6 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     // ===== 序列化字段（参数） =====
     [Header("配置")]
     [SerializeField] private EnemyTuningProfile tuningProfile;
-    [SerializeField] private DetectionZone primaryDetectionZone;
     [SerializeField] private List<DetectionZoneBinding> zoneBindings = new List<DetectionZoneBinding>();
 
     [Header("调试")]
@@ -140,100 +139,97 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (damageable == null)
             Debug.LogError($"[{gameObject.name}] 缺少Damageable组件", gameObject);
 
-        // 改进2：检查根物体是否有DetectionZone，如有则建议迁至子物体
-        if (detectionZone != null && GetComponentsInChildren<DetectionZone>().Length > 1)
-        {
-            Debug.LogWarning(
-                $"[{gameObject.name}] ⚠ 根物体包含DetectionZone组件。" +
-                $"建议：将其移至子物体（如'DZ_Attack'）以保持命名规范的一致性。",
-                gameObject
-            );
-        }
-
-        // 注意：DetectionZone的检查移至ResolveDetectionZone()中执行
+        // 注意：DetectionZone的验证在ResolveDetectionZone()中执行
     }
 
     /// <summary>
-    /// 解决检测区依赖
+    /// 解决检测区依赖（v0.2重构版 - Plan A）
     /// 在Awake中CacheComponents()之后调用
     ///
-    /// 设计说明：
-    /// - 敌人可能有多个DetectionZone子物体（攻击范围、崖边检测等）
-    /// - primaryDetectionZone是"显式指定的主检测区"，用于目标感知
-    /// - 本方法确保primaryDetectionZone有有效的值，通过以下优先级：
-    ///   1. 如果已通过Inspector赋值了primaryDetectionZone，使用它
-    ///   2. 否则尝试使用根GameObject上的detectionZone
-    ///   3. 否则自动查找子物体中的DetectionZone
-    ///   4. 都找不到才警告用户
+    /// 设计说明（方案A：基于zoneBindings）：
+    /// - 放弃复杂的自动推断，改为强制要求显式配置
+    /// - zoneBindings是唯一的数据源（必须在Inspector中配置）
+    /// - 每个binding必须有有效的zone和role
+    /// - 直接从zoneBindings查询PrimaryAttack，无需缓存专用字段
+    /// - GetDetectedTargets()和GetDetectedTargetsForRole()都从zoneBindings读取
+    ///
+    /// 配置要求：
+    /// 1. 在Inspector中为敌人配置zoneBindings列表
+    /// 2. 至少要有一个binding，role=PrimaryAttack
+    /// 3. 可选地添加其他role的binding（Cliff、Alert等）
+    ///
+    /// 优势：
+    /// - 数据源单一，无冲突
+    /// - 逻辑清晰简洁
+    /// - 无歧义的推断问题
+    /// - GetDetectedTargets()和GetDetectedTargetsForRole()一致
+    /// - 不需要冗余的缓存字段
     /// </summary>
     private void ResolveDetectionZone()
     {
-        // 优先级1：已显式指定的primaryDetectionZone
-        if (primaryDetectionZone != null)
+        // 检查zoneBindings是否已配置
+        if (zoneBindings == null || zoneBindings.Count == 0)
         {
-            detectionZone = primaryDetectionZone;
-            if (debugStateOverlay)
-                Debug.Log(
-                    $"[{gameObject.name}] ✓ 检测区解析成功（优先级1）: " +
-                    $"使用Inspector中显式指定的'{primaryDetectionZone.gameObject.name}'",
-                    gameObject
-                );
-            return;
-        }
-
-        // 优先级2：根GameObject上的DetectionZone
-        if (detectionZone != null)
-        {
-            primaryDetectionZone = detectionZone;
-            Debug.LogWarning(
-                $"[{gameObject.name}] ⚠ 检测区解析成功（优先级2）: " +
-                $"在根物体上找到DetectionZone'{detectionZone.gameObject.name}'。" +
-                $"建议：将DetectionZone移至子物体（如'DZ_Attack'）以保持一致的命名规范。",
+            Debug.LogError(
+                $"[{gameObject.name}] ✗ 检测区配置失败：zoneBindings列表为空！\n" +
+                $"请在Inspector中为敌人脚本配置zoneBindings，至少需要一个role=PrimaryAttack的binding，" +
+                $"拖拽DZ_Attack子物体的DetectionZone到zone字段。",
                 gameObject
             );
             return;
         }
 
-        // 优先级3：尝试自动查找子物体中的DetectionZone
-        var childDetectionZones = GetComponentsInChildren<DetectionZone>();
+        // 查找PrimaryAttack角色的binding
+        DetectionZoneBinding primaryBinding = default;
+        int primaryAttackIndex = -1;
 
-        if (childDetectionZones.Length == 0)
+        for (int i = 0; i < zoneBindings.Count; i++)
         {
-            // 都找不到，警告用户
-            Debug.LogWarning(
-                $"[{gameObject.name}] ✗ 未找到任何检测区。" +
-                $"请在Inspector中为'主检测区'字段赋值DetectionZone，" +
-                $"或确保至少有一个子物体包含DetectionZone组件。",
+            if (zoneBindings[i].role == DetectionZoneBinding.Role.PrimaryAttack)
+            {
+                primaryBinding = zoneBindings[i];
+                primaryAttackIndex = i;
+                break;
+            }
+        }
+
+        // 检查是否找到PrimaryAttack
+        if (primaryAttackIndex == -1)
+        {
+            Debug.LogError(
+                $"[{gameObject.name}] ✗ 检测区配置失败：zoneBindings中未找到PrimaryAttack！\n" +
+                $"检测到的binding数量：{zoneBindings.Count}\n" +
+                $"请检查zoneBindings中是否有role=PrimaryAttack的项，" +
+                $"并将对应的DetectionZone赋值到zone字段。",
                 gameObject
             );
             return;
         }
 
-        if (childDetectionZones.Length == 1)
+        // 检查zone是否有效
+        if (primaryBinding.zone == null)
         {
-            // 只找到一个，自动使用
-            primaryDetectionZone = childDetectionZones[0];
-            detectionZone = primaryDetectionZone;
-            if (debugStateOverlay)
-                Debug.Log(
-                    $"[{gameObject.name}] ✓ 检测区解析成功（优先级3）: " +
-                    $"自动使用子物体中唯一的检测区'{childDetectionZones[0].gameObject.name}'",
-                    gameObject
-                );
+            Debug.LogError(
+                $"[{gameObject.name}] ✗ 检测区配置失败：PrimaryAttack的zone为空！\n" +
+                $"请在Inspector中拖拽DZ_Attack（或其他攻击检测区）的DetectionZone到该binding的zone字段。",
+                gameObject
+            );
             return;
         }
 
-        // 找到多个，使用第一个但提示用户
-        primaryDetectionZone = childDetectionZones[0];
-        detectionZone = primaryDetectionZone;
-        var zoneList = string.Join("、", System.Linq.Enumerable.Select(childDetectionZones, z => $"'{z.gameObject.name}'"));
-        Debug.LogWarning(
-            $"[{gameObject.name}] ⚠ 检测区解析成功（优先级3）: " +
-            $"在子物体中找到{childDetectionZones.Length}个检测区：{zoneList}。" +
-            $"使用第一个'{childDetectionZones[0].gameObject.name}'作为主检测区。" +
-            $"为避免歧义，请在Inspector中显式指定主检测区。",
-            gameObject
-        );
+        // 配置成功，缓存主检测区到detectionZone字段
+        detectionZone = primaryBinding.zone;
+
+        if (debugStateOverlay)
+        {
+            Debug.Log(
+                $"[{gameObject.name}] ✓ 检测区初始化成功\n" +
+                $"  配置来源：zoneBindings[{primaryAttackIndex}]\n" +
+                $"  PrimaryAttack → {primaryBinding.zone.gameObject.name}\n" +
+                $"  已配置的binding总数：{zoneBindings.Count}",
+                gameObject
+            );
+        }
     }
 
     // ===== 初始化钩子 =====
@@ -317,27 +313,20 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     // ===== IAgentPerception 接口实现 =====
 
     /// <summary>
-    /// 获取用于目标检测的主DetectionZone。
-    /// 返回显式指定的primaryDetectionZone，如果为空则回退到根GameObject上的detectionZone。
+    /// 获取主检测区（PrimaryAttack角色）的检测目标
     ///
-    /// 设计说明：
-    /// - primaryDetectionZone通过以下方式获得：
-    ///   1. 在Inspector中显式赋值（推荐）
-    ///   2. ResolveDetectionZone()自动发现并赋值
-    /// - 子类仍可覆写此方法以提供额外逻辑，但通常不需要
+    /// v0.2设计（方案A）：
+    /// - 直接查询zoneBindings中role=PrimaryAttack的检测区
+    /// - zoneBindings是唯一的数据源，通过GetDetectedTargetsForRole()访问
+    /// - GetDetectedTargets()和GetDetectedTargetsForRole(PrimaryAttack)等价
+    ///
+    /// 返回值：
+    /// - 如果配置正确，返回DZ_Attack（或其他PrimaryAttack角色）的目标列表
+    /// - 如果配置不正确，返回空列表
     /// </summary>
-    protected virtual DetectionZone GetPrimaryDetectionZone()
-    {
-        return primaryDetectionZone ?? detectionZone;
-    }
-
     public virtual List<Collider2D> GetDetectedTargets()
     {
-        DetectionZone primaryZone = GetPrimaryDetectionZone();
-        if (primaryZone != null)
-            return primaryZone.detectedColliders;
-
-        return detectedTargets;
+        return GetDetectedTargetsForRole(DetectionZoneBinding.Role.PrimaryAttack);
     }
 
     public virtual bool IsTargetInRange(Transform target, float range)
@@ -350,34 +339,58 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     }
 
     /// <summary>
-    /// 根据角色/用途获取对应的DetectionZone
-    /// 这是第二阶段新增的统一API，用于支持多检测区场景
+    /// 根据角色获取特定的检测目标（v0.2核心API）
+    ///
+    /// 这是v0.2多检测区支持的主要方法，用于子类访问各类检测区的目标
     ///
     /// 使用示例：
-    /// - GetZone(DetectionZoneBinding.Role.Cliff) 获取崖边检测区
-    /// - GetZone(DetectionZoneBinding.Role.Alert) 获取警戒范围
+    /// - 攻击目标：GetDetectedTargetsForRole(DetectionZoneBinding.Role.PrimaryAttack)
+    /// - 崖边检测：GetDetectedTargetsForRole(DetectionZoneBinding.Role.Cliff)
+    /// - 警戒范围：GetDetectedTargetsForRole(DetectionZoneBinding.Role.Alert)
     ///
-    /// 设计说明：
-    /// - 支持无限扩展新的检测区角色，无需修改代码
-    /// - 与primaryDetectionZone兼容（向后兼容）
-    /// - 如果zone为null，返回null而不是报错
+    /// 实现逻辑：
+    /// - 遍历zoneBindings查找对应role的binding
+    /// - 如果找到且zone有效，返回该zone的目标列表
+    /// - 如果未找到或无效，返回空列表（不会报错，子类需自行处理）
+    ///
+    /// 性能说明：
+    /// - 遍历zoneBindings（通常3-5个元素），O(n)时间复杂度
+    /// - 如果频繁调用同一role，建议在Initialize()中缓存结果
     /// </summary>
     /// <param name="role">检测区的角色/用途</param>
-    /// <returns>对应的DetectionZone，如果未找到则返回null</returns>
+    /// <returns>该角色对应的检测区中的目标列表，未找到则返回空列表</returns>
+    public virtual List<Collider2D> GetDetectedTargetsForRole(DetectionZoneBinding.Role role)
+    {
+        // 遍历zoneBindings查找对应的binding
+        foreach (var binding in zoneBindings)
+        {
+            if (binding.role == role && binding.zone != null)
+                return binding.zone.detectedColliders;
+        }
+
+        // 未找到该角色的检测区，返回空列表
+        return new List<Collider2D>();
+    }
+
+    /// <summary>
+    /// 根据角色获取对应的DetectionZone组件
+    ///
+    /// 与GetDetectedTargetsForRole()不同，此方法返回DetectionZone组件本身
+    /// 常用于需要访问zone的其他属性，或者Gizmos可视化
+    ///
+    /// 使用示例：
+    /// - Gizmos可视化中获取zone组件来绘制
+    /// - 编辑器工具中检查zone的配置
+    /// </summary>
     public virtual DetectionZone GetZone(DetectionZoneBinding.Role role)
     {
-        // 在zoneBindings列表中查找对应的binding
         foreach (var binding in zoneBindings)
         {
             if (binding.role == role && binding.zone != null)
                 return binding.zone;
         }
-
-        // 如果查找不到，返回null
         return null;
     }
-
-    // ===== IDamageResponder 接口实现 =====
 
     public virtual void OnDamageTaken(int damage, Vector2 knockbackDirection)
     {

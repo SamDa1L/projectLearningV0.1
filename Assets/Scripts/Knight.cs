@@ -10,23 +10,17 @@ public class Knight : EnemyAgentBase
     public float walkAcceleration = 3f;
     public float maxSpeed = 3f;
     public float walkStopRate = 0.05f;
-    public DetectionZone attackZone;
-    public DetectionZone cliffDetectionZone;
 
     TouchingDirections touchingDirections;
 
-    public enum WalkableDirection { Right,Left};
-
+    public enum WalkableDirection { Right, Left };
 
     private WalkableDirection _walkDirection;
     private Vector2 walkDirectionVector = Vector2.right;
 
     public WalkableDirection WalkDirection
     {
-        get
-        {
-            return _walkDirection;
-        }
+        get { return _walkDirection; }
         set
         {
             if (_walkDirection != value)
@@ -36,7 +30,7 @@ public class Knight : EnemyAgentBase
                 {
                     walkDirectionVector = Vector2.right;
                 }
-                else if(value == WalkableDirection.Left)
+                else if (value == WalkableDirection.Left)
                 {
                     walkDirectionVector = Vector2.left;
                 }
@@ -45,9 +39,6 @@ public class Knight : EnemyAgentBase
         }
     }
 
-    /// <summary>
-    /// 初始化Knight特有的组件和参数
-    /// </summary>
     protected override void Initialize()
     {
         base.Initialize();
@@ -59,12 +50,9 @@ public class Knight : EnemyAgentBase
         WalkDirection = WalkableDirection.Right;
     }
 
-    /// <summary>
-    /// 状态逻辑更新
-    /// </summary>
     protected override void TickState(float deltaTime)
     {
-        // 根据DetectionZone更新HasTarget
+        // 根据主检测区(PrimaryAttack)更新HasTarget
         bool hasTarget = GetDetectedTargets().Count > 0;
         if (hasTarget != (currentState == EnemyState.Chase))
         {
@@ -82,15 +70,16 @@ public class Knight : EnemyAgentBase
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
     }
 
-    /// <summary>
-    /// 物理更新
-    /// </summary>
     protected override void TickPhysics(float fixedDeltaTime)
     {
-        // 崖边检测和转身
+        // 崖边检测 - 使用v0.2新API
         if (touchingDirections.IsGrounded && touchingDirections.IsOnWall)
         {
-            FlipDirection();
+            var cliffTargets = GetDetectedTargetsForRole(DetectionZoneBinding.Role.Cliff);
+            if (cliffTargets.Count > 0)
+            {
+                OnCliffDetected();
+            }
         }
 
         // 移动逻辑
@@ -120,33 +109,27 @@ public class Knight : EnemyAgentBase
         {
             WalkDirection = WalkableDirection.Left;
         }
-        else if (WalkDirection == WalkableDirection.Left) 
+        else if (WalkDirection == WalkableDirection.Left)
         {
             WalkDirection = WalkableDirection.Right;
         }
         else
         {
-            Debug.LogError("��ǰ�ƶ����򲻺Ϸ����Ȳ�����Ҳ������");
+            Debug.LogError("当前移动方向不合法，既不是右也不是左");
         }
     }
 
     /// <summary>
     /// 崖边检测回调
     ///
-    /// v0.2更新：现在推荐使用GetZone() API而不是直接访问cliffDetectionZone字段
+    /// v0.2迁移说明：
+    /// - 旧方式（v0.1）：通过public DetectionZone cliffDetectionZone字段访问
+    /// - 新方式（v0.2）：通过GetDetectedTargetsForRole(DetectionZoneBinding.Role.Cliff)访问
     ///
-    /// 旧用法（v0.1）：
-    ///   DetectionZone cliffZone = cliffDetectionZone;
-    ///   if (cliffZone != null && cliffZone.detectedColliders.Count > 0) { ... }
-    ///
-    /// 新用法（v0.2）：
-    ///   DetectionZone cliffZone = GetZone(DetectionZoneBinding.Role.Cliff);
-    ///   if (cliffZone != null && cliffZone.detectedColliders.Count > 0) { ... }
-    ///
-    /// 好处：
-    /// - 更灵活：不需要在Inspector中为每个检测区都添加public字段
-    /// - 更可维护：统一通过Role访问，易于理解职能
-    /// - 为未来预留：支持无限数量的检测区扩展
+    /// 现在的工作流程：
+    /// 1. zoneBindings中配置 DZ_Cliff 为 Cliff 角色的检测区
+    /// 2. TickPhysics()通过GetDetectedTargetsForRole()查询目标
+    /// 3. 如有目标则调用OnCliffDetected()
     /// </summary>
     public void OnCliffDetected()
     {

@@ -15,11 +15,11 @@ MonoBehaviour:
   version: 1.0.0
   profileName: Knight
   maxHealth: 100
-  moveSpeed: 3
+  moveSpeed: 20
   perceptionRadius: 5
   attackRange: 1.5
-  attackDamage: 10
-  attackCooldown: 1.5
+  attackDamage: 100
+  attackCooldown: 0.25
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5

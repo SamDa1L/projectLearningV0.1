@@ -5,24 +5,31 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// 敌人Prefab与场景验证工具
+/// 敌人Prefab与场景验证工具（v0.2 Plan A版本）
 /// 双层验证架构：Prefab资源检查 + Scene场景实例检查
 ///
-/// 设计思路：
+/// 设计思路（基于Plan A - zoneBindings单一数据源）：
 /// - 第1层：扫描Assets/Resources/Prefabs中的所有敌人Prefab
 /// - 第2层：加载所有已保存的Scene，检查敌人实例配置
-/// - 检查项：
-///   1. 是否继承EnemyAgentBase（不能是旧脚本）
+/// - 核心检查项：
+///   1. 是否继承EnemyAgentBase
 ///   2. 是否分配了EnemyTuningProfile
-///   3. 是否配置了DetectionZone
-///   4. 是否有Animator组件
-///   5. 是否有Rigidbody2D组件
+///   3. 是否在zoneBindings中配置了PrimaryAttack检测区（Plan A强制要求）
+///   4. zoneBindings中的所有zone引用是否有效（非空）
+///   5. 是否有Animator组件
+///   6. 是否有Rigidbody2D组件
+///   7. 是否有Damageable组件
 /// - 防止遗漏Prefab中的配置或场景中的敌人实例
+///
+/// v0.2改动说明：
+/// - 移除了对primaryDetectionZone字段的检查（该字段已删除）
+/// - 强制检查zoneBindings必须包含至少一个PrimaryAttack
+/// - 新增对zoneBindings配置有效性的验证
 ///
 /// 使用步骤：
 /// 1. Tools菜单 → Stage1 → Validate Enemy Prefabs
 /// 2. 查看Console输出的验证结果
-/// 3. 根据警告修复配置问题
+/// 3. 根据警告修复配置问题（重点：配置zoneBindings）
 /// 4. 每次迁移敌人后运行此工具进行验证
 /// </summary>
 public class ValidateEnemyPrefabsWindow : EditorWindow
@@ -259,7 +266,12 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     // ===== 验证逻辑 =====
 
     /// <summary>
-    /// 验证单个Prefab的完整性
+    /// 验证单个Prefab的完整性（Plan A版本）
+    ///
+    /// Plan A核心验证：
+    /// - zoneBindings必须包含至少一个PrimaryAttack
+    /// - zoneBindings中的所有zone引用必须非空
+    /// - 不再检查primaryDetectionZone字段（已删除）
     /// </summary>
     private bool ValidatePrefabIntegrity(GameObject prefab, string prefabPath, out string problems)
     {
@@ -271,56 +283,74 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         if (baseEnemy == null)
         {
             issueList.Add("Missing EnemyAgentBase");
+            problems = string.Join(", ", issueList);
+            return false;
         }
-        else
+
+        // 检查是否是遗留脚本（旧Knight/FlyingEye等）
+        string scriptType = baseEnemy.GetType().Name;
+        if (validateOldScripts && (scriptType == "Knight" || scriptType == "FlyingEye"))
         {
-            // 检查是否是遗留脚本（旧Knight/FlyingEye等）
-            string scriptType = baseEnemy.GetType().Name;
-            if (validateOldScripts && (scriptType == "Knight" || scriptType == "FlyingEye"))
+            if (!typeof(EnemyAgentBase).IsAssignableFrom(baseEnemy.GetType()) ||
+                baseEnemy.GetType() == typeof(EnemyAgentBase))
             {
-                // 检查是否已迁移（Knight/FlyingEye应该继承EnemyAgentBase）
-                if (!typeof(EnemyAgentBase).IsAssignableFrom(baseEnemy.GetType()) ||
-                    baseEnemy.GetType() == typeof(EnemyAgentBase))
-                {
-                    issueList.Add($"仍使用旧脚本 ({scriptType})");
-                }
+                issueList.Add($"仍使用旧脚本 ({scriptType})");
             }
         }
 
         // 检查2：是否分配了EnemyTuningProfile
-        if (baseEnemy != null)
+        var serializedObject = new SerializedObject(baseEnemy);
+        var tuningProfileProp = serializedObject.FindProperty("tuningProfile");
+        if (tuningProfileProp == null || tuningProfileProp.objectReferenceValue == null)
         {
-            var serializedObject = new SerializedObject(baseEnemy);
-            var tuningProfileProp = serializedObject.FindProperty("tuningProfile");
-            if (tuningProfileProp == null || tuningProfileProp.objectReferenceValue == null)
+            issueList.Add("Missing TuningProfile");
+        }
+
+        // 检查3：Plan A强制要求 - zoneBindings必须包含PrimaryAttack且所有zone有效
+        var zoneBindingsProp = serializedObject.FindProperty("zoneBindings");
+        if (zoneBindingsProp == null || zoneBindingsProp.arraySize == 0)
+        {
+            issueList.Add("zoneBindings为空（Plan A强制要求：必须在Inspector中配置检测区）");
+        }
+        else
+        {
+            // 检查是否有PrimaryAttack binding
+            bool hasPrimaryAttack = false;
+            int zoneCount = zoneBindingsProp.arraySize;
+
+            for (int i = 0; i < zoneCount; i++)
             {
-                issueList.Add("Missing TuningProfile");
+                var bindingElement = zoneBindingsProp.GetArrayElementAtIndex(i);
+                var roleField = bindingElement.FindPropertyRelative("role");
+                var zoneField = bindingElement.FindPropertyRelative("zone");
+
+                // 检查zone是否为空
+                if (zoneField.objectReferenceValue == null)
+                {
+                    issueList.Add($"zoneBindings[{i}]的zone字段为空（请拖拽DetectionZone组件）");
+                }
+
+                // 检查是否有PrimaryAttack
+                if (roleField.enumValueIndex == (int)DetectionZoneBinding.Role.PrimaryAttack)
+                {
+                    hasPrimaryAttack = true;
+                }
+            }
+
+            if (!hasPrimaryAttack)
+            {
+                issueList.Add("zoneBindings中未找到PrimaryAttack（Plan A强制要求至少一个PrimaryAttack用于GetDetectedTargets()）");
             }
         }
 
-        // 检查3：是否正确配置了DetectionZone（通过primaryDetectionZone字段或子物体）
-        if (baseEnemy != null)
-        {
-            var serializedObject = new SerializedObject(baseEnemy);
-            var primaryZoneProp = serializedObject.FindProperty("primaryDetectionZone");
-
-            bool hasPrimaryZone = primaryZoneProp != null && primaryZoneProp.objectReferenceValue != null;
-            bool hasChildDetectionZone = prefab.GetComponentInChildren<DetectionZone>() != null;
-
-            if (!hasPrimaryZone && !hasChildDetectionZone)
-            {
-                issueList.Add("Missing DetectionZone (not assigned to 'Primary Detection Zone' field and no child DetectionZone found)");
-            }
-        }
-
-        // 改进3-检查4：检查根物体是否有DetectionZone（应该迁至子物体）
+        // 检查4：检查根物体是否有DetectionZone（应该迁至子物体）
         var rootDetectionZone = prefab.GetComponent<DetectionZone>();
         if (rootDetectionZone != null)
         {
-            issueList.Add("根物体包含DetectionZone（应该迁至子物体如'DZ_Attack'）");
+            issueList.Add("根物体包含DetectionZone（应该迁至子物体如'DZ_Attack'，配置到zoneBindings）");
         }
 
-        // 改进3-检查5：列出所有找到的检测区
+        // 检查5：列出所有找到的检测区（仅详细日志）
         var allChildZones = prefab.GetComponentsInChildren<DetectionZone>();
         if (allChildZones.Length > 0 && showDetailedLog)
         {
@@ -328,21 +358,21 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             Debug.Log($"  ℹ {prefabPath}：可用的检测区包括：{zoneNames}");
         }
 
-        // 检查4：是否有Animator
+        // 检查6：是否有Animator
         var animator = prefab.GetComponent<Animator>();
         if (animator == null)
         {
             issueList.Add("Missing Animator");
         }
 
-        // 检查5：是否有Rigidbody2D
+        // 检查7：是否有Rigidbody2D
         var rigidbody2d = prefab.GetComponent<Rigidbody2D>();
         if (rigidbody2d == null)
         {
             issueList.Add("Missing Rigidbody2D");
         }
 
-        // 检查6：是否有Damageable
+        // 检查8：是否有Damageable
         var damageable = prefab.GetComponent<Damageable>();
         if (damageable == null)
         {
@@ -359,7 +389,12 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     }
 
     /// <summary>
-    /// 验证Scene中单个敌人实例的完整性
+    /// 验证Scene中单个敌人实例的完整性（Plan A版本）
+    ///
+    /// Plan A核心验证：
+    /// - zoneBindings必须包含至少一个PrimaryAttack
+    /// - zoneBindings中的所有zone引用必须非空
+    /// - 不再检查primaryDetectionZone字段（已删除）
     /// </summary>
     private bool ValidateSceneEnemyIntegrity(EnemyAgentBase enemy, string scenePath, out string problems)
     {
@@ -374,14 +409,41 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             issueList.Add("Missing TuningProfile");
         }
 
-        // 检查2：是否正确配置了DetectionZone（通过primaryDetectionZone字段或子物体）
-        var primaryZoneProp = serializedObject.FindProperty("primaryDetectionZone");
-        bool hasPrimaryZone = primaryZoneProp != null && primaryZoneProp.objectReferenceValue != null;
-        bool hasChildDetectionZone = enemy.GetComponentInChildren<DetectionZone>() != null;
-
-        if (!hasPrimaryZone && !hasChildDetectionZone)
+        // 检查2：Plan A强制要求 - zoneBindings必须包含PrimaryAttack且所有zone有效
+        var zoneBindingsProp = serializedObject.FindProperty("zoneBindings");
+        if (zoneBindingsProp == null || zoneBindingsProp.arraySize == 0)
         {
-            issueList.Add("Missing DetectionZone (not assigned to 'Primary Detection Zone' field and no child DetectionZone found)");
+            issueList.Add("zoneBindings为空（Plan A强制要求：必须配置检测区）");
+        }
+        else
+        {
+            // 检查是否有PrimaryAttack binding
+            bool hasPrimaryAttack = false;
+            int zoneCount = zoneBindingsProp.arraySize;
+
+            for (int i = 0; i < zoneCount; i++)
+            {
+                var bindingElement = zoneBindingsProp.GetArrayElementAtIndex(i);
+                var roleField = bindingElement.FindPropertyRelative("role");
+                var zoneField = bindingElement.FindPropertyRelative("zone");
+
+                // 检查zone是否为空
+                if (zoneField.objectReferenceValue == null)
+                {
+                    issueList.Add($"zoneBindings[{i}]的zone字段为空");
+                }
+
+                // 检查是否有PrimaryAttack
+                if (roleField.enumValueIndex == (int)DetectionZoneBinding.Role.PrimaryAttack)
+                {
+                    hasPrimaryAttack = true;
+                }
+            }
+
+            if (!hasPrimaryAttack)
+            {
+                issueList.Add("zoneBindings中未找到PrimaryAttack");
+            }
         }
 
         // 检查3：是否是LegacyEnemyAdapter且尚未完全迁移
