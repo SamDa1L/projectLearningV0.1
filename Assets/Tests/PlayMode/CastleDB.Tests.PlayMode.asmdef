@@ -1,0 +1,21 @@
+{
+    "name": "CastleDB.Tests.PlayMode",
+    "rootNamespace": "CastleDB.Tests.PlayMode",
+    "references": [
+        "GUID:d06c1b6f6558c4442875281d5d543dbc"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
