@@ -4,40 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-/// <summary>
-/// 可伤害对象的统计数据
-/// 用于Configure方法传递参数
-///
-/// 阶段2A新增：
-/// - 集中管理所有可伤害对象的参数
-/// - 支持从EnemyTuningProfile批量设置
-/// - 便于参数验证和日志记录
-/// </summary>
-[System.Serializable]
-public class DamageableStats
-{
-    /// <summary>
-    /// 最大生命值
-    /// </summary>
-    public float maxHealth = 100f;
-
-    /// <summary>
-    /// 无敌帧时长（秒）
-    /// </summary>
-    public float invincibilityTime = 0.25f;
-
-    /// <summary>
-    /// 击退倍数
-    /// 用于调整击退力度
-    /// </summary>
-    public float knockbackMultiplier = 1f;
-
-    public override string ToString()
-    {
-        return $"DamageableStats[maxHealth={maxHealth}, invincibilityTime={invincibilityTime}, knockbackMultiplier={knockbackMultiplier}]";
-    }
-}
-
 public class Damageable : MonoBehaviour
 {
     public UnityEvent<int, Vector2> damageableHit;
@@ -99,18 +65,6 @@ public class Damageable : MonoBehaviour
     private float timeSinceHit = 0;
     public float invincibilityTime = 0.25f;
 
-    /// <summary>
-    /// 击退倍数
-    /// 阶段2A新增：用于调整击退力度
-    /// </summary>
-    public float knockbackMultiplier = 1f;
-
-    /// <summary>
-    /// 数据变更事件
-    /// 阶段2A新增：当通过Configure()方法更新参数时触发
-    /// </summary>
-    public event Action<DamageableStats> DamageableStateChanged;
-
     public bool IsAlive 
     {
         get
@@ -143,42 +97,6 @@ public class Damageable : MonoBehaviour
         }
     }
 
-
-    /// <summary>
-    /// 配置可伤害对象的参数
-    ///
-    /// 阶段2A新增：
-    /// - 从DamageableStats批量设置参数
-    /// - 触发DamageableStateChanged事件
-    /// - 用于从EnemyTuningProfile应用参数
-    ///
-    /// 使用示例：
-    /// damageable.Configure(new DamageableStats
-    /// {
-    ///     maxHealth = 100,
-    ///     invincibilityTime = 0.5f,
-    ///     knockbackMultiplier = 1.5f
-    /// });
-    /// </summary>
-    public void Configure(DamageableStats stats)
-    {
-        if (stats == null)
-        {
-            Debug.LogWarning($"[{gameObject.name}] DamageableStats为空，跳过配置", gameObject);
-            return;
-        }
-
-        // 设置参数
-        MaxHealth = (int)stats.maxHealth;
-        _health = MaxHealth; // 重置当前生命值
-        invincibilityTime = stats.invincibilityTime;
-        knockbackMultiplier = stats.knockbackMultiplier;
-
-        // 触发事件
-        DamageableStateChanged?.Invoke(stats);
-
-        Debug.Log($"[{gameObject.name}] ✓ Damageable已配置: {stats}", gameObject);
-    }
 
     private void Awake()
     {

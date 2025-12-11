@@ -11,8 +11,6 @@ using UnityEngine;
 /// - 字段名必须与 CastleDB JSON 中的字段名完全匹配（区分大小写）
 /// - 使用 [SerializeField] 确保 Unity 能正确序列化
 /// - 枚举值在 JSON 中以整数形式存储
-///
-/// 阶段1修复：已完成 JSON 解析、测试框架引用、Mock 数据同步
 /// </summary>
 
 namespace CastleDB.Runtime
