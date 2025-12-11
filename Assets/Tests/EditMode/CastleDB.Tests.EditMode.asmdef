@@ -2,8 +2,7 @@
     "name": "CastleDB.Tests.EditMode",
     "rootNamespace": "CastleDB.Tests.EditMode",
     "references": [
-        "GUID:d06c1b6f6558c4442875281d5d543dbc",
-        "GUID:425892ecc8db4091bdb261c74dbd3f9b"
+        "GUID:d06c1b6f6558c4442875281d5d543dbc"
     ],
     "includePlatforms": [
         "Editor"

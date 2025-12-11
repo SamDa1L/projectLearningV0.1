@@ -1,9 +1,7 @@
 {
     "name": "CastleDB.Runtime",
     "rootNamespace": "CastleDB.Runtime",
-    "references": [
-        "GUID:425892ecc8db4091bdb261c74dbd3f9b"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
