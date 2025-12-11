@@ -1,6 +1,6 @@
 {
-    "name": "CastleDB.Tests.EditMode",
-    "rootNamespace": "CastleDB.Tests.EditMode",
+    "name": "CastleDB.Editor",
+    "rootNamespace": "CastleDB.Editor",
     "references": [
         "GUID:d06c1b6f6558c4442875281d5d543dbc"
     ],
@@ -12,9 +12,7 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
-    ],
+    "defineConstraints": [],
     "versionDefines": [],
     "noEngineReferences": false,
     "optionalUnityReferences": [

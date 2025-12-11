@@ -244,7 +244,51 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (tuningProfile == null)
             Debug.LogWarning($"[{gameObject.name}] TuningProfile未分配，敌人参数将无法正确加载", gameObject);
 
+        // 应用调参配置
+        ApplyTuningProfile();
+
         // 子类实现
+    }
+
+    /// <summary>
+    /// 应用调参配置到敌人
+    /// 从EnemyTuningProfile读取所有数值并应用到运行时
+    ///
+    /// 阶段2A新增：
+    /// - 从Profile读取所有数值参数
+    /// - 应用到Damageable组件
+    /// - 缓存动画Trigger用于运行时调用
+    ///
+    /// 调用时机：
+    /// - 在Initialize()中自动调用
+    /// - 也可以在运行时手动调用以刷新参数
+    /// </summary>
+    protected virtual void ApplyTuningProfile()
+    {
+        if (tuningProfile == null)
+        {
+            if (debugStateOverlay)
+                Debug.LogWarning($"[{gameObject.name}] TuningProfile为空，跳过参数应用", gameObject);
+            return;
+        }
+
+        // 应用到Damageable组件
+        if (damageable != null)
+        {
+            damageable.Configure(new DamageableStats
+            {
+                maxHealth = tuningProfile.maxHealth,
+                invincibilityTime = tuningProfile.invulnerableFrameDuration,
+                knockbackMultiplier = 1f // 默认值，可从Profile扩展
+            });
+
+            if (debugStateOverlay)
+                Debug.Log($"[{gameObject.name}] ✓ 调参配置已应用: HP={tuningProfile.maxHealth}, Speed={tuningProfile.moveSpeed}", gameObject);
+        }
+        else
+        {
+            Debug.LogWarning($"[{gameObject.name}] Damageable组件为空，无法应用调参配置", gameObject);
+        }
     }
 
     // ===== 状态生命周期 =====
