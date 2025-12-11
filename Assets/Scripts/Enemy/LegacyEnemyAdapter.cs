@@ -101,6 +101,24 @@ public class LegacyEnemyAdapter : EnemyAgentBase
     }
 
     /// <summary>
+    /// 覆盖ApplyTuningProfile以支持新旧系统切换
+    /// 当useLegacyLogic=false时，应用新的调参配置
+    /// 当useLegacyLogic=true时，跳过新配置，使用旧逻辑
+    /// </summary>
+    protected override void ApplyTuningProfile()
+    {
+        if (useLegacyLogic)
+        {
+            if (debugLegacyMigration)
+                Debug.Log($"[LegacyEnemyAdapter] {gameObject.name} - 使用遗留逻辑，跳过ApplyTuningProfile", gameObject);
+            return;
+        }
+
+        // 使用新逻辑
+        base.ApplyTuningProfile();
+    }
+
+    /// <summary>
     /// 状态更新 - 代理旧逻辑或调用新逻辑
     /// </summary>
     protected override void TickState(float deltaTime)

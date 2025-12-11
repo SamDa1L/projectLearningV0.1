@@ -4,24 +4,36 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// 伤害系统组件
+/// 管理角色的生命值、无敌帧、击退等伤害相关逻辑
+///
+/// 功能：
+/// - 生命值管理（受伤、治疗、死亡）
+/// - 无敌帧管理
+/// - 击退应用
+/// - 事件通知
+/// - 运行时配置（Configure方法）
+/// </summary>
 public class Damageable : MonoBehaviour
 {
     public UnityEvent<int, Vector2> damageableHit;
     public UnityEvent damageableDeath;
+    public event Action<DamageableStats> DamageableStateChanged;
 
     Animator animator;
 
     [SerializeField]
     private int _maxHealth = 100;
 
-    public int MaxHealth 
+    public int MaxHealth
     {
         get
         {
             return _maxHealth;
         }
-        set 
-        { 
+        set
+        {
             _maxHealth = value;
         }
     }
@@ -29,9 +41,9 @@ public class Damageable : MonoBehaviour
     [SerializeField]
     private int _health = 100;
 
-    public int Health 
+    public int Health
     {
-        get 
+        get
         {
             return _health;
         }
@@ -64,6 +76,12 @@ public class Damageable : MonoBehaviour
 
     private float timeSinceHit = 0;
     public float invincibilityTime = 0.25f;
+
+    /// <summary>
+    /// 击退倍数
+    /// 用于调整击退力度
+    /// </summary>
+    public float knockbackMultiplier = 1f;
 
     public bool IsAlive 
     {
@@ -103,8 +121,32 @@ public class Damageable : MonoBehaviour
         animator = GetComponent<Animator>();
     }
 
+    /// <summary>
+    /// 配置Damageable的参数
+    /// 用于在运行时设置生命值、无敌时间、击退倍数等
+    /// 通常由EnemyAgentBase在Initialize时调用
+    /// </summary>
+    /// <param name="stats">包含所有配置参数的DamageableStats对象</param>
+    public void Configure(DamageableStats stats)
+    {
+        if (stats == null)
+        {
+            Debug.LogWarning($"[Damageable] {gameObject.name} - DamageableStats为空，无法配置");
+            return;
+        }
 
+        MaxHealth = stats.maxHealth;
+        _health = stats.maxHealth;
+        invincibilityTime = stats.invincibilityTime;
+        knockbackMultiplier = stats.knockbackMultiplier;
 
+        // 触发状态变更事件
+        DamageableStateChanged?.Invoke(stats);
+
+        #if UNITY_EDITOR
+        Debug.Log($"[Damageable] {gameObject.name} 已配置: HP={stats.maxHealth}, 无敌时间={stats.invincibilityTime}, 击退倍数={stats.knockbackMultiplier}");
+        #endif
+    }
 
     public bool Hit(int damage, Vector2 knockback)
     {
@@ -115,7 +157,10 @@ public class Damageable : MonoBehaviour
 
             animator.SetTrigger(AnimationStrings.hitTrigger);
             LockVelocity = true;
-            damageableHit?.Invoke(damage, knockback);
+
+            // 应用击退倍数
+            Vector2 adjustedKnockback = knockback * knockbackMultiplier;
+            damageableHit?.Invoke(damage, adjustedKnockback);
 
             CharacterEvents.characterDamaged.Invoke(gameObject, damage);
 
