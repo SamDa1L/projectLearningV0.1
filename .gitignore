@@ -100,3 +100,4 @@ InitTestScene*.unity*
 
 # Ignore Docs directory
 /Docs/
+Assets/Logs/
