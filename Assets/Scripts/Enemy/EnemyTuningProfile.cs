@@ -1,5 +1,4 @@
 using UnityEngine;
-using CastleDB.Runtime;
 
 /// <summary>
 /// 敌人调参配置资源
@@ -10,7 +9,6 @@ using CastleDB.Runtime;
 /// - 通过Range/Min/Tooltip进行参数验证和说明
 /// - OnValidate()自动验证数值合理性
 /// - DumpProfileSnapshot()生成时间戳JSON快照，便于版本追踪
-/// - ApplyFromCastleDb()从CastleDB DTO读取数值
 ///
 /// 使用步骤：
 /// 1. 在Project窗口右键 → Create → Game/Enemy/Tuning Profile
@@ -18,7 +16,6 @@ using CastleDB.Runtime;
 /// 3. 通过Inspector调整参数
 /// 4. 修改后自动记录版本和时间戳
 /// 5. 需要回溯参数时，用DumpProfileSnapshot()生成快照
-/// 6. 从CastleDB导入时，使用ApplyFromCastleDb()方法
 /// </summary>
 [CreateAssetMenu(menuName = "Game/Enemy/Tuning Profile")]
 public class EnemyTuningProfile : ScriptableObject
@@ -187,60 +184,4 @@ public class EnemyTuningProfile : ScriptableObject
 
         return cloned;
     }
-
-    /// <summary>
-    /// 从CastleDB NPC条目应用数值
-    /// 用于Import All工具导入数据时调用
-    /// </summary>
-    /// <param name="entry">CastleDB中的NPC条目</param>
-    public void ApplyFromCastleDb(NpcEntry entry)
-    {
-        if (entry == null)
-        {
-            Debug.LogError($"[EnemyTuningProfile] {profileName} - NpcEntry为空，无法应用数值");
-            return;
-        }
-
-        // 应用所有数值
-        maxHealth = entry.maxHealth;
-        moveSpeed = entry.moveSpeed;
-        attackRange = entry.attackRange;
-        attackDamage = (int)entry.attackDamage;
-        attackCooldown = entry.attackCooldown;
-        invulnerableFrameDuration = entry.invincibleDuration;
-        knockbackForce = new Vector2(entry.knockbackMultiplier, entry.knockbackMultiplier);
-        enableDeathAnimation = entry.enableDeathAnimation;
-
-        // 验证数值
-        OnValidate();
-
-        #if UNITY_EDITOR
-        Debug.Log($"[EnemyTuningProfile] {profileName} 已从CastleDB应用数值: {entry.displayName}");
-        #endif
-    }
-
-    /// <summary>
-    /// 生成DamageableStats用于配置Damageable组件
-    /// </summary>
-    public DamageableStats GetDamageableStats()
-    {
-        return new DamageableStats
-        {
-            maxHealth = (int)maxHealth,
-            invincibilityTime = invulnerableFrameDuration,
-            knockbackMultiplier = knockbackForce.magnitude
-        };
-    }
-}
-
-/// <summary>
-/// Damageable组件的配置数据结构
-/// 用于在运行时配置Damageable的参数
-/// </summary>
-[System.Serializable]
-public class DamageableStats
-{
-    public int maxHealth;
-    public float invincibilityTime;
-    public float knockbackMultiplier;
 }

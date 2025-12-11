@@ -244,43 +244,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (tuningProfile == null)
             Debug.LogWarning($"[{gameObject.name}] TuningProfile未分配，敌人参数将无法正确加载", gameObject);
 
-        // 应用调参配置
-        ApplyTuningProfile();
-
         // 子类实现
-    }
-
-    /// <summary>
-    /// 应用调参配置到敌人
-    /// 从EnemyTuningProfile读取所有参数并应用到敌人组件
-    /// 在Initialize()中自动调用
-    /// </summary>
-    protected virtual void ApplyTuningProfile()
-    {
-        if (tuningProfile == null)
-            return;
-
-        // 应用基础数值到敌人组件
-        // 注：具体的应用逻辑由子类实现，这里只是提供钩子
-
-        // 应用Damageable配置
-        if (damageable != null)
-        {
-            var stats = tuningProfile.GetDamageableStats();
-            damageable.Configure(stats);
-        }
-
-        if (debugStateOverlay)
-        {
-            Debug.Log(
-                $"[{gameObject.name}] 调参配置已应用\n" +
-                $"  Profile: {tuningProfile.profileName}\n" +
-                $"  HP: {tuningProfile.maxHealth}\n" +
-                $"  Speed: {tuningProfile.moveSpeed}\n" +
-                $"  Attack Range: {tuningProfile.attackRange}",
-                gameObject
-            );
-        }
     }
 
     // ===== 状态生命周期 =====
