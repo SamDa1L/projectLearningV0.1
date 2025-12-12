@@ -265,6 +265,7 @@ MonoBehaviour:
   _health: 50
   _isAlive: 1
   isInvincible: 0
+  knockbackMultiplier: 1
   invincibilityTime: 0.25
 --- !u!95 &3406555919647104939
 Animator:
@@ -298,15 +299,24 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 110d73909adb26e47bd7538c28f2e282, type: 3}
   m_Name: 
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   tuningProfile: {fileID: 11400000, guid: 63447be5b7416d04f9ea17acc46b3616, type: 2}
-  primaryDetectionZone: {fileID: 7223879309623684982}
+  zoneBindings:
+  - role: 0
+    zone: {fileID: 7223879309623684982}
+    note: 
   debugStateOverlay: 1
+  showDetectionZoneGizmos: 1
+  showGizmosInPlayMode: 0
   flightSpeed: 2
   waypointReachedDistance: 0.1
   deathCollider: {fileID: 6239098740866682793}
   bitDetectionZone: {fileID: 7223879309623684982}
-  waypoints: []
+  waypoints:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
 --- !u!1 &7072947102260333871
 GameObject:
   m_ObjectHideFlags: 0

@@ -5,23 +5,10 @@
         "GUID:d06c1b6f6558c4442875281d5d543dbc",
         "GUID:7a3e8f4c2b1d5a6e9c4f8d2a1b3e5c7a"
     ],
-    "includePlatforms": [],
-    "excludePlatforms": [
-        "Android",
-        "iOS",
-        "LinuxStandalone64",
-        "macOSStandalone",
-        "PS4",
-        "PS5",
-        "Stadia",
-        "Switch",
-        "tvOS",
-        "WebGL",
-        "WindowsStandalone32",
-        "WindowsStandalone64",
-        "XboxOne",
-        "GameCoreScarlett"
+    "includePlatforms": [
+        "Editor"
     ],
+    "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],

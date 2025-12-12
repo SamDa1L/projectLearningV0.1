@@ -15,13 +15,34 @@ public struct DamageableStats
     public float knockbackMultiplier;
 }
 
-public class Damageable : MonoBehaviour
-{
-    public UnityEvent<int, Vector2> damageableHit;
-    public UnityEvent damageableDeath;
-    public event System.Action<DamageableStats> DamageableStateChanged;
+	public class Damageable : MonoBehaviour
+	{
+	    public UnityEvent<int, Vector2> damageableHit = new UnityEvent<int, Vector2>();
+	    public UnityEvent damageableDeath = new UnityEvent();
+	    public event System.Action<DamageableStats> DamageableStateChanged;
 
-    Animator animator;
+    private Animator animator;
+
+    private void EnsureAnimator()
+    {
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+        }
+    }
+
+    private void EnsureEvents()
+    {
+        if (damageableHit == null)
+        {
+            damageableHit = new UnityEvent<int, Vector2>();
+        }
+
+        if (damageableDeath == null)
+        {
+            damageableDeath = new UnityEvent();
+        }
+    }
 
     [SerializeField]
     private int _maxHealth = 100;
@@ -89,12 +110,16 @@ public class Damageable : MonoBehaviour
         set
         {
             _isAlive = value;
-            animator.SetBool(AnimationStrings.isAlive, value);
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetBool(AnimationStrings.isAlive, value);
+            }
             Debug.Log("死亡: " +  value);
 
             if(value == false )
             {
-                damageableDeath.Invoke();
+                damageableDeath?.Invoke();
             }
 
         }
@@ -104,18 +129,24 @@ public class Damageable : MonoBehaviour
     {
         get
         {
-            return animator.GetBool(AnimationStrings.lockVelocity);
+            EnsureAnimator();
+            return animator != null && animator.GetBool(AnimationStrings.lockVelocity);
         }
         set
         {
-            animator.SetBool(AnimationStrings.lockVelocity, value);
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetBool(AnimationStrings.lockVelocity, value);
+            }
         }
     }
 
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        EnsureAnimator();
+        EnsureEvents();
     }
 
     /// <summary>
@@ -147,12 +178,16 @@ public class Damageable : MonoBehaviour
             Health -= damage;
             isInvincible = true;
 
-            animator.SetTrigger(AnimationStrings.hitTrigger);
-            LockVelocity = true;
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetTrigger(AnimationStrings.hitTrigger);
+                LockVelocity = true;
+            }
             Vector2 scaledKnockback = knockback * knockbackMultiplier;
             damageableHit?.Invoke(damage, scaledKnockback);
 
-            CharacterEvents.characterDamaged.Invoke(gameObject, damage);
+            CharacterEvents.characterDamaged?.Invoke(gameObject, damage);
 
             return true;
         }
@@ -170,7 +205,7 @@ public class Damageable : MonoBehaviour
             int maxHeal = Mathf.Max(MaxHealth - Health, 0);
             int actualHeal = Mathf.Min(maxHeal, healthRestore);
             Health += actualHeal;
-            CharacterEvents.characterHealed(gameObject, actualHeal);
+            CharacterEvents.characterHealed?.Invoke(gameObject, actualHeal);
             return true;
 
 
