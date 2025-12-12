@@ -244,7 +244,43 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (tuningProfile == null)
             Debug.LogWarning($"[{gameObject.name}] TuningProfile未分配，敌人参数将无法正确加载", gameObject);
 
+        // 应用调参配置到基础组件
+        ApplyTuningProfile();
+
         // 子类实现
+    }
+
+    /// <summary>
+    /// 应用调参配置到敌人
+    /// 从EnemyTuningProfile读取所有参数并应用到敌人组件
+    /// 在Initialize()中自动调用
+    ///
+    /// 子类应覆盖此方法来应用自己特有的参数
+    /// </summary>
+    protected virtual void ApplyTuningProfile()
+    {
+        if (tuningProfile == null)
+            return;
+
+        // 应用Damageable配置
+        if (damageable != null)
+        {
+            var stats = tuningProfile.GetDamageableStats();
+            damageable.Configure(stats);
+        }
+
+        if (debugStateOverlay)
+        {
+            Debug.Log(
+                $"[{gameObject.name}] 调参配置已应用\n" +
+                $"  Profile: {tuningProfile.profileName}\n" +
+                $"  HP: {tuningProfile.maxHealth}\n" +
+                $"  Speed: {tuningProfile.moveSpeed}\n" +
+                $"  Attack Range: {tuningProfile.attackRange}\n" +
+                $"  Attack Cooldown: {tuningProfile.attackCooldown}",
+                gameObject
+            );
+        }
     }
 
     // ===== 状态生命周期 =====
@@ -374,13 +410,6 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     /// <summary>
     /// 根据角色获取对应的DetectionZone组件
-    ///
-    /// 与GetDetectedTargetsForRole()不同，此方法返回DetectionZone组件本身
-    /// 常用于需要访问zone的其他属性，或者Gizmos可视化
-    ///
-    /// 使用示例：
-    /// - Gizmos可视化中获取zone组件来绘制
-    /// - 编辑器工具中检查zone的配置
     /// </summary>
     public virtual DetectionZone GetZone(DetectionZoneBinding.Role role)
     {

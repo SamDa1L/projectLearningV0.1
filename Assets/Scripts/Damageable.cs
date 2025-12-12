@@ -4,10 +4,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// 传递给 Damageable 的数据包
+/// 用于从配置（如 EnemyTuningProfile）向 Damageable 组件传递数值
+/// </summary>
+public struct DamageableStats
+{
+    public int maxHealth;
+    public float invincibilityTime;
+    public float knockbackMultiplier;
+}
+
 public class Damageable : MonoBehaviour
 {
     public UnityEvent<int, Vector2> damageableHit;
     public UnityEvent damageableDeath;
+    public event System.Action<DamageableStats> DamageableStateChanged;
 
     Animator animator;
 
@@ -52,6 +64,9 @@ public class Damageable : MonoBehaviour
 
     [SerializeField]
     public bool isInvincible = false;
+
+    [SerializeField]
+    public float knockbackMultiplier = 1f;
 
     /// <summary>
     /// 无敌状态属性（符合C#命名规范）
@@ -103,6 +118,25 @@ public class Damageable : MonoBehaviour
         animator = GetComponent<Animator>();
     }
 
+    /// <summary>
+    /// 使用 DamageableStats 配置此组件
+    /// 将传入的数值应用到组件（最大生命、当前生命、无敌时间等）
+    /// </summary>
+    /// <param name="stats">包含配置数值的结构体</param>
+    public void Configure(DamageableStats? stats)
+    {
+        if (stats.HasValue)
+        {
+            var value = stats.Value;
+            MaxHealth = value.maxHealth;
+            Health = value.maxHealth;  // 初始化当前生命为最大生命
+            invincibilityTime = value.invincibilityTime;
+            knockbackMultiplier = value.knockbackMultiplier;
+
+            DamageableStateChanged?.Invoke(value);
+        }
+    }
+
 
 
 
@@ -115,7 +149,8 @@ public class Damageable : MonoBehaviour
 
             animator.SetTrigger(AnimationStrings.hitTrigger);
             LockVelocity = true;
-            damageableHit?.Invoke(damage, knockback);
+            Vector2 scaledKnockback = knockback * knockbackMultiplier;
+            damageableHit?.Invoke(damage, scaledKnockback);
 
             CharacterEvents.characterDamaged.Invoke(gameObject, damage);
 

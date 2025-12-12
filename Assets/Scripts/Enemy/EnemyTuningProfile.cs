@@ -1,4 +1,5 @@
 using UnityEngine;
+using CastleDB.Runtime;
 
 /// <summary>
 /// 敌人调参配置资源
@@ -110,6 +111,55 @@ public class EnemyTuningProfile : ScriptableObject
 
         #if UNITY_EDITOR
         Debug.Log($"[EnemyTuningProfile] {profileName} v{version} 验证完成 @ {System.DateTime.Now:HH:mm:ss}");
+        #endif
+    }
+
+    // ===== 数值接口 =====
+
+    /// <summary>
+    /// 获取 Damageable 组件所需的数值包
+    /// 用于将配置中的生命值和无敌帧参数传递给 Damageable 组件
+    /// </summary>
+    /// <returns>包含 maxHealth 和 invincibilityTime 的结构体</returns>
+    public DamageableStats GetDamageableStats()
+    {
+        return new DamageableStats
+        {
+            maxHealth = Mathf.RoundToInt(maxHealth),
+            invincibilityTime = invulnerableFrameDuration,
+            knockbackMultiplier = 1f
+        };
+    }
+
+    /// <summary>
+    /// 从 CastleDB 的 NpcEntry 应用数值到此 Profile
+    /// 用于 CastleDbImporter 导入数据时更新 Profile 字段
+    /// </summary>
+    /// <param name="npc">来自 CastleDB 的 NPC 数据条目</param>
+    public void ApplyFromCastleDb(NpcEntry npc)
+    {
+        // 基础信息
+        profileName = npc.displayName;
+
+        // 基础属性
+        maxHealth = npc.maxHealth;
+        moveSpeed = npc.moveSpeed;
+
+        // 感知与战斗
+        attackRange = npc.attackRange;
+        attackDamage = Mathf.RoundToInt(npc.attackDamage);
+        attackCooldown = npc.attackCooldown;
+
+        // 特殊属性
+        invulnerableFrameDuration = npc.invincibleDuration;
+        enableDeathAnimation = npc.enableDeathAnimation;
+
+        // 注意：以下字段在 NpcEntry 中存在，但 EnemyTuningProfile 暂未定义对应字段
+        // - knockbackMultiplier (击退倍率) - 若需要，可在 Profile 中添加字段并取消注释
+        // - useLegacyLogicFallback (兼容开关) - 若需要，可在 Profile 中添加字段并取消注释
+
+        #if UNITY_EDITOR
+        Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName} (maxHealth={maxHealth}, moveSpeed={moveSpeed})");
         #endif
     }
 
