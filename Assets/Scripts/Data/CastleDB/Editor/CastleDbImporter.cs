@@ -103,11 +103,25 @@ public class CastleDbImporter
 
     /// <summary>
     /// 创建或更新Profile
+    /// 2A 要求：校验 animationTrigger 并记录变更日志
     /// </summary>
     private static bool CreateOrUpdateProfile(NpcEntry npc)
     {
         try
         {
+            // ===== 业务校验（Step 3 要求）=====
+            // 校验 animationTrigger：必须非空且仅含字母/数字/下划线
+            if (string.IsNullOrWhiteSpace(npc.animationTrigger))
+            {
+                Debug.LogError($"[CastleDbImporter] NPC '{npc.id}' 的 animationTrigger 为空，导入终止。请到 CastleDB 修正。");
+                return false;
+            }
+            if (!System.Text.RegularExpressions.Regex.IsMatch(npc.animationTrigger, @"^[a-zA-Z0-9_]+$"))
+            {
+                Debug.LogError($"[CastleDbImporter] NPC '{npc.id}' 的 animationTrigger '{npc.animationTrigger}' 包含非法字符（仅允许字母/数字/下划线），导入终止。");
+                return false;
+            }
+
             // 确保输出目录存在
             if (!Directory.Exists(PROFILE_OUTPUT_DIR))
             {
@@ -119,6 +133,9 @@ public class CastleDbImporter
 
             // 查找或创建Profile
             EnemyTuningProfile profile = AssetDatabase.LoadAssetAtPath<EnemyTuningProfile>(profilePath);
+
+            // 记录旧的 animationTrigger（用于变更日志）
+            string oldTrigger = profile != null ? profile.animationTrigger : null;
 
             if (profile == null)
             {
@@ -135,6 +152,30 @@ public class CastleDbImporter
 
             // 应用CastleDB数据
             profile.ApplyFromCastleDb(npc);
+
+            // ===== animationTrigger 变更日志（Step 3 要求）=====
+            if (!string.IsNullOrEmpty(oldTrigger) && oldTrigger != npc.animationTrigger)
+            {
+                string changeLog = $"[CastleDbImporter] ⚠️ AnimationTrigger 变更 - NPC '{npc.id}':\n" +
+                                   $"  旧值: '{oldTrigger}' → 新值: '{npc.animationTrigger}'\n" +
+                                   $"  提醒：请通知美术/动画同学同步 Animator Controller 的 Trigger 参数！";
+                Debug.LogWarning(changeLog);
+
+                // 写入导入日志（追加模式）
+                try
+                {
+                    string logDir = Path.GetDirectoryName(IMPORT_LOG_FILE);
+                    if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+                    {
+                        Directory.CreateDirectory(logDir);
+                    }
+                    File.AppendAllText(IMPORT_LOG_FILE, $"\n{changeLog}\n");
+                }
+                catch (System.Exception logEx)
+                {
+                    Debug.LogWarning($"[CastleDbImporter] 无法写入 Trigger 变更日志: {logEx.Message}");
+                }
+            }
 
             // 保存资源
             EditorUtility.SetDirty(profile);

@@ -83,6 +83,29 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected Transform currentTarget;
     protected List<Collider2D> detectedTargets = new List<Collider2D>();
 
+    // ===== 2A 数值缓存（由 ApplyTuningProfile 填充）=====
+    // 以下字段在运行时从 EnemyTuningProfile 下发，供子类使用
+    protected float _moveSpeed;
+    protected int _attackDamage;
+    protected float _attackRange;
+    protected float _attackCooldown;
+    protected float _perceptionRadius;
+    protected float _knockbackMultiplier;
+    protected bool _enableDeathAnimation;
+    protected string _attackTriggerName;
+    protected bool _useLegacyLogicFallback;
+
+    // 提供只读访问器供子类使用（推荐方式）
+    protected float MoveSpeed => _moveSpeed;
+    protected int AttackDamage => _attackDamage;
+    protected float AttackRange => _attackRange;
+    protected float AttackCooldown => _attackCooldown;
+    protected float PerceptionRadius => _perceptionRadius;
+    protected float KnockbackMultiplier => _knockbackMultiplier;
+    protected bool EnableDeathAnimation => _enableDeathAnimation;
+    protected string AttackTriggerName => _attackTriggerName;
+    protected bool UseLegacyLogicFallback => _useLegacyLogicFallback;
+
     // ===== Unity生命周期 =====
 
     protected virtual void Awake()
@@ -255,6 +278,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     /// 从EnemyTuningProfile读取所有参数并应用到敌人组件
     /// 在Initialize()中自动调用
     ///
+    /// 2A 要求：填充运行时缓存，让所有数值从 Profile 下发
     /// 子类应覆盖此方法来应用自己特有的参数
     /// </summary>
     protected virtual void ApplyTuningProfile()
@@ -262,22 +286,37 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (tuningProfile == null)
             return;
 
-        // 应用Damageable配置
+        // ===== 填充运行时数值缓存 =====
+        _moveSpeed = tuningProfile.moveSpeed;
+        _attackDamage = tuningProfile.attackDamage;
+        _attackRange = tuningProfile.attackRange;
+        _attackCooldown = tuningProfile.attackCooldown;
+        _perceptionRadius = tuningProfile.perceptionRadius;
+        _knockbackMultiplier = tuningProfile.knockbackMultiplier;
+        _enableDeathAnimation = tuningProfile.enableDeathAnimation;
+        _attackTriggerName = tuningProfile.animationTrigger;
+        _useLegacyLogicFallback = tuningProfile.useLegacyLogicFallback;
+
+        // ===== 应用 Damageable 配置 =====
         if (damageable != null)
         {
             var stats = tuningProfile.GetDamageableStats();
             damageable.Configure(stats);
         }
 
+        // TODO: 同步感知半径到 DetectionZone（如果支持动态半径）
+        // 例如：if (detectionZone != null) detectionZone.SetRadius(_perceptionRadius);
+
         if (debugStateOverlay)
         {
             Debug.Log(
                 $"[{gameObject.name}] 调参配置已应用\n" +
                 $"  Profile: {tuningProfile.profileName}\n" +
-                $"  HP: {tuningProfile.maxHealth}\n" +
-                $"  Speed: {tuningProfile.moveSpeed}\n" +
-                $"  Attack Range: {tuningProfile.attackRange}\n" +
-                $"  Attack Cooldown: {tuningProfile.attackCooldown}",
+                $"  数值缓存：\n" +
+                $"    MoveSpeed={_moveSpeed}, AttackDamage={_attackDamage}\n" +
+                $"    AttackRange={_attackRange}, AttackCooldown={_attackCooldown}\n" +
+                $"    PerceptionRadius={_perceptionRadius}, KnockbackMult={_knockbackMultiplier}\n" +
+                $"    AnimTrigger='{_attackTriggerName}', LegacyFallback={_useLegacyLogicFallback}",
                 gameObject
             );
         }

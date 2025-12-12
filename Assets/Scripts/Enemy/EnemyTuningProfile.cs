@@ -82,6 +82,11 @@ public class EnemyTuningProfile : ScriptableObject
     [Tooltip("无敌帧时长（秒）")]
     public float invulnerableFrameDuration = 0.3f;
 
+    [Min(0f)]
+    [SerializeField]
+    [Tooltip("击退倍率（影响受击时的击退力度）")]
+    public float knockbackMultiplier = 1f;
+
     [SerializeField]
     [Tooltip("死亡时是否播放死亡动画")]
     public bool enableDeathAnimation = true;
@@ -91,10 +96,21 @@ public class EnemyTuningProfile : ScriptableObject
     [Tooltip("死亡后消失的延迟时间（秒）")]
     public float deathDelay = 1f;
 
+    // ===== 动画与行为控制 =====
+    [Header("动画与行为控制")]
+    [SerializeField]
+    [Tooltip("主攻击动画触发器名称（需与Animator Controller中的Trigger参数匹配）")]
+    public string animationTrigger = "Attack";
+
+    [SerializeField]
+    [Tooltip("是否使用旧版逻辑（兼容开关，用于回退到旧行为）")]
+    public bool useLegacyLogicFallback = false;
+
     // ===== 验证 =====
 
     /// <summary>
     /// 编辑器编辑时自动验证参数范围
+    /// 2A 要求：Profile 作为只读缓存，检测手工修改并警告
     /// </summary>
     private void OnValidate()
     {
@@ -107,10 +123,30 @@ public class EnemyTuningProfile : ScriptableObject
         patrolDistance = Mathf.Max(0f, patrolDistance);
         hitRecoveryDelay = Mathf.Clamp01(hitRecoveryDelay);
         invulnerableFrameDuration = Mathf.Clamp01(invulnerableFrameDuration);
+        knockbackMultiplier = Mathf.Max(0f, knockbackMultiplier);
         deathDelay = Mathf.Max(0f, deathDelay);
 
+        // animationTrigger 校验：必须非空且仅含字母/数字/下划线
+        if (string.IsNullOrWhiteSpace(animationTrigger))
+        {
+            #if UNITY_EDITOR
+            Debug.LogWarning($"[EnemyTuningProfile] {profileName}: animationTrigger 为空，已回滚到默认值 'Attack'。请到 CastleDB 的 NPC.animationTrigger 修正。", this);
+            #endif
+            animationTrigger = "Attack";
+        }
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(animationTrigger, @"^[a-zA-Z0-9_]+$"))
+        {
+            #if UNITY_EDITOR
+            Debug.LogWarning($"[EnemyTuningProfile] {profileName}: animationTrigger '{animationTrigger}' 包含非法字符（仅允许字母/数字/下划线），已回滚到 'Attack'。请到 CastleDB 修正。", this);
+            #endif
+            animationTrigger = "Attack";
+        }
+
         #if UNITY_EDITOR
+        // 轻量版"只读缓存"警告：提示用户不要手工修改 Profile
+        // 注：严格版（带 lastImportedHash 自动回滚）可在后续实现
         Debug.Log($"[EnemyTuningProfile] {profileName} v{version} 验证完成 @ {System.DateTime.Now:HH:mm:ss}");
+        Debug.Log($"[EnemyTuningProfile] 提醒：此 Profile 应由 CastleDB Import 工具维护，手工修改可能在下次导入时被覆盖。", this);
         #endif
     }
 
@@ -120,46 +156,62 @@ public class EnemyTuningProfile : ScriptableObject
     /// 获取 Damageable 组件所需的数值包
     /// 用于将配置中的生命值和无敌帧参数传递给 Damageable 组件
     /// </summary>
-    /// <returns>包含 maxHealth 和 invincibilityTime 的结构体</returns>
+    /// <returns>包含 maxHealth、invincibilityTime 和 knockbackMultiplier 的结构体</returns>
     public DamageableStats GetDamageableStats()
     {
         return new DamageableStats
         {
             maxHealth = Mathf.RoundToInt(maxHealth),
             invincibilityTime = invulnerableFrameDuration,
-            knockbackMultiplier = 1f
+            knockbackMultiplier = this.knockbackMultiplier  // 透传实际配置值，不再硬编码
         };
     }
 
     /// <summary>
     /// 从 CastleDB 的 NpcEntry 应用数值到此 Profile
     /// 用于 CastleDbImporter 导入数据时更新 Profile 字段
+    /// 2A 要求：全量覆盖所有字段，不保留旧值
     /// </summary>
     /// <param name="npc">来自 CastleDB 的 NPC 数据条目</param>
     public void ApplyFromCastleDb(NpcEntry npc)
     {
-        // 基础信息
+        // ===== 基础信息 =====
         profileName = npc.displayName;
 
-        // 基础属性
+        // ===== 基础属性（生命值与移动）=====
         maxHealth = npc.maxHealth;
         moveSpeed = npc.moveSpeed;
 
-        // 感知与战斗
+        // ===== 感知与战斗 =====
+        // perceptionRadius：注意 NpcEntry 没有此字段，暂时不从 CastleDB 映射
+        // 如后续 CastleDB 添加该字段，取消下行注释：
+        // perceptionRadius = npc.perceptionRadius;
+
         attackRange = npc.attackRange;
         attackDamage = Mathf.RoundToInt(npc.attackDamage);
         attackCooldown = npc.attackCooldown;
 
-        // 特殊属性
-        invulnerableFrameDuration = npc.invincibleDuration;
-        enableDeathAnimation = npc.enableDeathAnimation;
+        // ===== 物理与行为 =====
+        // patrolDistance、hitRecoveryDelay：NpcEntry 暂无这些字段
+        // knockbackForce 使用 Vector2，需从 knockbackMultiplier 派生或保持默认
+        // 这里暂时不覆盖 knockbackForce，保持 Profile 默认值
 
-        // 注意：以下字段在 NpcEntry 中存在，但 EnemyTuningProfile 暂未定义对应字段
-        // - knockbackMultiplier (击退倍率) - 若需要，可在 Profile 中添加字段并取消注释
-        // - useLegacyLogicFallback (兼容开关) - 若需要，可在 Profile 中添加字段并取消注释
+        // ===== 特殊属性 =====
+        invulnerableFrameDuration = npc.invincibleDuration;
+        knockbackMultiplier = npc.knockbackMultiplier;
+        enableDeathAnimation = npc.enableDeathAnimation;
+        // deathDelay：NpcEntry 暂无此字段，保持 Profile 默认值
+
+        // ===== 动画与行为控制 =====
+        animationTrigger = npc.animationTrigger;
+        useLegacyLogicFallback = npc.useLegacyLogicFallback;
 
         #if UNITY_EDITOR
-        Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName} (maxHealth={maxHealth}, moveSpeed={moveSpeed})");
+        Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName}\n" +
+                  $"  HP={maxHealth}, Speed={moveSpeed}, Dmg={attackDamage}\n" +
+                  $"  AtkRange={attackRange}, Cooldown={attackCooldown}\n" +
+                  $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x\n" +
+                  $"  AnimTrigger='{animationTrigger}', LegacyFallback={useLegacyLogicFallback}");
         #endif
     }
 
@@ -202,11 +254,14 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  Attack Damage: {attackDamage}\n" +
                   $"  Attack Cooldown: {attackCooldown}\n" +
                   $"  Knockback Force: {knockbackForce}\n" +
+                  $"  Knockback Multiplier: {knockbackMultiplier}\n" +
                   $"  Patrol Distance: {patrolDistance}\n" +
                   $"  Hit Recovery Delay: {hitRecoveryDelay}\n" +
                   $"  Invulnerable Frame Duration: {invulnerableFrameDuration}\n" +
                   $"  Enable Death Animation: {enableDeathAnimation}\n" +
                   $"  Death Delay: {deathDelay}\n" +
+                  $"  Animation Trigger: '{animationTrigger}'\n" +
+                  $"  Use Legacy Logic Fallback: {useLegacyLogicFallback}\n" +
                   $"  Timestamp: {System.DateTime.Now:HH:mm:ss}");
     }
 
@@ -226,11 +281,14 @@ public class EnemyTuningProfile : ScriptableObject
         cloned.attackDamage = attackDamage;
         cloned.attackCooldown = attackCooldown;
         cloned.knockbackForce = knockbackForce;
+        cloned.knockbackMultiplier = knockbackMultiplier;
         cloned.patrolDistance = patrolDistance;
         cloned.hitRecoveryDelay = hitRecoveryDelay;
         cloned.invulnerableFrameDuration = invulnerableFrameDuration;
         cloned.enableDeathAnimation = enableDeathAnimation;
         cloned.deathDelay = deathDelay;
+        cloned.animationTrigger = animationTrigger;
+        cloned.useLegacyLogicFallback = useLegacyLogicFallback;
 
         return cloned;
     }

@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1.0.0
   profileName: FlyingEye
-  maxHealth: 30
-  moveSpeed: 5
+  maxHealth: 50
+  moveSpeed: 4
   perceptionRadius: 5
-  attackRange: 1.5
-  attackDamage: 10
-  attackCooldown: 1.5
+  attackRange: 10
+  attackDamage: 30
+  attackCooldown: 0.25
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
-  invulnerableFrameDuration: 0.3
+  invulnerableFrameDuration: 3
+  knockbackMultiplier: 2
   enableDeathAnimation: 1
   deathDelay: 1
+  animationTrigger: hasTarget
+  useLegacyLogicFallback: 1
