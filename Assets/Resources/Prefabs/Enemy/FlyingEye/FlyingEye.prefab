@@ -329,7 +329,7 @@ GameObject:
   - component: {fileID: 7223879309623684982}
   - component: {fileID: 1662224581802432705}
   m_Layer: 10
-  m_Name: AttackDetectionZone
+  m_Name: DZ_Attack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

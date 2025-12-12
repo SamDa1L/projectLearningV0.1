@@ -370,6 +370,7 @@ MonoBehaviour:
   _health: 100
   _isAlive: 1
   isInvincible: 0
+  knockbackMultiplier: 1
   invincibilityTime: 0.25
 --- !u!1 &8639402435623102502
 GameObject:
@@ -383,7 +384,7 @@ GameObject:
   - component: {fileID: 6277536773260209252}
   - component: {fileID: 713662585672335128}
   m_Layer: 11
-  m_Name: CliffDetectionZone
+  m_Name: DZ_Cliff
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -489,7 +490,7 @@ GameObject:
   - component: {fileID: 8379632465367111245}
   - component: {fileID: 524857065163868199}
   m_Layer: 10
-  m_Name: HitboxDecetion
+  m_Name: DZ_Attack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
