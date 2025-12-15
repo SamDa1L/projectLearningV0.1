@@ -364,6 +364,35 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         {
             issueList.Add("Missing Animator");
         }
+        else
+        {
+            // 检查6.1：Animator Controller 是否包含 Profile 中配置的 animationTrigger
+            if (tuningProfileProp != null && tuningProfileProp.objectReferenceValue != null)
+            {
+                var profile = tuningProfileProp.objectReferenceValue as EnemyTuningProfile;
+                if (profile != null && !string.IsNullOrEmpty(profile.animationTrigger))
+                {
+                    // 检查 Animator Controller 是否包含该 Trigger 参数
+                    if (animator.runtimeAnimatorController != null)
+                    {
+                        bool hasTrigger = false;
+                        foreach (var param in animator.parameters)
+                        {
+                            if (param.name == profile.animationTrigger && param.type == AnimatorControllerParameterType.Trigger)
+                            {
+                                hasTrigger = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasTrigger)
+                        {
+                            issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
+                        }
+                    }
+                }
+            }
+        }
 
         // 检查7：是否有Rigidbody2D
         var rigidbody2d = prefab.GetComponent<Rigidbody2D>();
@@ -463,6 +492,35 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         if (animator == null)
         {
             issueList.Add("Missing Animator");
+        }
+        else
+        {
+            // 检查4.1：Animator Controller 是否包含 Profile 中配置的 animationTrigger
+            if (tuningProfileProp != null && tuningProfileProp.objectReferenceValue != null)
+            {
+                var profile = tuningProfileProp.objectReferenceValue as EnemyTuningProfile;
+                if (profile != null && !string.IsNullOrEmpty(profile.animationTrigger))
+                {
+                    // 检查 Animator Controller 是否包含该 Trigger 参数
+                    if (animator.runtimeAnimatorController != null)
+                    {
+                        bool hasTrigger = false;
+                        foreach (var param in animator.parameters)
+                        {
+                            if (param.name == profile.animationTrigger && param.type == AnimatorControllerParameterType.Trigger)
+                            {
+                                hasTrigger = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasTrigger)
+                        {
+                            issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
+                        }
+                    }
+                }
+            }
         }
 
         // 检查5：是否有Rigidbody2D

@@ -59,6 +59,10 @@
 					"typeStr": "2",
 					"name": "useLegacyLogicFallback",
 					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "perceptionRadius"
 				}
 			],
 			"lines": [
@@ -66,22 +70,23 @@
 					"id": "M_Knight",
 					"displayName": "Knight",
 					"prefabName": "KnightEnemy",
-					"animationTrigger": "hasTarget",
-					"maxHealth": 500,
+					"animationTrigger": "Attack",
+					"maxHealth": 100,
 					"attackDamage": 40,
-					"moveSpeed": 5,
+					"moveSpeed": 3,
 					"attackRange": 10,
 					"attackCooldown": 0.25,
 					"invincibleDuration": 3,
 					"knockbackMultiplier": 2,
 					"enableDeathAnimation": true,
-					"useLegacyLogicFallback": true
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 5
 				},
 				{
 					"id": "M_FlyingEye",
 					"displayName": "FlyingEye",
 					"prefabName": "FlyingEye",
-					"animationTrigger": "hasTarget",
+					"animationTrigger": "Attack",
 					"maxHealth": 50,
 					"attackDamage": 30,
 					"moveSpeed": 4,
@@ -90,7 +95,24 @@
 					"invincibleDuration": 3,
 					"knockbackMultiplier": 2,
 					"enableDeathAnimation": true,
-					"useLegacyLogicFallback": true
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 8
+				},
+				{
+					"id": "M_Goblin",
+					"displayName": "Goblin",
+					"prefabName": "Goblin",
+					"animationTrigger": "Attack",
+					"maxHealth": 60,
+					"attackDamage": 25,
+					"moveSpeed": 2.5,
+					"attackRange": 1.5,
+					"attackCooldown": 1.0,
+					"invincibleDuration": 0.3,
+					"knockbackMultiplier": 1.0,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": false,
+					"perceptionRadius": 4
 				}
 			],
 			"separators": [],

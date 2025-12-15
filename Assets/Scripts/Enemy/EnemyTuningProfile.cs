@@ -183,9 +183,7 @@ public class EnemyTuningProfile : ScriptableObject
         moveSpeed = npc.moveSpeed;
 
         // ===== 感知与战斗 =====
-        // perceptionRadius：注意 NpcEntry 没有此字段，暂时不从 CastleDB 映射
-        // 如后续 CastleDB 添加该字段，取消下行注释：
-        // perceptionRadius = npc.perceptionRadius;
+        perceptionRadius = npc.perceptionRadius;
 
         attackRange = npc.attackRange;
         attackDamage = Mathf.RoundToInt(npc.attackDamage);

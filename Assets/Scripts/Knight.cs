@@ -13,6 +13,9 @@ public class Knight : EnemyAgentBase
 
     TouchingDirections touchingDirections;
 
+    // Step 3: 攻击系统（最小实现）
+    private float attackCooldownTimer = 0f;
+
     public enum WalkableDirection { Right, Left };
 
     private WalkableDirection _walkDirection;
@@ -68,6 +71,26 @@ public class Knight : EnemyAgentBase
 
         // 设置Animator参数
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
+
+        // Step 3: 攻击逻辑（最小实现用于 2A 验收）
+        // 当检测到目标且冷却完成时，触发攻击动画
+        if (hasTarget)
+        {
+            attackCooldownTimer -= deltaTime;
+            if (attackCooldownTimer <= 0f)
+            {
+                // 调用基类的统一攻击入口
+                TriggerAttackAnimation();
+
+                // 重置冷却计时器（使用 Profile 下发的冷却时间）
+                attackCooldownTimer = AttackCooldown;
+
+                if (debugStateOverlay)
+                {
+                    Debug.Log($"[Knight] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
+                }
+            }
+        }
     }
 
     protected override void TickPhysics(float fixedDeltaTime)
@@ -82,16 +105,19 @@ public class Knight : EnemyAgentBase
             }
         }
 
-        // 移动逻辑
+        // 移动逻辑 - Step 2: 使用基类的 MoveSpeed 而不是 Inspector 的 maxSpeed
         if (!damageable.LockVelocity)
         {
             if (animator.GetBool(AnimationStrings.canMove) && touchingDirections.IsGrounded)
             {
+                // 使用 Profile 下发的 MoveSpeed
+                float targetSpeed = MoveSpeed;
+
                 rb2d.velocity = new Vector2(
                     Mathf.Clamp(
                         rb2d.velocity.x + (walkAcceleration * walkDirectionVector.x * Time.fixedDeltaTime),
-                        -maxSpeed,
-                        maxSpeed
+                        -targetSpeed,
+                        targetSpeed
                     ),
                     rb2d.velocity.y
                 );

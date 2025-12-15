@@ -109,6 +109,9 @@ namespace CastleDB.Runtime
         [SerializeField]
         public bool useLegacyLogicFallback;
 
+        [SerializeField]
+        public float perceptionRadius;
+
         public override string ToString()
         {
             return $"NPC[id={id}, displayName={displayName}, maxHealth={maxHealth}, moveSpeed={moveSpeed}]";

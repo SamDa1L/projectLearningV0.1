@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using CastleDB.Runtime;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace CastleDB.Tests.EditMode
 {
@@ -57,6 +59,7 @@ namespace CastleDB.Tests.EditMode
 
             // Act
             _service.OnVersionMismatch += (msg) => versionMismatchCalled = true;
+            LogAssert.Expect(LogType.Error, "[CastleDbService] Schema 版本不匹配！期望 0.2，实际 0.1");
             _service.Initialize(_mockSource);
 
             // Assert

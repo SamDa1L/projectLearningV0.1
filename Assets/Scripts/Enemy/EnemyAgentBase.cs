@@ -681,6 +681,36 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     #endif
 
+    // ===== 攻击系统 =====
+
+    /// <summary>
+    /// 触发攻击动画（统一入口）
+    /// 使用 Profile 中配置的 animationTrigger 而不是硬编码
+    ///
+    /// 2A 要求：所有攻击动画触发必须通过此方法，禁止硬编码 Trigger 名称
+    /// </summary>
+    protected void TriggerAttackAnimation()
+    {
+        if (animator == null)
+        {
+            Debug.LogWarning($"[{gameObject.name}] Animator 为空，无法触发攻击动画", gameObject);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_attackTriggerName))
+        {
+            Debug.LogWarning($"[{gameObject.name}] attackTriggerName 为空，无法触发攻击动画。请检查 TuningProfile 配置。", gameObject);
+            return;
+        }
+
+        animator.SetTrigger(_attackTriggerName);
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[{gameObject.name}] 触发攻击动画: {_attackTriggerName}", gameObject);
+        }
+    }
+
     // ===== 工具方法 =====
 
     /// <summary>

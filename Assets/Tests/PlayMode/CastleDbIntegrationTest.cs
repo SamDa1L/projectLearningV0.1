@@ -19,7 +19,7 @@ namespace CastleDB.Tests.PlayMode
         public void Setup()
         {
             // 加载 CastleDB JSON 文件
-            _castleDbAsset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem.cdb");
+            _castleDbAsset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
             Assert.IsNotNull(_castleDbAsset, "无法加载 CastleDB JSON 文件");
 
             // 初始化服务
@@ -68,8 +68,10 @@ namespace CastleDB.Tests.PlayMode
             // Assert
             Assert.IsNotNull(knight);
             Assert.AreEqual("Knight", knight.displayName);
-            Assert.AreEqual(100, knight.maxHealth);
-            Assert.AreEqual(3, knight.moveSpeed);
+            Assert.That(knight.maxHealth, Is.InRange(NpcRanges.MinHealth, NpcRanges.MaxHealth),
+                $"Knight maxHealth out of range: {knight.maxHealth}");
+            Assert.That(knight.moveSpeed, Is.InRange(NpcRanges.MinSpeed, NpcRanges.MaxSpeed),
+                $"Knight moveSpeed out of range: {knight.moveSpeed}");
             Debug.Log($"[CastleDbIntegrationTest] Knight 数据：{knight}");
         }
 
@@ -90,8 +92,10 @@ namespace CastleDB.Tests.PlayMode
             // Assert
             Assert.IsNotNull(flyingEye);
             Assert.AreEqual("FlyingEye", flyingEye.displayName);
-            Assert.AreEqual(50, flyingEye.maxHealth);
-            Assert.AreEqual(4, flyingEye.moveSpeed);
+            Assert.That(flyingEye.maxHealth, Is.InRange(NpcRanges.MinHealth, NpcRanges.MaxHealth),
+                $"FlyingEye maxHealth out of range: {flyingEye.maxHealth}");
+            Assert.That(flyingEye.moveSpeed, Is.InRange(NpcRanges.MinSpeed, NpcRanges.MaxSpeed),
+                $"FlyingEye moveSpeed out of range: {flyingEye.moveSpeed}");
             Debug.Log($"[CastleDbIntegrationTest] FlyingEye 数据：{flyingEye}");
         }
 

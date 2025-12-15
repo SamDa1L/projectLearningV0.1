@@ -79,7 +79,8 @@ public class FlyingEye : EnemyAgentBase
         //计算是否已经到达了一个目标点
         float distance = Vector2.Distance(nextWaypoint.position, transform.position);
 
-        rb2d.velocity = directionToWaypoint * flightSpeed;
+        // 使用 Profile 下发的 MoveSpeed
+        rb2d.velocity = directionToWaypoint * MoveSpeed;
         UpdateDirection();
 
         //计算是否需要切换目标点
