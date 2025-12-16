@@ -152,17 +152,82 @@ public class CastleDbImporter
                 return;
             }
 
-            // 6. 导入NPC数据（传入notes收集器）
+            // ===== Step 5.1: 全量业务校验（纯读，不写入）=====
+            var validationErrors = new List<string>();
             foreach (var npc in npcs)
             {
-                if (CreateOrUpdateProfile(npc, notes))
+                // 校验 maxHealth
+                if (npc.maxHealth <= 0)
                 {
+                    validationErrors.Add($"NPC '{npc.id}' 的 maxHealth <= 0 ({npc.maxHealth})");
+                }
+
+                // 校验 moveSpeed
+                if (npc.moveSpeed <= 0)
+                {
+                    validationErrors.Add($"NPC '{npc.id}' 的 moveSpeed <= 0 ({npc.moveSpeed})");
+                }
+
+                // 校验 animationTrigger
+                if (string.IsNullOrWhiteSpace(npc.animationTrigger))
+                {
+                    validationErrors.Add($"NPC '{npc.id}' 的 animationTrigger 为空");
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(npc.animationTrigger, @"^[a-zA-Z0-9_]+$"))
+                {
+                    validationErrors.Add($"NPC '{npc.id}' 的 animationTrigger '{npc.animationTrigger}' 包含非法字符");
+                }
+
+                // 校验 attackCooldown
+                if (npc.attackCooldown < 0)
+                {
+                    validationErrors.Add($"NPC '{npc.id}' 的 attackCooldown < 0 ({npc.attackCooldown})");
+                }
+
+                // 校验 attackDamage
+                if (npc.attackDamage < 0)
+                {
+                    validationErrors.Add($"NPC '{npc.id}' 的 attackDamage < 0 ({npc.attackDamage})");
+                }
+            }
+
+            // 如果有校验错误，拒绝导入（0写入）
+            if (validationErrors.Count > 0)
+            {
+                status = "ValidationFailed";
+                message = $"数据校验失败，共 {validationErrors.Count} 个错误：\n" + string.Join("\n", validationErrors);
+                notes.AddRange(validationErrors.ConvertAll(e => $"❌ {e}"));
+                Debug.LogError($"[CastleDbImporter] {message}");
+                return;
+            }
+
+            // ===== Step 5.2: 批量写入（全部校验通过后才执行）=====
+            var dirtyProfiles = new List<EnemyTuningProfile>();
+
+            foreach (var npc in npcs)
+            {
+                var profile = CreateOrUpdateProfileInternal(npc, notes);
+                if (profile != null)
+                {
+                    dirtyProfiles.Add(profile);
                     successCount++;
                 }
                 else
                 {
                     failureCount++;
                 }
+            }
+
+            // ===== Step 5.3: 统一SetDirty + 一次性SaveAssets（原子写）=====
+            if (dirtyProfiles.Count > 0)
+            {
+                foreach (var profile in dirtyProfiles)
+                {
+                    EditorUtility.SetDirty(profile);
+                }
+
+                AssetDatabase.SaveAssets();
+                Debug.Log($"[CastleDbImporter] 已保存 {dirtyProfiles.Count} 个Profile到磁盘");
             }
 
             // 7. 确定最终状态
@@ -196,29 +261,14 @@ public class CastleDbImporter
     }
 
     /// <summary>
-    /// 创建或更新Profile
-    /// Step 2 改造：不再写文件，改为收集 notes
+    /// 创建或更新Profile（内部方法，不调用 SaveAssets）
+    /// Step 5.2: 只做创建/更新逻辑，返回 Profile 对象供批量写入
     /// </summary>
-    private static bool CreateOrUpdateProfile(NpcEntry npc, List<string> notes)
+    private static EnemyTuningProfile CreateOrUpdateProfileInternal(NpcEntry npc, List<string> notes)
     {
         try
         {
-            // ===== 业务校验 =====
-            // 校验 animationTrigger：必须非空且仅含字母/数字/下划线
-            if (string.IsNullOrWhiteSpace(npc.animationTrigger))
-            {
-                string errorMsg = $"NPC '{npc.id}' 的 animationTrigger 为空，跳过导入。请到 CastleDB 修正。";
-                Debug.LogError($"[CastleDbImporter] {errorMsg}");
-                notes.Add($"❌ {errorMsg}");
-                return false;
-            }
-            if (!System.Text.RegularExpressions.Regex.IsMatch(npc.animationTrigger, @"^[a-zA-Z0-9_]+$"))
-            {
-                string errorMsg = $"NPC '{npc.id}' 的 animationTrigger '{npc.animationTrigger}' 包含非法字符（仅允许字母/数字/下划线），跳过导入。";
-                Debug.LogError($"[CastleDbImporter] {errorMsg}");
-                notes.Add($"❌ {errorMsg}");
-                return false;
-            }
+            // ===== 注意：业务校验已在 ImportAll 的 Step 5.1 完成，这里不再重复校验 =====
 
             // 确保输出目录存在
             if (!Directory.Exists(PROFILE_OUTPUT_DIR))
@@ -259,18 +309,15 @@ public class CastleDbImporter
                 notes.Add(changeLog);
             }
 
-            // 保存资源
-            EditorUtility.SetDirty(profile);
-            AssetDatabase.SaveAssets();
-
-            return true;
+            // ===== Step 5.2: 不调用 SetDirty/SaveAssets，由调用方批量处理 =====
+            return profile;
         }
         catch (System.Exception ex)
         {
             string errorMsg = $"创建/更新Profile失败 ({npc.id}): {ex.Message}";
             Debug.LogError($"[CastleDbImporter] {errorMsg}");
             notes.Add($"❌ {errorMsg}");
-            return false;
+            return null;  // 返回 null 表示失败
         }
     }
 

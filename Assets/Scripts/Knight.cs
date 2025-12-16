@@ -15,6 +15,7 @@ public class Knight : EnemyAgentBase
 
     // Step 3: 攻击系统（最小实现）
     private float attackCooldownTimer = 0f;
+    private bool hasTarget = false;  // 由检测区事件驱动更新（不再每帧查询）
 
     public enum WalkableDirection { Right, Left };
 
@@ -51,29 +52,71 @@ public class Knight : EnemyAgentBase
 
         // 初始化默认方向
         WalkDirection = WalkableDirection.Right;
+
+        // 订阅检测区事件（Event-Driven，符合文档第1节要求）
+        DetectionZone primaryAttackZone = GetZone(DetectionZoneBinding.Role.PrimaryAttack);
+        if (primaryAttackZone != null)
+        {
+            primaryAttackZone.OnTargetEnter.AddListener(OnTargetEnter);
+            primaryAttackZone.OnTargetExit.AddListener(OnTargetExit);
+            primaryAttackZone.NoColliderRemain.AddListener(OnAllTargetsExit);
+        }
+        else
+        {
+            Debug.LogError($"[Knight] 未配置 PrimaryAttack 检测区！无法订阅目标进入/离开事件。", gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 检测区事件：有目标进入
+    /// </summary>
+    private void OnTargetEnter()
+    {
+        hasTarget = true;
+        SetState(EnemyState.Chase);
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[Knight] 目标进入检测区 - 切换到Chase状态", gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 检测区事件：有目标离开（但可能还有其他目标）
+    /// </summary>
+    private void OnTargetExit()
+    {
+        // 检查是否还有其他目标
+        if (GetDetectedTargets().Count == 0)
+        {
+            hasTarget = false;
+        }
+    }
+
+    /// <summary>
+    /// 检测区事件：所有目标都已离开
+    /// </summary>
+    private void OnAllTargetsExit()
+    {
+        hasTarget = false;
+        SetState(EnemyState.Idle);
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[Knight] 所有目标离开检测区 - 切换到Idle状态", gameObject);
+        }
     }
 
     protected override void TickState(float deltaTime)
     {
-        // 根据主检测区(PrimaryAttack)更新HasTarget
-        bool hasTarget = GetDetectedTargets().Count > 0;
-        if (hasTarget != (currentState == EnemyState.Chase))
-        {
-            if (hasTarget)
-            {
-                SetState(EnemyState.Chase);
-            }
-            else
-            {
-                SetState(EnemyState.Idle);
-            }
-        }
+        // hasTarget 现在由检测区事件驱动更新（不再每帧查询）
+        // 符合文档第1节："检测区判定后先发事件通知 NPC"
 
         // 设置Animator参数
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
 
         // Step 3: 攻击逻辑（最小实现用于 2A 验收）
-        // 当检测到目标且冷却完成时，触发攻击动画
+        // 文档第1节：必须满足两层判定：1）hasTarget == true 2）冷却归零
         if (hasTarget)
         {
             attackCooldownTimer -= deltaTime;

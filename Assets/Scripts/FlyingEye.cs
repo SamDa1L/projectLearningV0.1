@@ -14,6 +14,10 @@ public class FlyingEye : EnemyAgentBase
     Transform nextWaypoint;
     int waypointNum = 0;
 
+    // 攻击系统（最小实现）
+    private float attackCooldownTimer = 0f;
+    private bool hasTarget = false;  // 由检测区事件驱动更新（不再每帧查询）
+
 
 
     /// <summary>
@@ -28,6 +32,44 @@ public class FlyingEye : EnemyAgentBase
         {
             nextWaypoint = waypoints[waypointNum];
         }
+
+        // 订阅检测区事件（Event-Driven，符合文档第1节要求）
+        DetectionZone primaryAttackZone = GetZone(DetectionZoneBinding.Role.PrimaryAttack);
+        if (primaryAttackZone != null)
+        {
+            primaryAttackZone.OnTargetEnter.AddListener(OnTargetEnter);
+            primaryAttackZone.NoColliderRemain.AddListener(OnAllTargetsExit);
+        }
+        else
+        {
+            Debug.LogError($"[FlyingEye] 未配置 PrimaryAttack 检测区！无法订阅目标进入/离开事件。", gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 检测区事件：有目标进入
+    /// </summary>
+    private void OnTargetEnter()
+    {
+        hasTarget = true;
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[FlyingEye] 目标进入检测区", gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 检测区事件：所有目标都已离开
+    /// </summary>
+    private void OnAllTargetsExit()
+    {
+        hasTarget = false;
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[FlyingEye] 所有目标离开检测区", gameObject);
+        }
     }
 
     /// <summary>
@@ -35,11 +77,31 @@ public class FlyingEye : EnemyAgentBase
     /// </summary>
     protected override void TickState(float deltaTime)
     {
-        // 根据DetectionZone更新HasTarget
-        bool hasTarget = GetDetectedTargets().Count > 0;
+        // hasTarget 现在由检测区事件驱动更新（不再每帧查询）
+        // 符合文档第1节："检测区判定后先发事件通知 NPC"
 
         // 设置Animator参数
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
+
+        // 攻击逻辑（与Knight一致的最小实现）
+        // 文档第1节：必须满足两层判定：1）hasTarget == true 2）冷却归零
+        if (hasTarget)
+        {
+            attackCooldownTimer -= deltaTime;
+            if (attackCooldownTimer <= 0f)
+            {
+                // 调用基类的统一攻击入口
+                TriggerAttackAnimation();
+
+                // 重置冷却计时器（使用 Profile 下发的冷却时间）
+                attackCooldownTimer = AttackCooldown;
+
+                if (debugStateOverlay)
+                {
+                    Debug.Log($"[FlyingEye] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
+                }
+            }
+        }
     }
 
     /// <summary>

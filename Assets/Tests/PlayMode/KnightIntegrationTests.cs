@@ -181,4 +181,114 @@ public class KnightIntegrationTests
         // 注意：AttackTriggerName 是 protected，无法直接访问，但可以通过 Profile 间接验证
         Assert.AreEqual(profile.animationTrigger, profile.animationTrigger, "Profile animationTrigger should be consistent");
     }
+
+    /// <summary>
+    /// 3.1节：验证 Attack Trigger 触发后 Animator 真实进入攻击动画状态
+    /// 这是 2A 的核心验收项：不仅参数存在，还要确认触发后能进入攻击状态
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AttackTriggerEntersAttackState()
+    {
+        yield return null;
+
+        var animator = knightGameObject.GetComponent<Animator>();
+        Assert.IsNotNull(animator, "Animator component missing");
+
+        // 创建一个Dummy目标进入检测区，触发hasTarget
+        var dummyTarget = new GameObject("DummyTarget");
+        var dummyCollider = dummyTarget.AddComponent<BoxCollider2D>();
+        dummyCollider.isTrigger = true;
+        dummyCollider.size = new Vector2(1, 2);
+
+        // 将Dummy放置在Knight前方，进入PrimaryAttack检测区范围
+        dummyTarget.transform.position = knightGameObject.transform.position + Vector3.right * 1.5f;
+
+        // 等待几帧让检测区事件触发
+        yield return new WaitForSeconds(0.2f);
+
+        // 等待攻击冷却归零并触发攻击（最多等待5秒）
+        float waitTime = 0f;
+        bool attackTriggered = false;
+        string initialStateName = animator.GetCurrentAnimatorStateInfo(0).IsName("knight_run") ? "knight_run" : "unknown";
+
+        while (waitTime < 5f)
+        {
+            yield return new WaitForSeconds(0.1f);
+            waitTime += 0.1f;
+
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+            // 检查是否进入了攻击状态（状态名通常包含"attack"）
+            if (stateInfo.IsName("knight_attack"))
+            {
+                attackTriggered = true;
+                break;
+            }
+        }
+
+        Assert.IsTrue(attackTriggered,
+            $"Attack Trigger 触发后应该进入攻击动画状态 (waited {waitTime}s, initial state: {initialStateName})");
+
+        // 清理
+        Object.Destroy(dummyTarget);
+    }
+
+    /// <summary>
+    /// 3.6节：验证 attackCooldown 影响攻击触发频率
+    /// 行为级断言：攻击冷却时间会影响单位时间内的攻击次数
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AttackCooldownAffectsAttackFrequency()
+    {
+        yield return null;
+
+        var animator = knightGameObject.GetComponent<Animator>();
+        Assert.IsNotNull(animator, "Animator component missing");
+
+        // 创建Dummy目标保持hasTarget=true
+        var dummyTarget = new GameObject("DummyTarget");
+        var dummyCollider = dummyTarget.AddComponent<BoxCollider2D>();
+        dummyCollider.isTrigger = true;
+        dummyCollider.size = new Vector2(1, 2);
+        dummyTarget.transform.position = knightGameObject.transform.position + Vector3.right * 1.5f;
+
+        yield return new WaitForSeconds(0.2f);
+
+        // 记录3秒内进入攻击状态的次数
+        float observeTime = 3f;
+        float elapsed = 0f;
+        int attackCount = 0;
+        bool wasInAttack = false;
+
+        while (elapsed < observeTime)
+        {
+            yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
+
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            bool inAttack = stateInfo.IsName("knight_attack");
+
+            // 检测到进入攻击状态的边缘（从非攻击进入攻击）
+            if (inAttack && !wasInAttack)
+            {
+                attackCount++;
+            }
+
+            wasInAttack = inAttack;
+        }
+
+        // 根据Profile的attackCooldown验证攻击次数
+        var profile = knight.TuningProfile;
+        float expectedInterval = profile.attackCooldown;
+        int expectedAttacks = Mathf.FloorToInt(observeTime / expectedInterval);
+
+        // 允许±1的误差（考虑首次攻击延迟和动画时间）
+        Assert.GreaterOrEqual(attackCount, expectedAttacks - 1,
+            $"攻击次数应该至少为 {expectedAttacks - 1} (cooldown={expectedInterval}s, observed={attackCount} in {observeTime}s)");
+        Assert.LessOrEqual(attackCount, expectedAttacks + 2,
+            $"攻击次数不应该超过 {expectedAttacks + 2} (cooldown={expectedInterval}s, observed={attackCount} in {observeTime}s)");
+
+        // 清理
+        Object.Destroy(dummyTarget);
+    }
 }
