@@ -112,6 +112,14 @@ namespace CastleDB.Runtime
         [SerializeField]
         public float perceptionRadius;
 
+        /// <summary>
+        /// 怪物命中玩家时的击退缩放系数（Monster → Player）
+        /// 与 knockbackMultiplier（Player → Monster：怪物受击倍率）是独立的两条链路
+        /// 默认值 1 表示保持敌人攻击 Prefab 上的基础击退不变
+        /// </summary>
+        [SerializeField]
+        public float knockbackToPlayer;
+
         public override string ToString()
         {
             return $"NPC[id={id}, displayName={displayName}, maxHealth={maxHealth}, moveSpeed={moveSpeed}]";

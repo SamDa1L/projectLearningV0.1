@@ -87,6 +87,14 @@ public class EnemyTuningProfile : ScriptableObject
     [Tooltip("击退倍率（影响受击时的击退力度）")]
     public float knockbackMultiplier = 1f;
 
+    [Min(0f)]
+    [SerializeField]
+    [Tooltip("怪物命中玩家时的击退缩放系数（Monster → Player）\n" +
+             "与 knockbackMultiplier（Player → Monster：怪物受击倍率）是独立的两条链路\n" +
+             "默认值 1 表示保持敌人攻击 Prefab 上的基础击退不变\n" +
+             "例如：0.5 = 减半，2 = 翻倍，0 = 禁用击退")]
+    public float knockbackToPlayer = 1f;
+
     [SerializeField]
     [Tooltip("死亡时是否播放死亡动画")]
     public bool enableDeathAnimation = true;
@@ -124,6 +132,7 @@ public class EnemyTuningProfile : ScriptableObject
         hitRecoveryDelay = Mathf.Clamp01(hitRecoveryDelay);
         invulnerableFrameDuration = Mathf.Clamp01(invulnerableFrameDuration);
         knockbackMultiplier = Mathf.Max(0f, knockbackMultiplier);
+        knockbackToPlayer = Mathf.Max(0f, knockbackToPlayer);
         deathDelay = Mathf.Max(0f, deathDelay);
 
         // animationTrigger 校验：必须非空且仅含字母/数字/下划线
@@ -197,6 +206,7 @@ public class EnemyTuningProfile : ScriptableObject
         // ===== 特殊属性 =====
         invulnerableFrameDuration = npc.invincibleDuration;
         knockbackMultiplier = npc.knockbackMultiplier;
+        knockbackToPlayer = npc.knockbackToPlayer;
         enableDeathAnimation = npc.enableDeathAnimation;
         // deathDelay：NpcEntry 暂无此字段，保持 Profile 默认值
 
@@ -208,7 +218,7 @@ public class EnemyTuningProfile : ScriptableObject
         Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName}\n" +
                   $"  HP={maxHealth}, Speed={moveSpeed}, Dmg={attackDamage}\n" +
                   $"  AtkRange={attackRange}, Cooldown={attackCooldown}\n" +
-                  $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x\n" +
+                  $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x, KnockbackToPlayer={knockbackToPlayer}x\n" +
                   $"  AnimTrigger='{animationTrigger}', LegacyFallback={useLegacyLogicFallback}");
         #endif
     }
@@ -253,6 +263,7 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  Attack Cooldown: {attackCooldown}\n" +
                   $"  Knockback Force: {knockbackForce}\n" +
                   $"  Knockback Multiplier: {knockbackMultiplier}\n" +
+                  $"  Knockback To Player: {knockbackToPlayer}\n" +
                   $"  Patrol Distance: {patrolDistance}\n" +
                   $"  Hit Recovery Delay: {hitRecoveryDelay}\n" +
                   $"  Invulnerable Frame Duration: {invulnerableFrameDuration}\n" +
@@ -280,6 +291,7 @@ public class EnemyTuningProfile : ScriptableObject
         cloned.attackCooldown = attackCooldown;
         cloned.knockbackForce = knockbackForce;
         cloned.knockbackMultiplier = knockbackMultiplier;
+        cloned.knockbackToPlayer = knockbackToPlayer;
         cloned.patrolDistance = patrolDistance;
         cloned.hitRecoveryDelay = hitRecoveryDelay;
         cloned.invulnerableFrameDuration = invulnerableFrameDuration;

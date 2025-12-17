@@ -12,8 +12,40 @@ public class KnightIntegrationTests
 {
     private GameObject knightGameObject;
     private GameObject audioListenerGameObject;
+    private GameObject testGroundGameObject;
     private Knight knight;
     private Damageable damageable;
+
+    private static int RequireLayer(string layerName)
+    {
+        int layer = LayerMask.NameToLayer(layerName);
+        Assert.GreaterOrEqual(layer, 0, $"Layer '{layerName}' not found. Check ProjectSettings/TagManager.asset.");
+        return layer;
+    }
+
+    private IEnumerator EnsureTargetInPrimaryAttackZone(GameObject target, Collider2D targetCollider)
+    {
+        var zone = knight.GetZone(DetectionZoneBinding.Role.PrimaryAttack);
+        Assert.IsNotNull(zone, "PrimaryAttack DetectionZone missing. Check Knight prefab zoneBindings.");
+
+        var zoneCollider = zone.GetComponent<Collider2D>();
+        Assert.IsNotNull(zoneCollider, "PrimaryAttack DetectionZone has no Collider2D.");
+
+        Vector3 center = zoneCollider.bounds.center;
+        center.z = 0f;
+
+        Vector3 outside = center + Vector3.right * (zoneCollider.bounds.extents.x + 5f);
+        target.transform.position = outside;
+        Physics2D.SyncTransforms();
+        yield return new WaitForFixedUpdate();
+
+        target.transform.position = center;
+        Physics2D.SyncTransforms();
+        yield return new WaitForFixedUpdate();
+
+        Assert.IsTrue(zone.detectedColliders.Contains(targetCollider),
+            "Target should be detected by PrimaryAttack zone. Ensure the target is on the Player layer and physics collision matrix allows it.");
+    }
 
     [UnitySetUp]
     public IEnumerator Setup()
@@ -36,6 +68,27 @@ public class KnightIntegrationTests
         damageable = knightGameObject.GetComponent<Damageable>();
         Assert.IsNotNull(damageable, "Damageable component missing");
 
+        // PlayMode tests run in an empty test scene (not TestEnemy.unity), so we must provide ground.
+        // KnightEnemy has Rigidbody2D gravity; without ground it will fall and the target will exit DZ_Attack.
+        var knightCollider = knightGameObject.GetComponent<Collider2D>();
+        Assert.IsNotNull(knightCollider, "Knight Collider2D missing");
+
+        testGroundGameObject = new GameObject("TestGround");
+        testGroundGameObject.layer = RequireLayer("Ground");
+
+        var groundCollider = testGroundGameObject.AddComponent<BoxCollider2D>();
+        groundCollider.size = new Vector2(50f, 1f);
+
+        float groundTopY = knightCollider.bounds.min.y;
+        testGroundGameObject.transform.position = new Vector3(
+            knightCollider.bounds.center.x,
+            groundTopY - (groundCollider.size.y * 0.5f),
+            0f
+        );
+
+        Physics2D.SyncTransforms();
+        yield return new WaitForFixedUpdate();
+
         yield return null;
     }
 
@@ -46,6 +99,12 @@ public class KnightIntegrationTests
         {
             Object.Destroy(knightGameObject);
             knightGameObject = null;
+        }
+
+        if (testGroundGameObject != null)
+        {
+            Object.Destroy(testGroundGameObject);
+            testGroundGameObject = null;
         }
 
         if (audioListenerGameObject != null)
@@ -194,43 +253,44 @@ public class KnightIntegrationTests
         var animator = knightGameObject.GetComponent<Animator>();
         Assert.IsNotNull(animator, "Animator component missing");
 
-        // 创建一个Dummy目标进入检测区，触发hasTarget
-        var dummyTarget = new GameObject("DummyTarget");
+        // DummyTarget 在本测试中代表玩家：必须使用 Player layer 才能与 EnemyHitBox(DZ_Attack) 发生2D触发
+        var dummyTarget = new GameObject("PlayerDummyTarget");
         var dummyCollider = dummyTarget.AddComponent<BoxCollider2D>();
         dummyCollider.isTrigger = true;
         dummyCollider.size = new Vector2(1, 2);
+        dummyTarget.layer = RequireLayer("Player");
 
-        // 将Dummy放置在Knight前方，进入PrimaryAttack检测区范围
-        dummyTarget.transform.position = knightGameObject.transform.position + Vector3.right * 1.5f;
-
-        // 等待几帧让检测区事件触发
-        yield return new WaitForSeconds(0.2f);
-
-        // 等待攻击冷却归零并触发攻击（最多等待5秒）
-        float waitTime = 0f;
-        bool attackTriggered = false;
-        string initialStateName = animator.GetCurrentAnimatorStateInfo(0).IsName("knight_run") ? "knight_run" : "unknown";
-
-        while (waitTime < 5f)
+        try
         {
-            yield return new WaitForSeconds(0.1f);
-            waitTime += 0.1f;
+            yield return EnsureTargetInPrimaryAttackZone(dummyTarget, dummyCollider);
+            yield return null;
 
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            // 等待攻击冷却归零并触发攻击（最多等待5秒）
+            float waitTime = 0f;
+            bool attackTriggered = false;
+            string initialStateName = animator.GetCurrentAnimatorStateInfo(0).IsName("knight_run") ? "knight_run" : "unknown";
 
-            // 检查是否进入了攻击状态（状态名通常包含"attack"）
-            if (stateInfo.IsName("knight_attack"))
+            while (waitTime < 5f)
             {
-                attackTriggered = true;
-                break;
+                yield return new WaitForSeconds(0.1f);
+                waitTime += 0.1f;
+
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+                if (stateInfo.IsName("knight_attack"))
+                {
+                    attackTriggered = true;
+                    break;
+                }
             }
+
+            Assert.IsTrue(attackTriggered,
+                $"Attack Trigger 触发后应该进入攻击动画状态 (waited {waitTime}s, initial state: {initialStateName})");
         }
-
-        Assert.IsTrue(attackTriggered,
-            $"Attack Trigger 触发后应该进入攻击动画状态 (waited {waitTime}s, initial state: {initialStateName})");
-
-        // 清理
-        Object.Destroy(dummyTarget);
+        finally
+        {
+            Object.Destroy(dummyTarget);
+        }
     }
 
     /// <summary>
@@ -245,50 +305,53 @@ public class KnightIntegrationTests
         var animator = knightGameObject.GetComponent<Animator>();
         Assert.IsNotNull(animator, "Animator component missing");
 
-        // 创建Dummy目标保持hasTarget=true
-        var dummyTarget = new GameObject("DummyTarget");
+        // DummyTarget 在本测试中代表玩家：必须使用 Player layer 才能与 EnemyHitBox(DZ_Attack) 发生2D触发
+        var dummyTarget = new GameObject("PlayerDummyTarget");
         var dummyCollider = dummyTarget.AddComponent<BoxCollider2D>();
         dummyCollider.isTrigger = true;
         dummyCollider.size = new Vector2(1, 2);
-        dummyTarget.transform.position = knightGameObject.transform.position + Vector3.right * 1.5f;
+        dummyTarget.layer = RequireLayer("Player");
 
-        yield return new WaitForSeconds(0.2f);
-
-        // 记录3秒内进入攻击状态的次数
+        // 记录3秒内触发攻击的次数（用日志统计，避免被攻击动画时长限制）
         float observeTime = 3f;
-        float elapsed = 0f;
-        int attackCount = 0;
-        bool wasInAttack = false;
+        int attackTriggerCount = 0;
 
-        while (elapsed < observeTime)
+        void HandleLog(string condition, string stackTrace, LogType type)
         {
-            yield return new WaitForSeconds(0.1f);
-            elapsed += 0.1f;
-
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            bool inAttack = stateInfo.IsName("knight_attack");
-
-            // 检测到进入攻击状态的边缘（从非攻击进入攻击）
-            if (inAttack && !wasInAttack)
+            if (condition != null && condition.Contains("[Knight] 触发攻击 - Cooldown="))
             {
-                attackCount++;
+                attackTriggerCount++;
             }
-
-            wasInAttack = inAttack;
         }
 
-        // 根据Profile的attackCooldown验证攻击次数
-        var profile = knight.TuningProfile;
-        float expectedInterval = profile.attackCooldown;
-        int expectedAttacks = Mathf.FloorToInt(observeTime / expectedInterval);
+        Application.logMessageReceived += HandleLog;
 
-        // 允许±1的误差（考虑首次攻击延迟和动画时间）
-        Assert.GreaterOrEqual(attackCount, expectedAttacks - 1,
-            $"攻击次数应该至少为 {expectedAttacks - 1} (cooldown={expectedInterval}s, observed={attackCount} in {observeTime}s)");
-        Assert.LessOrEqual(attackCount, expectedAttacks + 2,
-            $"攻击次数不应该超过 {expectedAttacks + 2} (cooldown={expectedInterval}s, observed={attackCount} in {observeTime}s)");
+        try
+        {
+            yield return EnsureTargetInPrimaryAttackZone(dummyTarget, dummyCollider);
+            yield return null;
 
-        // 清理
-        Object.Destroy(dummyTarget);
+            float elapsed = 0f;
+            while (elapsed < observeTime)
+            {
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+
+            // 根据Profile的attackCooldown验证攻击次数
+            var profile = knight.TuningProfile;
+            float expectedInterval = profile.attackCooldown;
+            int expectedAttacks = Mathf.FloorToInt(observeTime / expectedInterval);
+
+            Assert.GreaterOrEqual(attackTriggerCount, expectedAttacks - 1,
+                $"攻击触发次数应该至少为 {expectedAttacks - 1} (cooldown={expectedInterval}s, observed={attackTriggerCount} in {observeTime}s)");
+            Assert.LessOrEqual(attackTriggerCount, expectedAttacks + 2,
+                $"攻击触发次数不应该超过 {expectedAttacks + 2} (cooldown={expectedInterval}s, observed={attackTriggerCount} in {observeTime}s)");
+        }
+        finally
+        {
+            Application.logMessageReceived -= HandleLog;
+            Object.Destroy(dummyTarget);
+        }
     }
 }

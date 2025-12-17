@@ -330,7 +330,10 @@ namespace CastleDB.Runtime
                 invincibleDuration = GetFloatValue(dict, "invincibleDuration"),
                 knockbackMultiplier = GetFloatValue(dict, "knockbackMultiplier"),
                 enableDeathAnimation = GetBoolValue(dict, "enableDeathAnimation"),
-                useLegacyLogicFallback = GetBoolValue(dict, "useLegacyLogicFallback")
+                useLegacyLogicFallback = GetBoolValue(dict, "useLegacyLogicFallback"),
+                perceptionRadius = GetFloatValue(dict, "perceptionRadius"),
+                // 怪物命中玩家时的击退缩放系数，默认值为 1（保持 Prefab 原始击退）
+                knockbackToPlayer = GetFloatValueWithDefault(dict, "knockbackToPlayer", 1f)
             };
         }
 
@@ -448,6 +451,22 @@ namespace CastleDB.Runtime
                 if (float.TryParse(value?.ToString(), out var result)) return result;
             }
             return 0f;
+        }
+
+        /// <summary>
+        /// 从字典中获取浮点数值（带默认值）
+        /// 用于新字段的向后兼容：如果 CastleDB 中没有该字段，返回指定的默认值
+        /// </summary>
+        private float GetFloatValueWithDefault(Dictionary<string, object> dict, string key, float defaultValue)
+        {
+            if (dict.TryGetValue(key, out var value))
+            {
+                if (value is float f) return f;
+                if (value is double d) return (float)d;
+                if (value is int i) return i;
+                if (float.TryParse(value?.ToString(), out var result)) return result;
+            }
+            return defaultValue;
         }
 
         /// <summary>

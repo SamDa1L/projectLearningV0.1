@@ -286,6 +286,34 @@ public class CastleDbBridgeTests
     }
 
     /// <summary>
+    /// 行为验证测试：验证 knockbackMultiplier 实际影响受击击退强度
+    /// CastleDB/Profile 的 knockbackMultiplier → Damageable.knockbackMultiplier → Damageable.Hit() 输出的 knockback → Enemy.OnHit 应用到 Rigidbody2D
+    /// </summary>
+    [UnityTest]
+    public IEnumerator KnockbackMultiplierAffectsBehavior()
+    {
+        yield return null;
+
+        var rb2d = knightGameObject.GetComponent<Rigidbody2D>();
+        Assert.IsNotNull(rb2d, "Rigidbody2D missing");
+
+        // 为了让测试可重复，避免重力导致的 Y 轴速度干扰
+        float originalGravity = rb2d.gravityScale;
+        rb2d.gravityScale = 0f;
+        rb2d.velocity = Vector2.zero;
+
+        Vector2 inputKnockback = new Vector2(1f, 2f);
+        bool hitSuccess = damageable.Hit(1, inputKnockback);
+        Assert.IsTrue(hitSuccess, "Hit should succeed");
+
+        Vector2 expected = inputKnockback * profile.knockbackMultiplier;
+        Assert.AreEqual(expected.x, rb2d.velocity.x, 0.01f, "Knockback X should be scaled by knockbackMultiplier");
+        Assert.AreEqual(expected.y, rb2d.velocity.y, 0.01f, "Knockback Y should be scaled by knockbackMultiplier");
+
+        rb2d.gravityScale = originalGravity;
+    }
+
+    /// <summary>
     /// 行为验证测试：验证攻击冷却实际影响攻击节奏
     /// </summary>
     [UnityTest]

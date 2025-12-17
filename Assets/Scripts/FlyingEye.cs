@@ -83,23 +83,25 @@ public class FlyingEye : EnemyAgentBase
         // 设置Animator参数
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
 
-        // 攻击逻辑（与Knight一致的最小实现）
-        // 文档第1节：必须满足两层判定：1）hasTarget == true 2）冷却归零
-        if (hasTarget)
+        // 方案A：冷却计时与 hasTarget 解耦，按真实时间流逝
+        // 无论是否有目标，冷却计时器都随时间递减
+        if (attackCooldownTimer > 0f)
         {
             attackCooldownTimer -= deltaTime;
-            if (attackCooldownTimer <= 0f)
+        }
+
+        // 攻击逻辑：必须满足两层判定：1）hasTarget == true 2）冷却归零
+        if (hasTarget && attackCooldownTimer <= 0f)
+        {
+            // 调用基类的统一攻击入口
+            TriggerAttackAnimation();
+
+            // 重置冷却计时器（使用 Profile 下发的冷却时间）
+            attackCooldownTimer = AttackCooldown;
+
+            if (debugStateOverlay)
             {
-                // 调用基类的统一攻击入口
-                TriggerAttackAnimation();
-
-                // 重置冷却计时器（使用 Profile 下发的冷却时间）
-                attackCooldownTimer = AttackCooldown;
-
-                if (debugStateOverlay)
-                {
-                    Debug.Log($"[FlyingEye] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
-                }
+                Debug.Log($"[FlyingEye] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
             }
         }
     }
@@ -109,6 +111,12 @@ public class FlyingEye : EnemyAgentBase
     /// </summary>
     protected override void TickPhysics(float fixedDeltaTime)
     {
+        // 击退保护期间，跳过所有移动逻辑，让击退速度自然生效
+        if (IsKnockbackProtected)
+        {
+            return;
+        }
+
         // 只在活着且能移动时执行飞行逻辑
         if (damageable.IsAlive && animator.GetBool(AnimationStrings.canMove))
         {

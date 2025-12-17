@@ -115,29 +115,37 @@ public class Knight : EnemyAgentBase
         // 设置Animator参数
         animator.SetBool(AnimationStrings.hasTarget, hasTarget);
 
-        // Step 3: 攻击逻辑（最小实现用于 2A 验收）
-        // 文档第1节：必须满足两层判定：1）hasTarget == true 2）冷却归零
-        if (hasTarget)
+        // 方案A：冷却计时与 hasTarget 解耦，按真实时间流逝
+        // 无论是否有目标，冷却计时器都随时间递减
+        if (attackCooldownTimer > 0f)
         {
             attackCooldownTimer -= deltaTime;
-            if (attackCooldownTimer <= 0f)
+        }
+
+        // 攻击逻辑：必须满足两层判定：1）hasTarget == true 2）冷却归零
+        if (hasTarget && attackCooldownTimer <= 0f)
+        {
+            // 调用基类的统一攻击入口
+            TriggerAttackAnimation();
+
+            // 重置冷却计时器（使用 Profile 下发的冷却时间）
+            attackCooldownTimer = AttackCooldown;
+
+            if (debugStateOverlay)
             {
-                // 调用基类的统一攻击入口
-                TriggerAttackAnimation();
-
-                // 重置冷却计时器（使用 Profile 下发的冷却时间）
-                attackCooldownTimer = AttackCooldown;
-
-                if (debugStateOverlay)
-                {
-                    Debug.Log($"[Knight] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
-                }
+                Debug.Log($"[Knight] 触发攻击 - Cooldown={AttackCooldown}s, Damage={AttackDamage}, Range={AttackRange}");
             }
         }
     }
 
     protected override void TickPhysics(float fixedDeltaTime)
     {
+        // 击退保护期间，跳过所有移动逻辑，让击退速度自然生效
+        if (IsKnockbackProtected)
+        {
+            return;
+        }
+
         // 崖边检测 - 使用v0.2新API
         if (touchingDirections.IsGrounded && touchingDirections.IsOnWall)
         {

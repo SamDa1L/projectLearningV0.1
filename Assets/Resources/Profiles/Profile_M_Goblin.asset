@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 68b32db8b38ce404e85175caca2792bd, type: 3}
-  m_Name: Profile_M_FlyingEye
+  m_Name: Profile_M_Goblin
   m_EditorClassIdentifier: 
   version: 1.0.0
-  profileName: FlyingEye
-  maxHealth: 50
-  moveSpeed: 4
-  perceptionRadius: 8
-  attackRange: 10
-  attackDamage: 30
-  attackCooldown: 0.25
+  profileName: Goblin
+  maxHealth: 60
+  moveSpeed: 2.5
+  perceptionRadius: 4
+  attackRange: 1.5
+  attackDamage: 25
+  attackCooldown: 1
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
-  invulnerableFrameDuration: 3
-  knockbackMultiplier: 2
+  invulnerableFrameDuration: 0.3
+  knockbackMultiplier: 1
   knockbackToPlayer: 1
   enableDeathAnimation: 1
   deathDelay: 1
   animationTrigger: Attack
-  useLegacyLogicFallback: 1
+  useLegacyLogicFallback: 0

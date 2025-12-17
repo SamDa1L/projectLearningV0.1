@@ -442,7 +442,7 @@ public class CastleDbImporter
                     logContent.AppendLine($"- {npc.displayName} (id={npc.id})");
                     logContent.AppendLine($"  maxHealth={npc.maxHealth}, moveSpeed={npc.moveSpeed}, attackDamage={npc.attackDamage}");
                     logContent.AppendLine($"  attackRange={npc.attackRange}, attackCooldown={npc.attackCooldown}");
-                    logContent.AppendLine($"  invincibleDuration={npc.invincibleDuration}, knockbackMultiplier={npc.knockbackMultiplier}");
+                    logContent.AppendLine($"  invincibleDuration={npc.invincibleDuration}, knockbackMultiplier={npc.knockbackMultiplier}, knockbackToPlayer={npc.knockbackToPlayer}");
                     logContent.AppendLine($"  enableDeathAnimation={npc.enableDeathAnimation}, useLegacyLogicFallback={npc.useLegacyLogicFallback}");
                     logContent.AppendLine($"  animationTrigger={npc.animationTrigger}");
                 }
@@ -497,7 +497,8 @@ public class CastleDbImporter
             mappingContent.AppendLine("| attackRange | attackRange | attackRange | _attackRange | 攻击范围 |");
             mappingContent.AppendLine("| attackCooldown | attackCooldown | attackCooldown | _attackCooldown | 攻击冷却 |");
             mappingContent.AppendLine("| invincibleDuration | invincibleDuration | invulnerableFrameDuration | - (via Damageable) | 无敌帧时长 |");
-            mappingContent.AppendLine("| knockbackMultiplier | knockbackMultiplier | knockbackMultiplier | _knockbackMultiplier | 击退倍率 |");
+            mappingContent.AppendLine("| knockbackMultiplier | knockbackMultiplier | knockbackMultiplier | _knockbackMultiplier | 击退倍率（Player→Monster：怪物受击） |");
+            mappingContent.AppendLine("| knockbackToPlayer | knockbackToPlayer | knockbackToPlayer | _knockbackToPlayer → Attack.knockback | 击退缩放（Monster→Player：玩家受击） |");
             mappingContent.AppendLine("| enableDeathAnimation | enableDeathAnimation | enableDeathAnimation | _enableDeathAnimation | 启用死亡动画 |");
             mappingContent.AppendLine("| useLegacyLogicFallback | useLegacyLogicFallback | useLegacyLogicFallback | _useLegacyLogicFallback | 使用旧逻辑回退 |");
             mappingContent.AppendLine();
@@ -517,6 +518,7 @@ public class CastleDbImporter
                 mappingContent.AppendLine($"attackCooldown: {npc.attackCooldown}");
                 mappingContent.AppendLine($"invincibleDuration: {npc.invincibleDuration}");
                 mappingContent.AppendLine($"knockbackMultiplier: {npc.knockbackMultiplier}");
+                mappingContent.AppendLine($"knockbackToPlayer: {npc.knockbackToPlayer}");
                 mappingContent.AppendLine($"enableDeathAnimation: {npc.enableDeathAnimation}");
                 mappingContent.AppendLine($"useLegacyLogicFallback: {npc.useLegacyLogicFallback}");
                 mappingContent.AppendLine("```");

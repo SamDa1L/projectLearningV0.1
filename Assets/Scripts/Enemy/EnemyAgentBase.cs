@@ -91,9 +91,25 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected float _attackCooldown;
     protected float _perceptionRadius;
     protected float _knockbackMultiplier;
+    protected float _knockbackToPlayer;
     protected bool _enableDeathAnimation;
     protected string _attackTriggerName;
     protected bool _useLegacyLogicFallback;
+
+    // ===== Attack 组件基础击退缓存（用于避免重复缩放）=====
+    // 存储每个 Attack 组件的原始 knockback 值（Prefab 上配置的基础值）
+    private Dictionary<Attack, Vector2> _attackBaseKnockbacks = new Dictionary<Attack, Vector2>();
+
+    // ===== 击退保护机制 =====
+    // 在受击后的一小段时间内，防止移动逻辑覆盖击退速度
+    private float _knockbackProtectionTimer = 0f;
+    private const float KNOCKBACK_PROTECTION_DURATION = 0.15f; // 击退保护时长（秒）
+
+    /// <summary>
+    /// 是否处于击退保护期间
+    /// 子类的 TickPhysics 应在此期间跳过移动逻辑，避免覆盖击退速度
+    /// </summary>
+    protected bool IsKnockbackProtected => _knockbackProtectionTimer > 0f;
 
     // 提供只读访问器供子类使用（推荐方式）
     protected float MoveSpeed => _moveSpeed;
@@ -102,6 +118,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected float AttackCooldown => _attackCooldown;
     protected float PerceptionRadius => _perceptionRadius;
     protected float KnockbackMultiplier => _knockbackMultiplier;
+    protected float KnockbackToPlayer => _knockbackToPlayer;
     protected bool EnableDeathAnimation => _enableDeathAnimation;
     protected string AttackTriggerName => _attackTriggerName;
     protected bool UseLegacyLogicFallback => _useLegacyLogicFallback;
@@ -122,6 +139,12 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     protected virtual void Update()
     {
+        // ===== 击退保护计时器递减 =====
+        if (_knockbackProtectionTimer > 0f)
+        {
+            _knockbackProtectionTimer -= Time.deltaTime;
+        }
+
         // ===== 状态机更新 =====
         TickState(Time.deltaTime);
 
@@ -270,7 +293,24 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         // 应用调参配置到基础组件
         ApplyTuningProfile();
 
+        // 确保受击事件链路可用（否则 knockbackMultiplier 虽然导入成功，但不会产生任何位移效果）
+        EnsureDamageableHitListener();
+
         // 子类实现
+    }
+
+    private void EnsureDamageableHitListener()
+    {
+        if (damageable == null || damageable.damageableHit == null)
+            return;
+
+        // Prefab/Inspector 已经配置了持久化回调时，不在运行时重复绑定，避免重复击退
+        if (damageable.damageableHit.GetPersistentEventCount() > 0)
+            return;
+
+        // 没有持久化回调时，默认绑定到本基类的 OnHit（用于敌人受击击退）
+        damageable.damageableHit.RemoveListener(OnHit);
+        damageable.damageableHit.AddListener(OnHit);
     }
 
     /// <summary>
@@ -293,6 +333,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         _attackCooldown = tuningProfile.attackCooldown;
         _perceptionRadius = tuningProfile.perceptionRadius;
         _knockbackMultiplier = tuningProfile.knockbackMultiplier;
+        _knockbackToPlayer = tuningProfile.knockbackToPlayer;
         _enableDeathAnimation = tuningProfile.enableDeathAnimation;
         _attackTriggerName = tuningProfile.animationTrigger;
         _useLegacyLogicFallback = tuningProfile.useLegacyLogicFallback;
@@ -303,6 +344,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             var stats = tuningProfile.GetDamageableStats();
             damageable.Configure(stats);
         }
+
+        // ===== 应用 knockbackToPlayer 到所有 Attack 组件（Monster → Player 击退缩放）=====
+        ApplyKnockbackToPlayerScale();
 
         // TODO: 同步感知半径到 DetectionZone（如果支持动态半径）
         // 例如：if (detectionZone != null) detectionZone.SetRadius(_perceptionRadius);
@@ -316,9 +360,70 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
                 $"    MoveSpeed={_moveSpeed}, AttackDamage={_attackDamage}\n" +
                 $"    AttackRange={_attackRange}, AttackCooldown={_attackCooldown}\n" +
                 $"    PerceptionRadius={_perceptionRadius}, KnockbackMult={_knockbackMultiplier}\n" +
+                $"    KnockbackToPlayer={_knockbackToPlayer}\n" +
                 $"    AnimTrigger='{_attackTriggerName}', LegacyFallback={_useLegacyLogicFallback}",
                 gameObject
             );
+        }
+    }
+
+    /// <summary>
+    /// 将 knockbackToPlayer 缩放系数应用到本敌人层级下所有 Attack 组件
+    ///
+    /// 实现说明：
+    /// - 遍历敌人及其所有子物体上的 Attack 组件
+    /// - 缓存每个 Attack 的原始 knockback（Prefab 基础值），避免重复缩放
+    /// - 应用缩放：attack.knockback = baseKnockback * knockbackToPlayer
+    ///
+    /// 关键点：
+    /// - Attack 脚本同时被玩家与敌人复用，因此不在 Attack 里做"向上找 Profile"
+    /// - 由敌人侧（EnemyAgentBase）统一下发，避免误伤玩家攻击
+    /// - 使用 _attackBaseKnockbacks 字典缓存基础值，防止重复初始化时数值被乘多次
+    /// </summary>
+    private void ApplyKnockbackToPlayerScale()
+    {
+        // 获取本敌人层级下所有 Attack 组件（包括子物体）
+        var attacks = GetComponentsInChildren<Attack>(true);
+
+        if (attacks.Length == 0)
+        {
+            if (debugStateOverlay)
+            {
+                Debug.Log($"[{gameObject.name}] 未找到任何 Attack 组件，跳过 knockbackToPlayer 应用", gameObject);
+            }
+            return;
+        }
+
+        int appliedCount = 0;
+
+        foreach (var attack in attacks)
+        {
+            // 如果是首次处理该 Attack，缓存其原始 knockback
+            if (!_attackBaseKnockbacks.ContainsKey(attack))
+            {
+                _attackBaseKnockbacks[attack] = attack.knockback;
+            }
+
+            // 获取基础击退值
+            Vector2 baseKnockback = _attackBaseKnockbacks[attack];
+
+            // 应用缩放
+            attack.knockback = baseKnockback * _knockbackToPlayer;
+            appliedCount++;
+
+            if (debugStateOverlay)
+            {
+                Debug.Log(
+                    $"[{gameObject.name}] Attack '{attack.gameObject.name}' knockback 已缩放\n" +
+                    $"  基础值: {baseKnockback} → 缩放后: {attack.knockback} (scale={_knockbackToPlayer})",
+                    attack.gameObject
+                );
+            }
+        }
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[{gameObject.name}] knockbackToPlayer 已应用到 {appliedCount} 个 Attack 组件", gameObject);
         }
     }
 
@@ -462,14 +567,28 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     public virtual void OnDamageTaken(int damage, Vector2 knockbackDirection)
     {
-        // 应用击退（在FixedUpdate的TickPhysics中应用速度）
-        if (rb2d != null && !damageable.LockVelocity)
+        // 应用击退
+        if (rb2d != null)
         {
             rb2d.velocity = new Vector2(knockbackDirection.x, rb2d.velocity.y + knockbackDirection.y);
         }
 
+        // 启动击退保护，防止移动逻辑立即覆盖击退速度
+        _knockbackProtectionTimer = KNOCKBACK_PROTECTION_DURATION;
+
         // 进入受伤状态
         SetState(EnemyState.Hit);
+
+        if (debugStateOverlay)
+        {
+            Debug.Log($"[{gameObject.name}] 受击 - 伤害={damage}, 击退={knockbackDirection}, 保护时间={KNOCKBACK_PROTECTION_DURATION}s");
+        }
+    }
+
+    // Damageable.damageableHit 的默认回调入口（UnityEvent 需要 public）
+    public virtual void OnHit(int damage, Vector2 knockback)
+    {
+        OnDamageTaken(damage, knockback);
     }
 
     public virtual bool IsInvulnerable()

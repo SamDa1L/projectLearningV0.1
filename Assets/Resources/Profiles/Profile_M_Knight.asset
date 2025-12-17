@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1.0.0
   profileName: Knight
-  maxHealth: 100
+  maxHealth: 200
   moveSpeed: 3
   perceptionRadius: 5
   attackRange: 10
@@ -23,8 +23,9 @@ MonoBehaviour:
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
-  invulnerableFrameDuration: 3
-  knockbackMultiplier: 2
+  invulnerableFrameDuration: 0.5
+  knockbackMultiplier: 3
+  knockbackToPlayer: 1
   enableDeathAnimation: 1
   deathDelay: 1
   animationTrigger: Attack

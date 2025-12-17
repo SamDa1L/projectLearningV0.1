@@ -384,29 +384,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 75f96a2d4bc82ff4fbc8cdc80e27d71d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   floatName: attackCooldown
   updateOnStateEnter: 0
-  updateOnStateExit: 1
+  updateOnStateExit: 0
   updateOnStateMachineEnter: 0
   updateOnStateMachineExit: 0
   valueOnEnter: 0
-  valueOnExit: 0.5
+  valueOnExit: 0
 --- !u!1101 &2886289375423121460
 AnimatorStateTransition:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: 
+  m_Name:
   m_Conditions:
   - m_ConditionMode: 1
     m_ConditionEvent: hasTarget
     m_EventTreshold: 0
-  - m_ConditionMode: 4
-    m_ConditionEvent: attackCooldown
-    m_EventTreshold: 0.00001
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: 0}
   m_Solo: 0
