@@ -187,9 +187,27 @@ namespace CastleDB.Runtime
         [SerializeField]
         public string childId;
 
+        /// <summary>
+        /// 获取 role 的字符串表示（用于日志输出）
+        /// 注意：CastleDB.Runtime 不应依赖 Game.Runtime 的 DetectionZoneBinding（避免 asmdef 循环依赖）。
+        /// </summary>
+        public string GetRoleName()
+        {
+            return role switch
+            {
+                0 => "PrimaryAttack",
+                1 => "SecondaryAttack",
+                2 => "Cliff",
+                3 => "Alert",
+                4 => "Lookout",
+                5 => "Custom",
+                _ => $"Unknown({role})"
+            };
+        }
+
         public override string ToString()
         {
-            return $"DetectionZone[id={id}, npcId={npcId}, role={role}, childId={childId}]";
+            return $"DetectionZone[id={id}, npcId={npcId}, role={GetRoleName()}, childId={childId}]";
         }
     }
 

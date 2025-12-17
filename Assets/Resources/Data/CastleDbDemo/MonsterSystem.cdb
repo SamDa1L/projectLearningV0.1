@@ -177,14 +177,20 @@
 				{
 					"id": "M_Knight_DZ",
 					"npcId": "M_Knight",
-					"childId": "HitboxDecetion",
+					"childId": "DZ_Attack",
 					"role": 0
 				},
 				{
 					"id": "M_FlyingEye_DZ",
 					"npcId": "M_FlyingEye",
 					"role": 0,
-					"childId": "AttackDetectionZone"
+					"childId": "DZ_Attack"
+				},
+				{
+					"id": "M_Knight_DZ_SecondZone",
+					"npcId": "M_Knight",
+					"role": 1,
+					"childId": "DZ_NewAttack"
 				}
 			],
 			"separators": [],

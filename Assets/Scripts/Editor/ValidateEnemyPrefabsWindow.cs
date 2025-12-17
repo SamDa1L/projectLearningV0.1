@@ -3,6 +3,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using CastleDB.Runtime;
 
 /// <summary>
 /// 敌人Prefab与场景验证工具（v0.2 Plan A版本）
@@ -38,6 +40,7 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     private bool validatePrefabs = true;
     private bool validateScenes = true;
     private bool validateOldScripts = true;
+    private bool validateCastleDbZones = true;  // 2B: 校验 CastleDB 检测区
     private bool showDetailedLog = true;
 
     // ===== 统计数据 =====
@@ -45,7 +48,11 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     private int validPrefabCount = 0;
     private int sceneEnemyCount = 0;
     private int validSceneEnemyCount = 0;
+    private int castleDbZoneMismatchCount = 0;  // 2B: CastleDB 检测区不匹配数
     private List<string> issuesList = new List<string>();
+
+    // ===== CastleDB 检测区缓存 =====
+    private Dictionary<string, List<DetectionZoneEntry>> _castleDbZonesCache = null;
 
     // ===== 窗口菜单 =====
 
@@ -67,6 +74,7 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         validatePrefabs = EditorGUILayout.Toggle("验证Prefab资源", validatePrefabs);
         validateScenes = EditorGUILayout.Toggle("验证Scene场景", validateScenes);
         validateOldScripts = EditorGUILayout.Toggle("检查旧脚本", validateOldScripts);
+        validateCastleDbZones = EditorGUILayout.Toggle("校验CastleDB检测区 (2B)", validateCastleDbZones);
         showDetailedLog = EditorGUILayout.Toggle("详细日志", showDetailedLog);
 
         GUILayout.Space(10);
@@ -87,6 +95,10 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         if (sceneEnemyCount > 0)
         {
             GUILayout.Label($"Scene敌人实例: {validSceneEnemyCount}/{sceneEnemyCount} 通过验证");
+        }
+        if (validateCastleDbZones && castleDbZoneMismatchCount > 0)
+        {
+            GUILayout.Label($"CastleDB检测区不匹配: {castleDbZoneMismatchCount} 个", EditorStyles.boldLabel);
         }
 
         // 问题列表
@@ -115,8 +127,16 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         validPrefabCount = 0;
         sceneEnemyCount = 0;
         validSceneEnemyCount = 0;
+        castleDbZoneMismatchCount = 0;
+        _castleDbZonesCache = null;
 
         Debug.Log("\n========== Stage1 敌人迁移验证开始 ==========\n");
+
+        // 2B: 加载 CastleDB 检测区数据
+        if (validateCastleDbZones)
+        {
+            LoadCastleDbDetectionZones();
+        }
 
         if (validatePrefabs)
         {
@@ -128,11 +148,85 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             ValidateScenes();
         }
 
+        // 2B: 输出检测区校验报告到日志文件
+        if (validateCastleDbZones)
+        {
+            WriteDetectionZoneValidationReport();
+        }
+
         Debug.Log("\n========== 验证完成 ==========\n");
 
         if (prefabCount == 0 && sceneEnemyCount == 0)
         {
             Debug.LogWarning("[ValidateEnemyPrefabs] 未找到任何敌人Prefab或实例");
+        }
+    }
+
+    /// <summary>
+    /// 2B: 加载 CastleDB 检测区数据
+    /// </summary>
+    private void LoadCastleDbDetectionZones()
+    {
+        Debug.Log("\n[0/2] 加载 CastleDB 检测区数据...");
+
+        _castleDbZonesCache = CastleDbImporter.LoadDetectionZonesGroupedByNpcId();
+
+        if (_castleDbZonesCache == null || _castleDbZonesCache.Count == 0)
+        {
+            Debug.LogWarning("  ⚠ CastleDB 中未找到检测区数据，跳过检测区校验");
+            _castleDbZonesCache = new Dictionary<string, List<DetectionZoneEntry>>();
+        }
+        else
+        {
+            Debug.Log($"  ✓ 已加载 {_castleDbZonesCache.Count} 个 NPC 的检测区定义");
+        }
+    }
+
+    /// <summary>
+    /// 2B: 输出检测区校验报告到日志文件
+    /// </summary>
+    private void WriteDetectionZoneValidationReport()
+    {
+        if (castleDbZoneMismatchCount == 0)
+        {
+            Debug.Log("\n[检测区校验] 所有 Prefab 的 zoneBindings 与 CastleDB 定义一致 ✓");
+            return;
+        }
+
+        // 将不匹配信息写入 CastleDbImport.log
+        try
+        {
+            string logDir = "Logs";
+            if (!Directory.Exists(logDir))
+            {
+                Directory.CreateDirectory(logDir);
+            }
+
+            string logPath = Path.Combine(logDir, "CastleDbImport.log");
+            var logContent = new System.Text.StringBuilder();
+
+            logContent.AppendLine();
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            logContent.AppendLine($"         检测区校验报告 ({System.DateTime.Now:yyyy-MM-dd HH:mm:ss})");
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            logContent.AppendLine();
+            logContent.AppendLine($"检测到 {castleDbZoneMismatchCount} 个检测区不匹配问题：");
+            logContent.AppendLine();
+
+            foreach (var issue in issuesList.Where(i => i.Contains("CastleDB检测区")))
+            {
+                logContent.AppendLine($"• {issue}");
+            }
+
+            logContent.AppendLine();
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+
+            File.AppendAllText(logPath, logContent.ToString());
+            Debug.Log($"[检测区校验] 校验报告已追加到 {logPath}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[检测区校验] 写入日志失败: {ex.Message}");
         }
     }
 
@@ -408,6 +502,12 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             issueList.Add("Missing Damageable");
         }
 
+        // 检查9 (2B)：CastleDB 检测区与 zoneBindings 一致性校验
+        if (validateCastleDbZones && tuningProfileProp != null && tuningProfileProp.objectReferenceValue != null)
+        {
+            ValidateCastleDbDetectionZones(prefab, zoneBindingsProp, tuningProfileProp, prefabPath, issueList);
+        }
+
         if (issueList.Count > 0)
         {
             problems = string.Join(", ", issueList);
@@ -415,6 +515,127 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 2B: 校验 CastleDB 检测区与 Prefab zoneBindings 的一致性
+    ///
+    /// 校验逻辑：
+    /// 1. 从 Profile 文件名提取 npcId（Profile_M_Knight.asset → M_Knight）
+    /// 2. 查找 CastleDB 中该 NPC 的所有检测区定义
+    /// 3. 对比 Prefab 的 zoneBindings：
+    ///    - CastleDB 定义的 role+childId 是否都存在于 zoneBindings
+    ///    - zoneBindings 中的 zone 子物体名是否与 CastleDB childId 匹配
+    /// </summary>
+    private void ValidateCastleDbDetectionZones(
+        GameObject prefab,
+        SerializedProperty zoneBindingsProp,
+        SerializedProperty tuningProfileProp,
+        string prefabPath,
+        List<string> issueList)
+    {
+        if (_castleDbZonesCache == null || _castleDbZonesCache.Count == 0)
+        {
+            return;
+        }
+
+        // 从 Profile 路径提取 npcId
+        var profile = tuningProfileProp.objectReferenceValue as EnemyTuningProfile;
+        if (profile == null)
+        {
+            return;
+        }
+
+        string profilePath = AssetDatabase.GetAssetPath(profile);
+        string profileFileName = Path.GetFileNameWithoutExtension(profilePath);
+        string npcId = profileFileName.StartsWith("Profile_") ? profileFileName.Substring("Profile_".Length) : null;
+
+        if (string.IsNullOrEmpty(npcId))
+        {
+            if (showDetailedLog)
+            {
+                Debug.Log($"  ℹ {prefabPath}: 无法从 Profile 文件名提取 npcId，跳过 CastleDB 检测区校验");
+            }
+            return;
+        }
+
+        // 查找 CastleDB 中该 NPC 的检测区定义
+        if (!_castleDbZonesCache.TryGetValue(npcId, out var castleDbZones) || castleDbZones.Count == 0)
+        {
+            if (showDetailedLog)
+            {
+                Debug.Log($"  ℹ {prefabPath}: CastleDB 中未找到 NPC '{npcId}' 的检测区定义");
+            }
+            return;
+        }
+
+        // 构建 Prefab 的 zoneBindings 映射：role → (childName, zone)
+        var prefabBindings = new Dictionary<DetectionZoneBinding.Role, (string childName, DetectionZone zone)>();
+
+        if (zoneBindingsProp != null && zoneBindingsProp.arraySize > 0)
+        {
+            for (int i = 0; i < zoneBindingsProp.arraySize; i++)
+            {
+                var bindingElement = zoneBindingsProp.GetArrayElementAtIndex(i);
+                var roleField = bindingElement.FindPropertyRelative("role");
+                var zoneField = bindingElement.FindPropertyRelative("zone");
+
+                var role = (DetectionZoneBinding.Role)roleField.enumValueIndex;
+                var zone = zoneField.objectReferenceValue as DetectionZone;
+                string childName = zone != null ? zone.gameObject.name : null;
+
+                // 如果同一 role 有多个 binding，取第一个（或可以扩展为列表）
+                if (!prefabBindings.ContainsKey(role))
+                {
+                    prefabBindings[role] = (childName, zone);
+                }
+            }
+        }
+
+        // 对比：CastleDB 定义 vs Prefab zoneBindings
+        foreach (var castleDbZone in castleDbZones)
+        {
+            var expectedRole = RoleIndexToBindingRole(castleDbZone.role);
+            string expectedChildId = castleDbZone.childId;
+
+            if (!prefabBindings.TryGetValue(expectedRole, out var prefabBinding))
+            {
+                // Prefab 中缺少该 role 的 binding
+                string issue = $"CastleDB检测区不匹配: NPC '{npcId}' 缺少 role={expectedRole} 的 zoneBinding（CastleDB 要求 childId='{expectedChildId}'）";
+                issueList.Add(issue);
+                castleDbZoneMismatchCount++;
+                Debug.LogWarning($"  ✗ {prefabPath}: {issue}");
+            }
+            else if (prefabBinding.zone == null)
+            {
+                // zoneBinding 存在但 zone 引用为空
+                string issue = $"CastleDB检测区不匹配: NPC '{npcId}' 的 role={expectedRole} binding 的 zone 引用为空（CastleDB 要求 childId='{expectedChildId}'）";
+                issueList.Add(issue);
+                castleDbZoneMismatchCount++;
+                Debug.LogWarning($"  ✗ {prefabPath}: {issue}");
+            }
+            else if (!string.IsNullOrEmpty(expectedChildId) && prefabBinding.childName != expectedChildId)
+            {
+                // childId 不匹配
+                string issue = $"CastleDB检测区不匹配: NPC '{npcId}' 的 role={expectedRole} 子物体名不匹配（Prefab: '{prefabBinding.childName}', CastleDB: '{expectedChildId}'）";
+                issueList.Add(issue);
+                castleDbZoneMismatchCount++;
+                Debug.LogWarning($"  ✗ {prefabPath}: {issue}");
+            }
+            else if (showDetailedLog)
+            {
+                Debug.Log($"  ✓ {prefabPath}: CastleDB 检测区 role={expectedRole} childId='{expectedChildId}' 匹配成功");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 将 CastleDB DetectionZone.role (int) 映射为 Prefab zoneBindings 使用的 DetectionZoneBinding.Role
+    /// 使用统一的 DetectionZoneRoleMapper 避免多处 switch 漂移（P1-3.4）
+    /// </summary>
+    private static DetectionZoneBinding.Role RoleIndexToBindingRole(int roleIndex)
+    {
+        return DetectionZoneRoleMapper.ToBindingRole(roleIndex);
     }
 
     /// <summary>

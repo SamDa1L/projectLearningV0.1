@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CastleDB.Runtime;
 
 /// <summary>
@@ -105,6 +106,7 @@ public class CastleDbImporter
         string sourceDescription = null;
         string versionInfo = null;
         var npcs = new List<NpcEntry>();
+        List<DetectionZoneEntry> detectionZones = null;
         var notes = new List<string>();
         int successCount = 0;
         int failureCount = 0;
@@ -144,6 +146,7 @@ public class CastleDbImporter
 
             // 5. 获取所有NPC数据
             npcs = service.GetAllNpcs();
+            detectionZones = service.GetAllDetectionZones();
             if (npcs.Count == 0)
             {
                 status = "NoData";
@@ -256,7 +259,7 @@ public class CastleDbImporter
         {
             // ===== Step 1: finally 中统一写日志（Always Log）=====
             var finishedAt = System.DateTime.Now;
-            WriteImportLog(startedAt, finishedAt, status, message, sourceDescription, versionInfo, npcs, successCount, failureCount, notes);
+            WriteImportLog(startedAt, finishedAt, status, message, sourceDescription, versionInfo, npcs, detectionZones, successCount, failureCount, notes);
         }
     }
 
@@ -374,6 +377,7 @@ public class CastleDbImporter
         string sourceDescription,
         string versionInfo,
         List<NpcEntry> npcs,
+        List<DetectionZoneEntry> detectionZones,
         int successCount,
         int failureCount,
         List<string> notes)
@@ -460,7 +464,7 @@ public class CastleDbImporter
             // ===== Step 5: 生成字段映射表 =====
             if (status == "Success" || status == "CompletedWithFailures")
             {
-                GenerateFieldMappingTable(startedAt, npcs);
+                GenerateFieldMappingTable(startedAt, npcs, detectionZones);
             }
         }
         catch (System.Exception ex)
@@ -472,8 +476,9 @@ public class CastleDbImporter
     /// <summary>
     /// Step 5: 生成字段映射表
     /// 记录 CastleDB → DTO → Profile → Runtime 的字段对应关系
+    /// 2B: 新增 DetectionZone 映射信息
     /// </summary>
-    private static void GenerateFieldMappingTable(System.DateTime timestamp, List<NpcEntry> npcs)
+    private static void GenerateFieldMappingTable(System.DateTime timestamp, List<NpcEntry> npcs, List<DetectionZoneEntry> detectionZones)
     {
         try
         {
@@ -483,7 +488,7 @@ public class CastleDbImporter
             mappingContent.AppendLine();
             mappingContent.AppendLine($"生成时间: {timestamp:yyyy-MM-dd HH:mm:ss}");
             mappingContent.AppendLine();
-            mappingContent.AppendLine("## 字段映射关系");
+            mappingContent.AppendLine("## NPC 字段映射关系");
             mappingContent.AppendLine();
             mappingContent.AppendLine("| CastleDB 字段 | NpcEntry (DTO) | EnemyTuningProfile | EnemyAgentBase (Runtime) | 说明 |");
             mappingContent.AppendLine("|--------------|----------------|-------------------|-------------------------|------|");
@@ -502,6 +507,29 @@ public class CastleDbImporter
             mappingContent.AppendLine("| enableDeathAnimation | enableDeathAnimation | enableDeathAnimation | _enableDeathAnimation | 启用死亡动画 |");
             mappingContent.AppendLine("| useLegacyLogicFallback | useLegacyLogicFallback | useLegacyLogicFallback | _useLegacyLogicFallback | 使用旧逻辑回退 |");
             mappingContent.AppendLine();
+
+            // 2B: DetectionZone 字段映射表
+            mappingContent.AppendLine("## DetectionZone 字段映射关系 (2B)");
+            mappingContent.AppendLine();
+            mappingContent.AppendLine("| CastleDB 字段 | DetectionZoneEntry (DTO) | Prefab 层级 | EnemyAgentBase (Runtime) | 说明 |");
+            mappingContent.AppendLine("|--------------|-------------------------|-------------|-------------------------|------|");
+            mappingContent.AppendLine("| id | id | - | - | 检测区唯一标识符（可选） |");
+            mappingContent.AppendLine("| npcId | npcId | Profile_[npcId].asset | - | 关联的 NPC ID |");
+            mappingContent.AppendLine("| role | role (int→enum) | zoneBindings[].role | DetectionZoneBinding.Role | 检测区角色 |");
+            mappingContent.AppendLine("| childId | childId | 子物体名称 | zoneBindings[].zone.gameObject.name | Prefab 子物体名 |");
+            mappingContent.AppendLine();
+            mappingContent.AppendLine("### Role 枚举映射");
+            mappingContent.AppendLine();
+            mappingContent.AppendLine("| CastleDB 值 | 枚举名称 | 说明 |");
+            mappingContent.AppendLine("|-------------|---------|------|");
+            mappingContent.AppendLine("| 0 | PrimaryAttack | 主攻击检测（GetDetectedTargets 默认来源） |");
+            mappingContent.AppendLine("| 1 | SecondaryAttack | 副攻击检测 |");
+            mappingContent.AppendLine("| 2 | Cliff | 崖边检测 |");
+            mappingContent.AppendLine("| 3 | Alert | 警戒范围 |");
+            mappingContent.AppendLine("| 4 | Lookout | 视野范围 |");
+            mappingContent.AppendLine("| 5 | Custom | 自定义用途 |");
+            mappingContent.AppendLine();
+
             mappingContent.AppendLine("## 当前导入的 NPC 数据");
             mappingContent.AppendLine();
 
@@ -525,6 +553,40 @@ public class CastleDbImporter
                 mappingContent.AppendLine();
             }
 
+            // 2B: 输出检测区数据（按 NPC 分组）
+            if (detectionZones != null && detectionZones.Count > 0)
+            {
+                mappingContent.AppendLine("## 当前导入的 DetectionZone 数据 (2B)");
+                mappingContent.AppendLine();
+
+                // 按 npcId 分组
+                var groupedZones = detectionZones
+                    .Where(z => !string.IsNullOrEmpty(z.npcId))
+                    .GroupBy(z => z.npcId)
+                    .OrderBy(g => g.Key);
+
+                foreach (var group in groupedZones)
+                {
+                    mappingContent.AppendLine($"### NPC: {group.Key}");
+                    mappingContent.AppendLine();
+                    mappingContent.AppendLine("| Role | childId | 说明 |");
+                    mappingContent.AppendLine("|------|---------|------|");
+
+                    foreach (var zone in group)
+                    {
+                        mappingContent.AppendLine($"| {zone.GetRoleName()} | {zone.childId} | {GetRoleDescription(zone.role)} |");
+                    }
+                    mappingContent.AppendLine();
+                }
+            }
+            else
+            {
+                mappingContent.AppendLine("## 当前导入的 DetectionZone 数据 (2B)");
+                mappingContent.AppendLine();
+                mappingContent.AppendLine("*未找到检测区数据*");
+                mappingContent.AppendLine();
+            }
+
             // 写入映射表文件
             string mappingDir = "Logs/NotesLog/CodexProjectLogs";
             string mappingFileName = $"FieldMapping_{timestamp:yyyyMMdd_HHmmss}.md";
@@ -539,6 +601,15 @@ public class CastleDbImporter
         {
             Debug.LogWarning($"[CastleDbImporter] 生成字段映射表失败: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 2B: 获取检测区角色的描述文本
+    /// 使用统一的 DetectionZoneRoleMapper 避免多处 switch 漂移（P1-3.4）
+    /// </summary>
+    private static string GetRoleDescription(int roleIndex)
+    {
+        return DetectionZoneRoleMapper.GetRoleDescription(roleIndex);
     }
 
     [MenuItem("Tools/CastleDB/Open Import Logs")]
@@ -637,5 +708,110 @@ public class CastleDbImporter
         {
             Debug.LogWarning($"[CastleDbImporter] Profile目录不存在: {PROFILE_OUTPUT_DIR}");
         }
+    }
+
+    // ===== 2B: DetectionZone 聚合与校验支持 =====
+
+    /// <summary>
+    /// 按 NPC ID 聚合检测区数据
+    /// 返回一个字典：npcId → List<DetectionZoneEntry>
+    /// 用于 ValidateEnemyPrefabsWindow 校验 Prefab 的 zoneBindings 与 CastleDB 定义是否一致
+    /// </summary>
+    /// <param name="service">已初始化的 CastleDbService</param>
+    /// <returns>按 npcId 聚合的检测区字典</returns>
+    public static Dictionary<string, List<DetectionZoneEntry>> GetDetectionZonesGroupedByNpcId(CastleDbService service)
+    {
+        var result = new Dictionary<string, List<DetectionZoneEntry>>();
+
+        if (service == null)
+        {
+            Debug.LogWarning("[CastleDbImporter] GetDetectionZonesGroupedByNpcId: service 为 null");
+            return result;
+        }
+
+        var allZones = service.GetAllDetectionZones();
+        if (allZones == null || allZones.Count == 0)
+        {
+            Debug.Log("[CastleDbImporter] GetDetectionZonesGroupedByNpcId: 未找到任何检测区数据");
+            return result;
+        }
+
+        foreach (var zone in allZones)
+        {
+            if (string.IsNullOrEmpty(zone.npcId))
+            {
+                Debug.LogWarning($"[CastleDbImporter] 检测区 '{zone.id}' 的 npcId 为空，已跳过");
+                continue;
+            }
+
+            if (!result.ContainsKey(zone.npcId))
+            {
+                result[zone.npcId] = new List<DetectionZoneEntry>();
+            }
+            result[zone.npcId].Add(zone);
+        }
+
+        Debug.Log($"[CastleDbImporter] 检测区聚合完成：{result.Count} 个 NPC，共 {allZones.Count} 个检测区");
+        return result;
+    }
+
+    /// <summary>
+    /// 加载 CastleDB 并返回按 NPC ID 聚合的检测区数据（便捷方法）
+    /// 用于 ValidateEnemyPrefabsWindow 等外部工具
+    /// </summary>
+    /// <returns>按 npcId 聚合的检测区字典，加载失败返回空字典</returns>
+    public static Dictionary<string, List<DetectionZoneEntry>> LoadDetectionZonesGroupedByNpcId()
+    {
+        var result = new Dictionary<string, List<DetectionZoneEntry>>();
+
+        try
+        {
+            var asset = Resources.Load<TextAsset>(CASTLEDB_RESOURCE_PATH);
+            if (asset == null)
+            {
+                Debug.LogWarning($"[CastleDbImporter] LoadDetectionZonesGroupedByNpcId: 无法加载 CastleDB 资源");
+                return result;
+            }
+
+            var source = new CastleDbJsonSource(asset);
+            var service = new CastleDbService();
+            service.Initialize(source);
+
+            return GetDetectionZonesGroupedByNpcId(service);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[CastleDbImporter] LoadDetectionZonesGroupedByNpcId 失败: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// 获取 NPC ID 与 Profile 文件名的映射
+    /// Profile 文件命名规则：Profile_{npcId}.asset
+    /// </summary>
+    /// <returns>npcId → Profile 资源路径 的字典</returns>
+    public static Dictionary<string, string> GetNpcIdToProfilePathMapping()
+    {
+        var result = new Dictionary<string, string>();
+
+        if (!Directory.Exists(PROFILE_OUTPUT_DIR))
+        {
+            return result;
+        }
+
+        var profileFiles = Directory.GetFiles(PROFILE_OUTPUT_DIR, "Profile_*.asset");
+        foreach (var file in profileFiles)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(file);
+            // Profile_M_Knight → M_Knight
+            if (fileName.StartsWith("Profile_"))
+            {
+                string npcId = fileName.Substring("Profile_".Length);
+                result[npcId] = file.Replace("\\", "/");
+            }
+        }
+
+        return result;
     }
 }
