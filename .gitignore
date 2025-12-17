@@ -101,3 +101,4 @@ InitTestScene*.unity*
 # Ignore Docs directory
 /Docs/
 Assets/Logs/
+AGENTS.md
