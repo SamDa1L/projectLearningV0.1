@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor.Animations;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -469,17 +470,7 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
                     // 检查 Animator Controller 是否包含该 Trigger 参数
                     if (animator.runtimeAnimatorController != null)
                     {
-                        bool hasTrigger = false;
-                        foreach (var param in animator.parameters)
-                        {
-                            if (param.name == profile.animationTrigger && param.type == AnimatorControllerParameterType.Trigger)
-                            {
-                                hasTrigger = true;
-                                break;
-                            }
-                        }
-
-                        if (!hasTrigger)
+                        if (!HasTriggerParameterInController(animator.runtimeAnimatorController, profile.animationTrigger))
                         {
                             issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
                         }
@@ -719,29 +710,19 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             // 检查4.1：Animator Controller 是否包含 Profile 中配置的 animationTrigger
             if (tuningProfileProp != null && tuningProfileProp.objectReferenceValue != null)
             {
-                var profile = tuningProfileProp.objectReferenceValue as EnemyTuningProfile;
-                if (profile != null && !string.IsNullOrEmpty(profile.animationTrigger))
+            var profile = tuningProfileProp.objectReferenceValue as EnemyTuningProfile;
+            if (profile != null && !string.IsNullOrEmpty(profile.animationTrigger))
+            {
+                // 检查 Animator Controller 是否包含该 Trigger 参数
+                if (animator.runtimeAnimatorController != null)
                 {
-                    // 检查 Animator Controller 是否包含该 Trigger 参数
-                    if (animator.runtimeAnimatorController != null)
+                    if (!HasTriggerParameterInController(animator.runtimeAnimatorController, profile.animationTrigger))
                     {
-                        bool hasTrigger = false;
-                        foreach (var param in animator.parameters)
-                        {
-                            if (param.name == profile.animationTrigger && param.type == AnimatorControllerParameterType.Trigger)
-                            {
-                                hasTrigger = true;
-                                break;
-                            }
-                        }
-
-                        if (!hasTrigger)
-                        {
-                            issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
-                        }
+                        issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
                     }
                 }
             }
+        }
         }
 
         // 检查5：是否有Rigidbody2D
@@ -758,5 +739,68 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Editor 校验：检查 Controller 资产是否包含指定 Trigger 参数。
+    ///
+    /// 注意：在 Prefab 资源对象上读取 Animator.parameters 可能拿到空/缓存数据，导致误报；
+    /// 因此这里直接读取 AnimatorController 资产的 parameters。
+    /// </summary>
+    private static bool HasTriggerParameterInController(RuntimeAnimatorController controller, string triggerName)
+    {
+        if (controller == null)
+        {
+            return true;
+        }
+
+        triggerName = triggerName?.Trim();
+        if (string.IsNullOrEmpty(triggerName))
+        {
+            return true;
+        }
+
+        controller = UnwrapOverrideController(controller);
+        if (controller == null)
+        {
+            return true;
+        }
+
+        var animatorController = controller as AnimatorController;
+        if (animatorController == null)
+        {
+            // 兜底：尝试通过 AssetDatabase 加载 AnimatorController（兼容少数非直接引用场景）
+            string controllerPath = AssetDatabase.GetAssetPath(controller);
+            if (!string.IsNullOrEmpty(controllerPath))
+            {
+                animatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+            }
+        }
+
+        if (animatorController == null)
+        {
+            // 无法解析 Controller 类型时不报错，避免误报（例如自定义/不可解析的 RuntimeAnimatorController）。
+            return true;
+        }
+
+        foreach (var parameter in animatorController.parameters)
+        {
+            if (parameter.type == AnimatorControllerParameterType.Trigger && parameter.name == triggerName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static RuntimeAnimatorController UnwrapOverrideController(RuntimeAnimatorController controller)
+    {
+        while (controller is AnimatorOverrideController overrideController)
+        {
+            controller = overrideController.runtimeAnimatorController;
+        }
+
+        return controller;
     }
 }
