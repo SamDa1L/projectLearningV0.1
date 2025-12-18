@@ -11280,6 +11280,14 @@ PrefabInstance:
       propertyPath: walkSpeed
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 7958072578570537189, guid: fd4e7f0ab6ba9004d881d9b0e8756bbb, type: 3}
+      propertyPath: showGizmosInPlayMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056538462972235131, guid: fd4e7f0ab6ba9004d881d9b0e8756bbb, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 1.5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
