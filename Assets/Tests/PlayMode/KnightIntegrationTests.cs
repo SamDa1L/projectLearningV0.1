@@ -139,7 +139,7 @@ public class KnightIntegrationTests
     {
         yield return null;
 
-        int initialHealth = damageable.MaxHealth;
+        float initialHealth = damageable.MaxHealth;
         Assert.Greater(initialHealth, 0, "Initial health should be > 0");
 
         const int damage = 10;
@@ -184,8 +184,8 @@ public class KnightIntegrationTests
     {
         yield return null;
 
-        int maxHealth = damageable.MaxHealth;
-        damageable.Hit(maxHealth + 10, Vector2.zero);
+        float maxHealth = damageable.MaxHealth;
+        damageable.Hit((int)(maxHealth + 10), Vector2.zero);
 
         yield return null;
 

@@ -31,7 +31,27 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+    /// <summary>
+    /// 玩家配置资源（阶段 3A）
+    /// 从 CastleDB 导入的玩家配置，包含移动速度、生命值等参数
+    /// 如果未设置，将使用硬编码的默认值
+    /// </summary>
+    [Header("配置")]
+    [SerializeField]
+    [Tooltip("玩家配置资源（从 CastleDB 导入），留空则使用默认值")]
+    private PlayerConfig playerConfig;
+
+    /// <summary>
+    /// 是否使用 PlayerConfig（回退开关，阶段 3A）
+    /// - true: 从 PlayerConfig 加载配置（推荐，数据驱动）
+    /// - false: 使用硬编码的默认值（回退方案）
+    /// </summary>
+    [SerializeField]
+    [Tooltip("是否使用 PlayerConfig 加载配置（false则使用硬编码默认值）")]
+    private bool usePlayerConfigFromCastleDb = true;
+
     /// <summary>行走速度(m/s)</summary>
+    [Header("移动参数（运行时从 PlayerConfig 覆盖）")]
     public float walkSpeed = 5f;
 
     /// <summary>奔跑速度(m/s)</summary>
@@ -311,6 +331,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Awake生命周期函数
     /// 用于在Game Object激活时初始化组件引用
+    /// 阶段 3A: 从 PlayerConfig 加载配置并应用到组件
     /// </summary>
     private void Awake()
     {
@@ -323,6 +344,156 @@ public class PlayerController : MonoBehaviour
         // 获取当前GameObject上的TouchingDirections组件(碰撞检测)
         touchingDirections = GetComponent<TouchingDirections>();
         damageable = GetComponent<Damageable>();
+
+        // 阶段 3A: 从 PlayerConfig 加载配置
+        LoadConfigFromPlayerConfig();
+    }
+
+    /// <summary>
+    /// 从 PlayerConfig 加载配置并应用到组件（阶段 3A）
+    /// - 如果 usePlayerConfigFromCastleDb=false，跳过加载（使用硬编码默认值）
+    /// - 如果未设置 playerConfig，使用默认的硬编码值
+    /// - 应用移动速度参数到 PlayerController
+    /// - 应用生命值参数到 Damageable 组件
+    /// - 应用攻击伤害覆盖到所有 Attack 子物体
+    /// </summary>
+    private void LoadConfigFromPlayerConfig()
+    {
+        // 检查回退开关
+        if (!usePlayerConfigFromCastleDb)
+        {
+            Debug.Log("[PlayerController] usePlayerConfigFromCastleDb=false，使用硬编码默认值");
+            return;
+        }
+
+        // 如果没有配置 PlayerConfig，使用默认值
+        if (playerConfig == null)
+        {
+            Debug.LogWarning("[PlayerController] playerConfig 未设置，使用默认值");
+            return;
+        }
+
+        // 应用移动速度参数
+        walkSpeed = playerConfig.walkSpeed;
+        runSpeed = playerConfig.runSpeed;
+        airWalkSpeed = playerConfig.airWalkSpeed;
+        jumpImpules = playerConfig.jumpImpulse;  // 注意字段名映射
+        climbSpeed = playerConfig.climbSpeed;
+
+        // 应用 Damageable 配置
+        if (damageable != null)
+        {
+            DamageableStats stats = new DamageableStats
+            {
+                maxHealth = playerConfig.maxHealth,
+                invincibilityTime = playerConfig.invincibilityTime,
+                knockbackMultiplier = 1.0f  // 玩家受击击退倍率（可后续从配置读取）
+            };
+            damageable.Configure(stats);
+
+            Debug.Log($"[PlayerController] 已从 PlayerConfig 应用配置: " +
+                $"walkSpeed={walkSpeed}, runSpeed={runSpeed}, maxHealth={playerConfig.maxHealth}, " +
+                $"baseAttackDamage={playerConfig.baseAttackDamage}");
+        }
+        else
+        {
+            Debug.LogError("[PlayerController] Damageable 组件未找到，无法应用配置");
+        }
+
+        // 阶段 3A: 应用攻击伤害覆盖
+        ApplyAttackDamageOverrides();
+    }
+
+    /// <summary>
+    /// 应用攻击伤害覆盖到所有 Attack 子物体（阶段 3A）
+    /// 遍历所有子物体，找到 Attack 组件，根据 attackId 从 PlayerConfig 计算最终伤害
+    /// </summary>
+    private void ApplyAttackDamageOverrides()
+    {
+        if (playerConfig == null)
+        {
+            return;
+        }
+
+        // 获取所有子物体的 Attack 组件（包括深层嵌套）
+        Attack[] attacks = GetComponentsInChildren<Attack>(true);
+
+        if (attacks.Length == 0)
+        {
+            Debug.LogWarning("[PlayerController] 未找到任何 Attack 组件");
+            return;
+        }
+
+        int appliedCount = 0;
+        foreach (var attack in attacks)
+        {
+            // 跳过未配置 attackId 的 Attack
+            if (string.IsNullOrEmpty(attack.attackId))
+            {
+                Debug.LogWarning($"[PlayerController] Attack 组件 '{attack.gameObject.name}' 的 attackId 为空，跳过");
+                continue;
+            }
+
+            // 从 PlayerConfig 计算最终伤害
+            int finalDamage = playerConfig.CalculateFinalDamage(
+                PlayerAttackOverride.TargetType.Hitbox,
+                attack.attackId
+            );
+
+            // 应用伤害值
+            attack.attackDamage = finalDamage;
+            appliedCount++;
+
+            Debug.Log($"[PlayerController] 已应用攻击伤害覆盖: " +
+                $"attackId={attack.attackId}, finalDamage={finalDamage}, " +
+                $"GameObject={attack.gameObject.name}");
+        }
+
+        Debug.Log($"[PlayerController] 攻击伤害覆盖应用完成，共处理 {appliedCount}/{attacks.Length} 个 Attack 组件");
+    }
+
+    /// <summary>
+    /// 应用Projectile伤害覆盖（阶段 3A）
+    /// 在实例化Projectile后调用此方法，根据Resources路径从PlayerConfig计算最终伤害
+    ///
+    /// 使用方法：
+    /// GameObject projectile = Instantiate(projectilePrefab, ...);
+    /// GetComponent&lt;PlayerController&gt;().ApplyProjectileDamageOverride(projectile, "Prefabs/Projectiles/Player/Arrow");
+    /// </summary>
+    /// <param name="projectileObject">实例化的Projectile GameObject</param>
+    /// <param name="resourcesPath">Projectile的Resources路径（不含.prefab后缀），例如: "Prefabs/Projectiles/Player/Arrow"</param>
+    public void ApplyProjectileDamageOverride(GameObject projectileObject, string resourcesPath)
+    {
+        if (!usePlayerConfigFromCastleDb || playerConfig == null)
+        {
+            return;
+        }
+
+        if (projectileObject == null)
+        {
+            Debug.LogWarning("[PlayerController] ApplyProjectileDamageOverride: projectileObject is null");
+            return;
+        }
+
+        var projectile = projectileObject.GetComponent<Projectile>();
+        if (projectile == null)
+        {
+            Debug.LogWarning($"[PlayerController] Projectile component not found on '{projectileObject.name}'");
+            return;
+        }
+
+        // 从 PlayerConfig 计算最终伤害
+        int finalDamage = playerConfig.CalculateFinalDamage(
+            PlayerAttackOverride.TargetType.Projectile,
+            resourcesPath
+        );
+
+        // 应用伤害值
+        projectile.damage = finalDamage;
+
+        Debug.Log($"[PlayerController] 已应用Projectile伤害覆盖: " +
+            $"resourcesPath={resourcesPath}, finalDamage={finalDamage}, " +
+            $"GameObject={projectileObject.name}");
     }
 
     // Start is called before the first frame update

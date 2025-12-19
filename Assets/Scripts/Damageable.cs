@@ -6,11 +6,11 @@ using UnityEngine.Events;
 
 /// <summary>
 /// 传递给 Damageable 的数据包
-/// 用于从配置（如 EnemyTuningProfile）向 Damageable 组件传递数值
+/// 用于从配置（如 EnemyTuningProfile、PlayerConfig）向 Damageable 组件传递数值
 /// </summary>
 public struct DamageableStats
 {
-    public int maxHealth;
+    public float maxHealth;  // 阶段 3A: 迁移为 float 以支持玩家小数生命值
     public float invincibilityTime;
     public float knockbackMultiplier;
 }
@@ -45,26 +45,26 @@ public struct DamageableStats
     }
 
     [SerializeField]
-    private int _maxHealth = 100;
+    private float _maxHealth = 100;
 
-    public int MaxHealth 
+    public float MaxHealth
     {
         get
         {
             return _maxHealth;
         }
-        set 
-        { 
+        set
+        {
             _maxHealth = value;
         }
     }
 
     [SerializeField]
-    private int _health = 100;
+    private float _health = 100;
 
-    public int Health 
+    public float Health
     {
-        get 
+        get
         {
             return _health;
         }
@@ -200,12 +200,16 @@ public struct DamageableStats
     // 角色是否被恢复血
     public bool Heal(int healthRestore)
     {
-        if (IsAlive && Health < MaxHealth) 
+        if (IsAlive && Health < MaxHealth)
         {
-            int maxHeal = Mathf.Max(MaxHealth - Health, 0);
-            int actualHeal = Mathf.Min(maxHeal, healthRestore);
+            // 阶段 3A: maxHealth 已迁移为 float，使用 float 运算并 clamp
+            float maxHeal = Mathf.Max(MaxHealth - Health, 0);
+            float actualHeal = Mathf.Min(maxHeal, healthRestore);
             Health += actualHeal;
-            CharacterEvents.characterHealed?.Invoke(gameObject, actualHeal);
+
+            // 事件仍使用 int，对实际治疗量四舍五入
+            int actualHealInt = Mathf.RoundToInt(actualHeal);
+            CharacterEvents.characterHealed?.Invoke(gameObject, actualHealInt);
             return true;
 
 

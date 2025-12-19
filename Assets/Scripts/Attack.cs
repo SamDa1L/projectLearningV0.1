@@ -5,6 +5,14 @@ using UnityEngine;
 public class Attack : MonoBehaviour
 {
     //Collider2D attackCollider;
+
+    /// <summary>
+    /// 攻击的稳定标识符（用于 CastleDB PlayerAttackOverride 匹配）
+    /// 默认值为 GameObject.name，后续可独立修改而不影响层级/动画绑定
+    /// </summary>
+    [Tooltip("攻击的稳定标识符，用于 CastleDB 配置匹配。建议使用 ASCII/数字/下划线，避免空格/中文/符号")]
+    public string attackId = "";
+
     public int attackDamage = 10;
     public Vector2 knockback = Vector2.zero;
 
@@ -29,19 +37,19 @@ public class Attack : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D collision)
     {
-        //����Ƿ��ܱ�����
+        //����Ƿ��ܱ�����
         Damageable damageable = collision.GetComponent<Damageable>();
 
         if (damageable != null) 
         {
             Vector2 deliveredKnockBack = transform.parent.localScale.x > 0 ? knockback : new Vector2(-knockback.x, knockback.y);
 
-            //����Ŀ��
+            //����Ŀ��
             bool gotHit = damageable.Hit(attackDamage, deliveredKnockBack);
 
             if (gotHit) 
             {
-                Debug.Log(collision.name + "����" + attackDamage);
+                Debug.Log(collision.name + "����" + attackDamage);
             }
             
         }

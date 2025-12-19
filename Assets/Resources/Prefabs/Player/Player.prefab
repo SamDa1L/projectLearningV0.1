@@ -137,6 +137,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 30cddd37d1075d2428d176c1e866674c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerConfig: {fileID: 11400000, guid: 6b8b04acbdcb58b4085d006902f07fe8, type: 2}
+  usePlayerConfigFromCastleDb: 1
   walkSpeed: 5
   runSpeed: 8
   airWalkSpeed: 3
@@ -295,6 +297,10 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: dff0e133-3832-42b3-8e66-0075d0b827d1
     m_ActionName: Player/RangedAttack[/Keyboard/f]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: c6ac2d81-c60d-45a9-904c-5cae4cb97692
+    m_ActionName: UI/Escape[/Keyboard/escape]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -422,6 +428,7 @@ MonoBehaviour:
   _health: 100
   _isAlive: 1
   isInvincible: 0
+  knockbackMultiplier: 1
   invincibilityTime: 1
 --- !u!114 &522005193886461813
 MonoBehaviour:
@@ -437,6 +444,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   projectilePrefab: {fileID: 4694569668316640340, guid: 3fe02455579132b47a8d0d98e6e33ddd, type: 3}
   launchPoint: {fileID: 8757556435578522254}
+  projectileResourcesPath: 
 --- !u!1 &717923170876553134
 GameObject:
   m_ObjectHideFlags: 0
@@ -543,6 +551,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackId: AA_1
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &2380609363039472820
@@ -650,6 +659,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackId: SW_1
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &2544925186212235424
@@ -757,6 +767,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackId: SW_3
   attackDamage: 25
   knockback: {x: 5, y: 2}
 --- !u!1 &4144285741232646864
@@ -866,6 +877,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackId: AA_2
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &4783766941176099912
@@ -973,6 +985,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackId: SW_2
   attackDamage: 20
   knockback: {x: 1, y: 2}
 --- !u!1 &6214352526223808250

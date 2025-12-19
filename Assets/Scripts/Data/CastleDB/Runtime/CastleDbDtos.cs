@@ -57,6 +57,9 @@ namespace CastleDB.Runtime
         public List<PlayerEntry> playerLines = new List<PlayerEntry>();
 
         [System.NonSerialized]
+        public List<PlayerAttackOverrideEntry> playerAttackOverrideLines = new List<PlayerAttackOverrideEntry>();
+
+        [System.NonSerialized]
         public List<DetectionZoneEntry> detectionZoneLines = new List<DetectionZoneEntry>();
 
         [System.NonSerialized]
@@ -148,7 +151,7 @@ namespace CastleDB.Runtime
     /// <summary>
     /// 玩家表条目
     /// 对应 CastleDB 中 Player Sheet 的一行数据
-    /// 阶段 3 使用
+    /// 阶段 3A: 玩家基础属性
     /// </summary>
     [System.Serializable]
     public class PlayerEntry
@@ -156,9 +159,74 @@ namespace CastleDB.Runtime
         [SerializeField]
         public string id;
 
+        [SerializeField]
+        public float maxHealth;
+
+        [SerializeField]
+        public float invincibilityTime;
+
+        [SerializeField]
+        public float walkSpeed;
+
+        [SerializeField]
+        public float runSpeed;
+
+        [SerializeField]
+        public float airWalkSpeed;
+
+        [SerializeField]
+        public float jumpImpulse;  // 注意：CastleDB中字段名是jumpImpulse，代码中是jumpImpules（拼写错误）
+
+        [SerializeField]
+        public float climbSpeed;
+
+        [SerializeField]
+        public float baseAttackDamage;
+
         public override string ToString()
         {
-            return $"Player[id={id}]";
+            return $"Player[id={id}, maxHealth={maxHealth}, walkSpeed={walkSpeed}, runSpeed={runSpeed}, baseAttackDamage={baseAttackDamage}]";
+        }
+    }
+
+    /// <summary>
+    /// 玩家攻击覆盖表条目
+    /// 对应 CastleDB 中 PlayerAttackOverride Sheet 的一行数据
+    /// 阶段 3A: 攻击伤害链路
+    ///
+    /// 设计说明：
+    /// - targetType: 0=Hitbox, 1=Projectile
+    /// - targetId:
+    ///   - Hitbox: Attack.attackId（稳定ID）
+    ///   - Projectile: Resources.Load路径（例如 Prefabs/Projectiles/Player/Arrow）
+    /// - damageMultiplier: 伤害倍率（必须 > 0）
+    /// - damageOverride: 直接覆盖伤害值（若填写必须 > 0，优先级高于multiplier）
+    /// </summary>
+    [System.Serializable]
+    public class PlayerAttackOverrideEntry
+    {
+        [SerializeField]
+        public string id;
+
+        [SerializeField]
+        public string playerId;
+
+        [SerializeField]
+        public int targetType;  // 0=Hitbox, 1=Projectile
+
+        [SerializeField]
+        public string targetId;
+
+        [SerializeField]
+        public float damageMultiplier;
+
+        [SerializeField]
+        public int damageOverride;  // 0表示未设置
+
+        public override string ToString()
+        {
+            string overrideStr = damageOverride > 0 ? $", override={damageOverride}" : "";
+            return $"PlayerAttackOverride[id={id}, playerId={playerId}, targetType={targetType}, targetId={targetId}, multiplier={damageMultiplier}{overrideStr}]";
         }
     }
 

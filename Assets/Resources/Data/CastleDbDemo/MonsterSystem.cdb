@@ -145,8 +145,57 @@
 		},
 		{
 			"name": "Player",
-			"columns": [],
-			"lines": [],
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibilityTime"
+				},
+				{
+					"typeStr": "4",
+					"name": "walkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "runSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "airWalkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "jumpImpulse"
+				},
+				{
+					"typeStr": "4",
+					"name": "climbSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "baseAttackDamage"
+				}
+			],
+			"lines": [
+				{
+					"maxHealth": 500,
+					"invincibilityTime": 2,
+					"walkSpeed": 3,
+					"runSpeed": 8,
+					"airWalkSpeed": 5,
+					"jumpImpulse": 5,
+					"climbSpeed": 3,
+					"baseAttackDamage": 20,
+					"id": "player"
+				}
+			],
 			"separators": [],
 			"props": {}
 		},
@@ -218,6 +267,91 @@
 				{
 					"key": "featureFlags",
 					"value": "UseNewDamageable=true"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "PlayerAttackOverride",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:Player",
+					"name": "playerId",
+					"display": null
+				},
+				{
+					"typeStr": "5:Hitbox,Projectile",
+					"name": "targetType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "targetId",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "damageMultiplier"
+				},
+				{
+					"typeStr": "3",
+					"name": "damageOverride"
+				}
+			],
+			"lines": [
+				{
+					"id": "SW_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SW_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SW_3",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_3",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AA_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AA_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AA_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AA_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "Arrow_1",
+					"playerId": "player",
+					"targetType": 1,
+					"targetId": "Prefabs/Projectiles/Player/Arrow",
+					"damageMultiplier": 1,
+					"damageOverride": 0
 				}
 			],
 			"separators": [],

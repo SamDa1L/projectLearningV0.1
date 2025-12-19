@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afaf691b6bf18fd4eb9081e545a24268, type: 3}
+  m_Name: PlayerConfig
+  m_EditorClassIdentifier: 
+  version: 0.2
+  playerId: player
+  maxHealth: 500
+  invincibilityTime: 2
+  walkSpeed: 3
+  runSpeed: 60
+  airWalkSpeed: 5
+  jumpImpulse: 5
+  climbSpeed: 3
+  baseAttackDamage: 20
+  attackOverrides:
+  - id: SW_1
+    playerId: player
+    targetType: 0
+    targetId: SW_1
+    damageMultiplier: 1
+    damageOverride: 0
+  - id: SW_2
+    playerId: player
+    targetType: 0
+    targetId: SW_2
+    damageMultiplier: 1
+    damageOverride: 0
+  - id: SW_3
+    playerId: player
+    targetType: 0
+    targetId: SW_3
+    damageMultiplier: 1
+    damageOverride: 0
+  - id: AA_1
+    playerId: player
+    targetType: 0
+    targetId: AA_1
+    damageMultiplier: 1
+    damageOverride: 0
+  - id: AA_2
+    playerId: player
+    targetType: 0
+    targetId: AA_2
+    damageMultiplier: 1
+    damageOverride: 0
+  - id: Arrow_1
+    playerId: player
+    targetType: 1
+    targetId: Assets/Resources/Prefabs/Projectiles/Player/Arrow.prefab
+    damageMultiplier: 1
+    damageOverride: 0

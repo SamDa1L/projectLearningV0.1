@@ -26,6 +26,7 @@ public class CastleDbImporter
     // 配置常量
     private const string CASTLEDB_RESOURCE_PATH = "Data/CastleDbDemo/MonsterSystem";
     private const string PROFILE_OUTPUT_DIR = "Assets/Resources/Profiles";
+    private const string PLAYER_CONFIG_PATH = "Assets/Resources/Config/PlayerConfig.asset";
     private const string IMPORT_LOG_DIR = "Logs";
     private const string IMPORT_LOG_FILE = "Logs/CastleDbImport.log";
     private const string BACKUP_DIR = "Logs/CastleDBImport/Backups";
@@ -147,6 +148,12 @@ public class CastleDbImporter
             // 5. 获取所有NPC数据
             npcs = service.GetAllNpcs();
             detectionZones = service.GetAllDetectionZones();
+            var players = service.GetAllPlayers();
+            var playerAttackOverrides = service.GetAllPlayerAttackOverrides();
+
+            // 阶段 3A: 提前查找 playerEntry，避免重复声明
+            PlayerEntry playerEntry = players.Find(p => p.id == "player");
+
             if (npcs.Count == 0)
             {
                 status = "NoData";
@@ -194,6 +201,83 @@ public class CastleDbImporter
                 }
             }
 
+            // ===== 阶段 3A: Player 数据校验 =====
+            // 校验 Player Sheet：必须存在且 id=="player" 只有1行
+            if (players.Count == 0)
+            {
+                validationErrors.Add("Player Sheet 不存在或为空（阶段 3A 必需）");
+            }
+            else
+            {
+                // 使用前面已声明的 playerEntry
+                if (playerEntry == null)
+                {
+                    validationErrors.Add("Player Sheet 中未找到 id=='player' 的条目（阶段 3A 必需）");
+                }
+                else
+                {
+                    // 基础属性校验
+                    if (playerEntry.maxHealth <= 0)
+                        validationErrors.Add($"Player 'maxHealth' <= 0 ({playerEntry.maxHealth})");
+                    if (playerEntry.walkSpeed <= 0)
+                        validationErrors.Add($"Player 'walkSpeed' <= 0 ({playerEntry.walkSpeed})");
+                    if (playerEntry.runSpeed <= 0)
+                        validationErrors.Add($"Player 'runSpeed' <= 0 ({playerEntry.runSpeed})");
+                    if (playerEntry.airWalkSpeed <= 0)
+                        validationErrors.Add($"Player 'airWalkSpeed' <= 0 ({playerEntry.airWalkSpeed})");
+                    if (playerEntry.jumpImpulse <= 0)
+                        validationErrors.Add($"Player 'jumpImpulse' <= 0 ({playerEntry.jumpImpulse})");
+                    if (playerEntry.climbSpeed <= 0)
+                        validationErrors.Add($"Player 'climbSpeed' <= 0 ({playerEntry.climbSpeed})");
+                    if (playerEntry.baseAttackDamage <= 0)
+                        validationErrors.Add($"Player 'baseAttackDamage' <= 0 ({playerEntry.baseAttackDamage})");
+                    if (playerEntry.invincibilityTime < 0)
+                        validationErrors.Add($"Player 'invincibilityTime' < 0 ({playerEntry.invincibilityTime})");
+                }
+            }
+
+            // ===== 阶段 3A: PlayerAttackOverride 数据校验 =====
+            // PlayerAttackOverride Sheet 必须存在（可为空）
+            if (playerAttackOverrides == null)
+            {
+                validationErrors.Add("PlayerAttackOverride Sheet 不存在（阶段 3A 必需，可为空列表）");
+            }
+            else
+            {
+                foreach (var pao in playerAttackOverrides)
+                {
+                    // damageMultiplier 必须 > 0
+                    if (pao.damageMultiplier <= 0)
+                    {
+                        validationErrors.Add($"PlayerAttackOverride '{pao.id}' 的 damageMultiplier <= 0 ({pao.damageMultiplier})");
+                    }
+
+                    // damageOverride 若填写必须 > 0
+                    if (pao.damageOverride < 0)
+                    {
+                        validationErrors.Add($"PlayerAttackOverride '{pao.id}' 的 damageOverride < 0 ({pao.damageOverride})");
+                    }
+
+                    // targetId 不能为空
+                    if (string.IsNullOrWhiteSpace(pao.targetId))
+                    {
+                        validationErrors.Add($"PlayerAttackOverride '{pao.id}' 的 targetId 为空");
+                    }
+                }
+
+                // 唯一性校验：(playerId, targetType, targetId) 必须唯一
+                var uniqueCheck = new HashSet<string>();
+                foreach (var pao in playerAttackOverrides)
+                {
+                    string key = $"{pao.playerId}|{pao.targetType}|{pao.targetId}";
+                    if (uniqueCheck.Contains(key))
+                    {
+                        validationErrors.Add($"PlayerAttackOverride 存在重复的三元组: playerId='{pao.playerId}', targetType={pao.targetType}, targetId='{pao.targetId}'");
+                    }
+                    uniqueCheck.Add(key);
+                }
+            }
+
             // 如果有校验错误，拒绝导入（0写入）
             if (validationErrors.Count > 0)
             {
@@ -206,6 +290,7 @@ public class CastleDbImporter
 
             // ===== Step 5.2: 批量写入（全部校验通过后才执行）=====
             var dirtyProfiles = new List<EnemyTuningProfile>();
+            var dirtyPlayerConfig = new List<PlayerConfig>();  // 阶段 3A
 
             foreach (var npc in npcs)
             {
@@ -221,6 +306,17 @@ public class CastleDbImporter
                 }
             }
 
+            // ===== 阶段 3A: PlayerConfig 批量写入 =====
+            // 使用前面已声明的 playerEntry
+            if (playerEntry != null)
+            {
+                var playerConfig = CreateOrUpdatePlayerConfigInternal(playerEntry, playerAttackOverrides, notes);
+                if (playerConfig != null)
+                {
+                    dirtyPlayerConfig.Add(playerConfig);
+                }
+            }
+
             // ===== Step 5.3: 统一SetDirty + 一次性SaveAssets（原子写）=====
             if (dirtyProfiles.Count > 0)
             {
@@ -228,9 +324,24 @@ public class CastleDbImporter
                 {
                     EditorUtility.SetDirty(profile);
                 }
+                Debug.Log($"[CastleDbImporter] 已标记 {dirtyProfiles.Count} 个 EnemyTuningProfile 为 Dirty");
+            }
 
+            // 阶段 3A: PlayerConfig SetDirty
+            if (dirtyPlayerConfig.Count > 0)
+            {
+                foreach (var config in dirtyPlayerConfig)
+                {
+                    EditorUtility.SetDirty(config);
+                }
+                Debug.Log($"[CastleDbImporter] 已标记 {dirtyPlayerConfig.Count} 个 PlayerConfig 为 Dirty");
+            }
+
+            // 统一保存
+            if (dirtyProfiles.Count > 0 || dirtyPlayerConfig.Count > 0)
+            {
                 AssetDatabase.SaveAssets();
-                Debug.Log($"[CastleDbImporter] 已保存 {dirtyProfiles.Count} 个Profile到磁盘");
+                Debug.Log($"[CastleDbImporter] 已保存所有资产到磁盘");
             }
 
             // 7. 确定最终状态
@@ -321,6 +432,53 @@ public class CastleDbImporter
             Debug.LogError($"[CastleDbImporter] {errorMsg}");
             notes.Add($"❌ {errorMsg}");
             return null;  // 返回 null 表示失败
+        }
+    }
+
+    /// <summary>
+    /// 创建或更新 PlayerConfig（阶段 3A）
+    /// 内部方法，不调用 SaveAssets
+    /// </summary>
+    private static PlayerConfig CreateOrUpdatePlayerConfigInternal(
+        PlayerEntry player,
+        List<PlayerAttackOverrideEntry> overrides,
+        List<string> notes)
+    {
+        try
+        {
+            // 确保输出目录存在
+            string configDir = Path.GetDirectoryName(PLAYER_CONFIG_PATH);
+            if (!string.IsNullOrEmpty(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            // 查找或创建 PlayerConfig
+            PlayerConfig config = AssetDatabase.LoadAssetAtPath<PlayerConfig>(PLAYER_CONFIG_PATH);
+
+            if (config == null)
+            {
+                // 创建新 PlayerConfig
+                config = ScriptableObject.CreateInstance<PlayerConfig>();
+                AssetDatabase.CreateAsset(config, PLAYER_CONFIG_PATH);
+                Debug.Log($"[CastleDbImporter] 创建新 PlayerConfig: {PLAYER_CONFIG_PATH}");
+            }
+            else
+            {
+                Debug.Log($"[CastleDbImporter] 更新现有 PlayerConfig: {PLAYER_CONFIG_PATH}");
+            }
+
+            // 应用 CastleDB 数据
+            config.ApplyFromCastleDb(player, overrides);
+
+            return config;
+        }
+        catch (System.Exception ex)
+        {
+            string errorMsg = $"创建/更新 PlayerConfig 失败 ({player?.id ?? "null"}): {ex.Message}";
+            Debug.LogError($"[CastleDbImporter] {errorMsg}");
+            notes.Add($"❌ {errorMsg}");
+            return null;
         }
     }
 

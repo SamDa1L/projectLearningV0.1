@@ -58,6 +58,11 @@ namespace CastleDB.Runtime
         List<PlayerEntry> GetAllPlayers();
 
         /// <summary>
+        /// 获取所有玩家攻击覆盖数据（阶段 3A）
+        /// </summary>
+        List<PlayerAttackOverrideEntry> GetAllPlayerAttackOverrides();
+
+        /// <summary>
         /// 获取所有检测区数据
         /// </summary>
         List<DetectionZoneEntry> GetAllDetectionZones();
@@ -118,6 +123,11 @@ namespace CastleDB.Runtime
         /// 获取所有玩家
         /// </summary>
         List<PlayerEntry> GetAllPlayers();
+
+        /// <summary>
+        /// 获取所有玩家攻击覆盖（阶段 3A）
+        /// </summary>
+        List<PlayerAttackOverrideEntry> GetAllPlayerAttackOverrides();
 
         /// <summary>
         /// 获取所有检测区
