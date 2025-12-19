@@ -27,6 +27,7 @@ public class CastleDbImporter
     private const string CASTLEDB_RESOURCE_PATH = "Data/CastleDbDemo/MonsterSystem";
     private const string PROFILE_OUTPUT_DIR = "Assets/Resources/Profiles";
     private const string PLAYER_CONFIG_PATH = "Assets/Resources/Config/PlayerConfig.asset";
+    private const string ABILITY_CATALOG_PATH = "Assets/Resources/Config/AbilityCatalog.asset";  // 阶段 3B
     private const string IMPORT_LOG_DIR = "Logs";
     private const string IMPORT_LOG_FILE = "Logs/CastleDbImport.log";
     private const string BACKUP_DIR = "Logs/CastleDBImport/Backups";
@@ -150,6 +151,7 @@ public class CastleDbImporter
             detectionZones = service.GetAllDetectionZones();
             var players = service.GetAllPlayers();
             var playerAttackOverrides = service.GetAllPlayerAttackOverrides();
+            var abilities = service.GetAllAbilities();  // 阶段 3B
 
             // 阶段 3A: 提前查找 playerEntry，避免重复声明
             PlayerEntry playerEntry = players.Find(p => p.id == "player");
@@ -278,6 +280,91 @@ public class CastleDbImporter
                 }
             }
 
+            // ===== 阶段 3B: Ability Sheet 数据校验 =====
+            // Ability Sheet 必须存在（可为空）
+            if (abilities == null)
+            {
+                validationErrors.Add("Ability Sheet 不存在（阶段 3B 必需，可为空列表）");
+            }
+            else
+            {
+                // 1. Registry 校验：所有 ability.id 必须在 AbilityRegistry 中注册
+                foreach (var ability in abilities)
+                {
+                    if (!AbilityRegistry.IsRegistered(ability.id))
+                    {
+                        validationErrors.Add($"Ability '{ability.id}' 未在 AbilityRegistry 中注册（必须先在 AbilityRegistry.registeredIds 中添加）");
+                    }
+                }
+
+                // 2. paramsJson 校验：若非空，必须是合法 JSON
+                foreach (var ability in abilities)
+                {
+                    if (!string.IsNullOrWhiteSpace(ability.paramsJson))
+                    {
+                        try
+                        {
+                            // 尝试解析 JSON
+                            UnityEngine.JsonUtility.FromJson<object>(ability.paramsJson);
+                        }
+                        catch (System.Exception)
+                        {
+                            validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 不是合法的 JSON: {ability.paramsJson}");
+                        }
+                    }
+                }
+
+                // 3. 最小覆盖率校验：至少要有 5 个条目（对应 5 个基础能力）
+                if (abilities.Count < 5)
+                {
+                    validationErrors.Add($"Ability Sheet 至少需要 5 个条目（基础能力覆盖），当前只有 {abilities.Count} 个");
+                }
+
+                // 4. hookType 覆盖率校验：每个 hookType 至少要有 1 个启用的能力
+                var hookTypeCoverage = new Dictionary<int, int>();
+                for (int i = 0; i <= 4; i++) // 0=Move, 1=Run, 2=Jump, 3=Attack, 4=RangedAttack
+                {
+                    hookTypeCoverage[i] = 0;
+                }
+
+                foreach (var ability in abilities)
+                {
+                    if (ability.enabled && hookTypeCoverage.ContainsKey(ability.hookType))
+                    {
+                        hookTypeCoverage[ability.hookType]++;
+                    }
+                }
+
+                foreach (var kvp in hookTypeCoverage)
+                {
+                    if (kvp.Value == 0)
+                    {
+                        string hookTypeName = ((AbilityHookType)kvp.Key).ToString();
+                        validationErrors.Add($"Ability Sheet 的 hookType {hookTypeName} 没有任何启用的能力（至少需要 1 个）");
+                    }
+                }
+
+                // 5. 唯一性校验：同一个 hookType 下，priority 必须唯一（用于排序和调试）
+                var priorityCheck = new Dictionary<int, HashSet<int>>();
+                for (int i = 0; i <= 4; i++)
+                {
+                    priorityCheck[i] = new HashSet<int>();
+                }
+
+                foreach (var ability in abilities)
+                {
+                    if (priorityCheck.ContainsKey(ability.hookType))
+                    {
+                        if (priorityCheck[ability.hookType].Contains(ability.priority))
+                        {
+                            string hookTypeName = ((AbilityHookType)ability.hookType).ToString();
+                            validationErrors.Add($"Ability Sheet 的 hookType {hookTypeName} 中存在重复的 priority {ability.priority}（必须唯一以保证执行顺序确定）");
+                        }
+                        priorityCheck[ability.hookType].Add(ability.priority);
+                    }
+                }
+            }
+
             // 如果有校验错误，拒绝导入（0写入）
             if (validationErrors.Count > 0)
             {
@@ -291,6 +378,7 @@ public class CastleDbImporter
             // ===== Step 5.2: 批量写入（全部校验通过后才执行）=====
             var dirtyProfiles = new List<EnemyTuningProfile>();
             var dirtyPlayerConfig = new List<PlayerConfig>();  // 阶段 3A
+            var dirtyAbilityCatalog = new List<AbilityCatalog>();  // 阶段 3B
 
             foreach (var npc in npcs)
             {
@@ -314,6 +402,19 @@ public class CastleDbImporter
                 if (playerConfig != null)
                 {
                     dirtyPlayerConfig.Add(playerConfig);
+
+                    // ===== 阶段 3A: Projectile prefab 级一次性赋值（按文档要求）=====
+                    ApplyProjectileDamageToPrefabs(playerConfig, playerAttackOverrides, notes);
+                }
+            }
+
+            // ===== 阶段 3B: AbilityCatalog 批量写入 =====
+            if (abilities != null && abilities.Count > 0)
+            {
+                var abilityCatalog = CreateOrUpdateAbilityCatalogInternal(abilities, notes);
+                if (abilityCatalog != null)
+                {
+                    dirtyAbilityCatalog.Add(abilityCatalog);
                 }
             }
 
@@ -337,8 +438,18 @@ public class CastleDbImporter
                 Debug.Log($"[CastleDbImporter] 已标记 {dirtyPlayerConfig.Count} 个 PlayerConfig 为 Dirty");
             }
 
+            // 阶段 3B: AbilityCatalog SetDirty
+            if (dirtyAbilityCatalog.Count > 0)
+            {
+                foreach (var catalog in dirtyAbilityCatalog)
+                {
+                    EditorUtility.SetDirty(catalog);
+                }
+                Debug.Log($"[CastleDbImporter] 已标记 {dirtyAbilityCatalog.Count} 个 AbilityCatalog 为 Dirty");
+            }
+
             // 统一保存
-            if (dirtyProfiles.Count > 0 || dirtyPlayerConfig.Count > 0)
+            if (dirtyProfiles.Count > 0 || dirtyPlayerConfig.Count > 0 || dirtyAbilityCatalog.Count > 0)
             {
                 AssetDatabase.SaveAssets();
                 Debug.Log($"[CastleDbImporter] 已保存所有资产到磁盘");
@@ -471,6 +582,29 @@ public class CastleDbImporter
             // 应用 CastleDB 数据
             config.ApplyFromCastleDb(player, overrides);
 
+            // 阶段 3A: 记录玩家字段映射导入摘要
+            notes.Add($"✅ PlayerConfig: id={player.id}");
+            notes.Add($"   │ 基础属性映射:");
+            notes.Add($"   │  • maxHealth: {player.maxHealth}");
+            notes.Add($"   │  • invincibilityTime: {player.invincibilityTime}");
+            notes.Add($"   │  • walkSpeed: {player.walkSpeed}");
+            notes.Add($"   │  • runSpeed: {player.runSpeed}");
+            notes.Add($"   │  • airWalkSpeed: {player.airWalkSpeed}");
+            notes.Add($"   │  • jumpImpulse: {player.jumpImpulse}");
+            notes.Add($"   │  • climbSpeed: {player.climbSpeed}");
+            notes.Add($"   │  • baseAttackDamage: {player.baseAttackDamage}");
+            notes.Add($"   │ 攻击覆盖配置: {overrides.Count} 条");
+
+            // 列出所有攻击覆盖配置
+            foreach (var ov in overrides)
+            {
+                string targetTypeStr = ov.targetType == 0 ? "Hitbox" : "Projectile";
+                string overrideInfo = ov.damageOverride > 0
+                    ? $"override={ov.damageOverride}"
+                    : $"multiplier={ov.damageMultiplier}";
+                notes.Add($"   │  • {ov.id}: {targetTypeStr} '{ov.targetId}' ({overrideInfo})");
+            }
+
             return config;
         }
         catch (System.Exception ex)
@@ -483,38 +617,234 @@ public class CastleDbImporter
     }
 
     /// <summary>
-    /// 生成现有Profile的备份
+    /// 创建或更新 AbilityCatalog（阶段 3B）
+    /// 内部方法，不调用 SaveAssets
+    /// </summary>
+    private static AbilityCatalog CreateOrUpdateAbilityCatalogInternal(
+        List<AbilityEntry> abilities,
+        List<string> notes)
+    {
+        try
+        {
+            // 确保输出目录存在
+            string catalogDir = Path.GetDirectoryName(ABILITY_CATALOG_PATH);
+            if (!string.IsNullOrEmpty(catalogDir) && !Directory.Exists(catalogDir))
+            {
+                Directory.CreateDirectory(catalogDir);
+            }
+
+            // 查找或创建 AbilityCatalog
+            AbilityCatalog catalog = AssetDatabase.LoadAssetAtPath<AbilityCatalog>(ABILITY_CATALOG_PATH);
+
+            if (catalog == null)
+            {
+                // 创建新 AbilityCatalog
+                catalog = ScriptableObject.CreateInstance<AbilityCatalog>();
+                AssetDatabase.CreateAsset(catalog, ABILITY_CATALOG_PATH);
+                Debug.Log($"[CastleDbImporter] 创建新 AbilityCatalog: {ABILITY_CATALOG_PATH}");
+            }
+            else
+            {
+                Debug.Log($"[CastleDbImporter] 更新现有 AbilityCatalog: {ABILITY_CATALOG_PATH}");
+            }
+
+            // 应用 CastleDB 数据
+            catalog.ApplyFromCastleDb(abilities);
+
+            // 阶段 3B: 记录能力导入摘要
+            notes.Add($"✅ AbilityCatalog: {abilities.Count} 个能力配置");
+
+            // 统计每个 hookType 的能力数量
+            var hookTypeStats = new Dictionary<AbilityHookType, int>();
+            foreach (AbilityHookType hookType in System.Enum.GetValues(typeof(AbilityHookType)))
+            {
+                hookTypeStats[hookType] = 0;
+            }
+
+            foreach (var ability in abilities)
+            {
+                if (ability.enabled)
+                {
+                    hookTypeStats[(AbilityHookType)ability.hookType]++;
+                }
+            }
+
+            notes.Add($"   │ 能力分布:");
+            foreach (var kvp in hookTypeStats)
+            {
+                notes.Add($"   │  • {kvp.Key}: {kvp.Value} 个启用");
+            }
+
+            // 列出所有能力配置
+            notes.Add($"   │ 能力详情:");
+            foreach (var ability in abilities)
+            {
+                string enabledStr = ability.enabled ? "✓" : "✗";
+                string hookTypeName = ((AbilityHookType)ability.hookType).ToString();
+                notes.Add($"   │  • [{enabledStr}] {ability.id}: {hookTypeName}, priority={ability.priority}");
+            }
+
+            return catalog;
+        }
+        catch (System.Exception ex)
+        {
+            string errorMsg = $"创建/更新 AbilityCatalog 失败: {ex.Message}";
+            Debug.LogError($"[CastleDbImporter] {errorMsg}");
+            notes.Add($"❌ {errorMsg}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 阶段 3A: 应用 Projectile 伤害到 prefab（prefab 级一次性赋值）
+    /// 遍历 PlayerAttackOverride 中 targetType=1 的条目，根据 Resources 路径加载 prefab，
+    /// 直接修改 prefab 的 Projectile.damage 字段
+    /// </summary>
+    private static void ApplyProjectileDamageToPrefabs(
+        PlayerConfig playerConfig,
+        List<PlayerAttackOverrideEntry> overrides,
+        List<string> notes)
+    {
+        if (playerConfig == null || overrides == null)
+            return;
+
+        // 筛选出 Projectile 类型的覆盖配置
+        var projectileOverrides = overrides.FindAll(o => o.targetType == 1);
+
+        if (projectileOverrides.Count == 0)
+        {
+            notes.Add("   │ Projectile prefab 处理: 无 Projectile 覆盖配置");
+            return;
+        }
+
+        notes.Add($"   │ Projectile prefab 级赋值: {projectileOverrides.Count} 个");
+
+        int successCount = 0;
+        int failureCount = 0;
+
+        foreach (var ov in projectileOverrides)
+        {
+            try
+            {
+                // 从 Resources 路径加载 prefab
+                GameObject prefab = Resources.Load<GameObject>(ov.targetId);
+                if (prefab == null)
+                {
+                    string errorMsg = $"Projectile prefab 未找到: '{ov.targetId}'";
+                    Debug.LogWarning($"[CastleDbImporter] {errorMsg}");
+                    notes.Add($"   │  ⚠️ {ov.id}: {errorMsg}");
+                    failureCount++;
+                    continue;
+                }
+
+                // 获取 Projectile 组件
+                Projectile projectile = prefab.GetComponent<Projectile>();
+                if (projectile == null)
+                {
+                    string errorMsg = $"Projectile 组件未找到: '{ov.targetId}'";
+                    Debug.LogWarning($"[CastleDbImporter] {errorMsg}");
+                    notes.Add($"   │  ⚠️ {ov.id}: {errorMsg}");
+                    failureCount++;
+                    continue;
+                }
+
+                // 计算最终伤害
+                int finalDamage = playerConfig.CalculateFinalDamage(
+                    PlayerAttackOverride.TargetType.Projectile,
+                    ov.targetId);
+
+                // 记录原始值
+                int originalDamage = projectile.damage;
+
+                // 修改 prefab 的 damage 值
+                projectile.damage = finalDamage;
+
+                // 标记 prefab 为 dirty
+                EditorUtility.SetDirty(prefab);
+
+                successCount++;
+                notes.Add($"   │  ✅ {ov.id}: '{ov.targetId}' damage {originalDamage} → {finalDamage}");
+
+                Debug.Log($"[CastleDbImporter] Projectile prefab 已更新: {ov.targetId} damage={finalDamage}");
+            }
+            catch (System.Exception ex)
+            {
+                string errorMsg = $"处理 Projectile prefab 失败: {ov.id} - {ex.Message}";
+                Debug.LogError($"[CastleDbImporter] {errorMsg}");
+                notes.Add($"   │  ❌ {ov.id}: {errorMsg}");
+                failureCount++;
+            }
+        }
+
+        if (successCount > 0 || failureCount > 0)
+        {
+            notes.Add($"   │ Projectile prefab 处理完成: 成功 {successCount}, 失败 {failureCount}");
+        }
+    }
+
+    /// <summary>
+    /// 生成现有Profile、PlayerConfig和AbilityCatalog的备份
+    /// 阶段 3A: 同时备份 EnemyTuningProfile 和 PlayerConfig
+    /// 阶段 3B: 增加 AbilityCatalog 备份
     /// </summary>
     private static void BackupExistingProfiles()
     {
         try
         {
-            if (!Directory.Exists(PROFILE_OUTPUT_DIR))
-                return;
-
-            // 创建备份目录
-            if (!Directory.Exists(BACKUP_DIR))
-            {
-                Directory.CreateDirectory(BACKUP_DIR);
-            }
-
             // 生成备份时间戳
             string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string backupPath = Path.Combine(BACKUP_DIR, $"Backup_{timestamp}");
 
-            // 复制所有Profile到备份目录
-            var profileFiles = Directory.GetFiles(PROFILE_OUTPUT_DIR, "Profile_*.asset");
-            if (profileFiles.Length > 0)
+            int backupCount = 0;
+
+            // 1. 备份 EnemyTuningProfile 文件
+            if (Directory.Exists(PROFILE_OUTPUT_DIR))
             {
-                Directory.CreateDirectory(backupPath);
-                foreach (var file in profileFiles)
+                var profileFiles = Directory.GetFiles(PROFILE_OUTPUT_DIR, "Profile_*.asset");
+                if (profileFiles.Length > 0)
                 {
-                    string fileName = Path.GetFileName(file);
-                    string destPath = Path.Combine(backupPath, fileName);
-                    File.Copy(file, destPath, true);
+                    Directory.CreateDirectory(backupPath);
+                    foreach (var file in profileFiles)
+                    {
+                        string fileName = Path.GetFileName(file);
+                        string destPath = Path.Combine(backupPath, fileName);
+                        File.Copy(file, destPath, true);
+                        backupCount++;
+                    }
+                }
+            }
+
+            // 2. 备份 PlayerConfig 文件（阶段 3A）
+            if (File.Exists(PLAYER_CONFIG_PATH))
+            {
+                if (!Directory.Exists(backupPath))
+                {
+                    Directory.CreateDirectory(backupPath);
                 }
 
-                Debug.Log($"[CastleDbImporter] 备份完成: {backupPath} ({profileFiles.Length} 个文件)");
+                string fileName = Path.GetFileName(PLAYER_CONFIG_PATH);
+                string destPath = Path.Combine(backupPath, fileName);
+                File.Copy(PLAYER_CONFIG_PATH, destPath, true);
+                backupCount++;
+            }
+
+            // 3. 备份 AbilityCatalog 文件（阶段 3B）
+            if (File.Exists(ABILITY_CATALOG_PATH))
+            {
+                if (!Directory.Exists(backupPath))
+                {
+                    Directory.CreateDirectory(backupPath);
+                }
+
+                string fileName = Path.GetFileName(ABILITY_CATALOG_PATH);
+                string destPath = Path.Combine(backupPath, fileName);
+                File.Copy(ABILITY_CATALOG_PATH, destPath, true);
+                backupCount++;
+            }
+
+            if (backupCount > 0)
+            {
+                Debug.Log($"[CastleDbImporter] 备份完成: {backupPath} ({backupCount} 个文件)");
             }
         }
         catch (System.Exception ex)
@@ -787,14 +1117,14 @@ public class CastleDbImporter
 
     /// <summary>
     /// Step 5: 一键回滚到上次导入前的状态
-    /// 从最新的备份目录恢复 Profiles
+    /// 从最新的备份目录恢复 Profiles、PlayerConfig 和 AbilityCatalog（阶段 3A、3B）
     /// </summary>
     [MenuItem("Tools/CastleDB/Revert Last Import")]
     public static void RevertLastImport()
     {
         if (!EditorUtility.DisplayDialog(
             "确认回滚",
-            "此操作将恢复到上次导入前的 Profile 状态。\n当前的 Profile 将被覆盖。\n\n是否继续？",
+            "此操作将恢复到上次导入前的 Profile、PlayerConfig 和 AbilityCatalog 状态。\n当前的文件将被覆盖。\n\n是否继续？",
             "确认回滚",
             "取消"))
         {
@@ -827,11 +1157,11 @@ public class CastleDbImporter
 
             Debug.Log($"[CastleDbImporter] 开始回滚到备份: {backupName}");
 
-            // 恢复备份文件到 Profile 目录
-            var backupFiles = Directory.GetFiles(latestBackup, "Profile_*.asset");
             int restoredCount = 0;
 
-            foreach (var backupFile in backupFiles)
+            // 1. 恢复 EnemyTuningProfile 文件
+            var profileBackupFiles = Directory.GetFiles(latestBackup, "Profile_*.asset");
+            foreach (var backupFile in profileBackupFiles)
             {
                 string fileName = Path.GetFileName(backupFile);
                 string destPath = Path.Combine(PROFILE_OUTPUT_DIR, fileName);
@@ -840,12 +1170,30 @@ public class CastleDbImporter
                 restoredCount++;
             }
 
+            // 2. 恢复 PlayerConfig 文件（阶段 3A）
+            string playerConfigBackup = Path.Combine(latestBackup, Path.GetFileName(PLAYER_CONFIG_PATH));
+            if (File.Exists(playerConfigBackup))
+            {
+                File.Copy(playerConfigBackup, PLAYER_CONFIG_PATH, true);
+                restoredCount++;
+                Debug.Log($"[CastleDbImporter] 已恢复 PlayerConfig");
+            }
+
+            // 3. 恢复 AbilityCatalog 文件（阶段 3B）
+            string abilityCatalogBackup = Path.Combine(latestBackup, Path.GetFileName(ABILITY_CATALOG_PATH));
+            if (File.Exists(abilityCatalogBackup))
+            {
+                File.Copy(abilityCatalogBackup, ABILITY_CATALOG_PATH, true);
+                restoredCount++;
+                Debug.Log($"[CastleDbImporter] 已恢复 AbilityCatalog");
+            }
+
             AssetDatabase.Refresh();
 
-            Debug.Log($"[CastleDbImporter] 回滚完成！已恢复 {restoredCount} 个 Profile 文件");
+            Debug.Log($"[CastleDbImporter] 回滚完成！已恢复 {restoredCount} 个文件");
             EditorUtility.DisplayDialog(
                 "回滚成功",
-                $"已从备份 {backupName} 恢复 {restoredCount} 个 Profile 文件。",
+                $"已从备份 {backupName} 恢复 {restoredCount} 个文件。",
                 "确定");
         }
         catch (System.Exception ex)

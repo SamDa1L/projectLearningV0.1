@@ -50,11 +50,8 @@ public class ProjectileLauncher : MonoBehaviour
             origScale.z
             );
 
-        // 阶段 3A: 应用 Projectile 伤害覆盖
-        if (playerController != null && !string.IsNullOrEmpty(projectileResourcesPath))
-        {
-            playerController.ApplyProjectileDamageOverride(projectile, projectileResourcesPath);
-        }
+        // 阶段 3A: Projectile 使用 prefab 级一次性赋值（在 CastleDB Import 时已设置）
+        // 不再需要运行时动态赋值，prefab 的 damage 字段已包含正确值
     }
 
 

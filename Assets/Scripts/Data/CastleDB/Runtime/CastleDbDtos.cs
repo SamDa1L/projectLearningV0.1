@@ -134,17 +134,30 @@ namespace CastleDB.Runtime
     /// 对应 CastleDB 中 Ability Sheet 的一行数据
     /// </summary>
     [System.Serializable]
+    /// <summary>
+    /// 能力表条目（阶段 3B）
+    /// 对应 CastleDB 中 Ability Sheet 的一行数据
+    /// </summary>
     public class AbilityEntry
     {
         [SerializeField]
         public string id;
 
         [SerializeField]
-        public int attackType; // 0=Meele, 1=Projectile
+        public int hookType; // 0=Move, 1=Run, 2=Jump, 3=Attack, 4=RangedAttack
+
+        [SerializeField]
+        public int priority;
+
+        [SerializeField]
+        public bool enabled;
+
+        [SerializeField]
+        public string paramsJson; // Optional JSON parameters (0.2 不消费，但必须是合法 JSON)
 
         public override string ToString()
         {
-            return $"Ability[id={id}, attackType={attackType}]";
+            return $"Ability[id={id}, hookType={hookType}, priority={priority}, enabled={enabled}]";
         }
     }
 

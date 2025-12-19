@@ -358,6 +358,7 @@ namespace CastleDB.Runtime
 
         /// <summary>
         /// 将通用 lines 转换为 AbilityEntry 列表
+        /// 阶段 3B: 支持 hookType/priority/enabled/paramsJson
         /// </summary>
         private List<AbilityEntry> ConvertLinesToAbilityEntries(List<object> lines)
         {
@@ -371,7 +372,10 @@ namespace CastleDB.Runtime
                     result.Add(new AbilityEntry
                     {
                         id = GetStringValue(dict, "id"),
-                        attackType = GetIntValue(dict, "attackType")
+                        hookType = GetIntValue(dict, "hookType"),
+                        priority = GetIntValue(dict, "priority"),
+                        enabled = GetBoolValue(dict, "enabled"),
+                        paramsJson = GetStringValue(dict, "paramsJson") // Optional, 可能为空
                     });
                 }
             }

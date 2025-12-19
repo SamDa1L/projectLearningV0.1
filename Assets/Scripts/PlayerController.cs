@@ -70,7 +70,8 @@ public class PlayerController : MonoBehaviour
     /// - X轴(moveInput.x): 来自A/D键，用于水平移动
     /// - Y轴(moveInput.y): 来自W/S键，预留给爬墙系统使用
     /// </summary>
-    Vector2 moveInput;
+    [System.NonSerialized]
+    public Vector2 moveInput;
 
     /// <summary>
     /// 水平输入(只包含X轴分量)
@@ -82,7 +83,8 @@ public class PlayerController : MonoBehaviour
     /// - 正数: 向右
     /// 用途: 判断IsMoving状态，控制角色朝向
     /// </summary>
-    float moveInputHorizontal = 0f;
+    [System.NonSerialized]
+    public float moveInputHorizontal = 0f;
 
     /// <summary>
     /// 垂直输入(只包含Y轴分量)
@@ -94,14 +96,16 @@ public class PlayerController : MonoBehaviour
     /// - 正数: 向上
     /// 用途: 后续爬墙系统中控制攀爬方向
     /// </summary>
-    float moveInputVertical = 0f;
+    [System.NonSerialized]
+    public float moveInputVertical = 0f;
 
     /// <summary>爬墙输入向量
     ///
     /// 说明: 用于爬墙时的上下输入，与moveInput相同但用于爬墙逻辑
     /// 用途: 在爬墙状态下控制垂直方向的速度
     /// </summary>
-    Vector2 climbInput;
+    [System.NonSerialized]
+    public Vector2 climbInput;
 
     /// <summary>爬墙速度(m/s)
     ///
@@ -174,9 +178,9 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    /// <summary>是否在移动的内部字段</summary>
+    /// <summary>是否在移动的内部字段（阶段 3B：改为 public 以支持能力系统）</summary>
     [SerializeField]
-    private bool _isMoving = false;
+    public bool _isMoving = false;
 
     /// <summary>
     /// 是否在进行水平移动的属性
@@ -201,9 +205,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>是否在奔跑的内部字段</summary>
+    /// <summary>是否在奔跑的内部字段（阶段 3B：改为 public 以支持能力系统）</summary>
     [SerializeField]
-    private bool _isRunning = false;
+    public bool _isRunning = false;
 
     /// <summary>
     /// 是否在奔跑的属性
@@ -277,9 +281,9 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    /// <summary>是否正在爬墙的内部字段</summary>
+    /// <summary>是否正在爬墙的内部字段（阶段 3B：改为 public 以支持能力系统）</summary>
     [SerializeField]
-    private bool _isClimbing = false;
+    public bool _isClimbing = false;
 
     /// <summary>
     /// 是否正在爬墙的属性
@@ -327,6 +331,9 @@ public class PlayerController : MonoBehaviour
     /// <summary>动画系统组件引用(用于驱动动画状态)</summary>
     Animator animator;
 
+    /// <summary>能力系统（阶段 3B）</summary>
+    private AbilitySystem abilitySystem;
+
 
     /// <summary>
     /// Awake生命周期函数
@@ -347,6 +354,12 @@ public class PlayerController : MonoBehaviour
 
         // 阶段 3A: 从 PlayerConfig 加载配置
         LoadConfigFromPlayerConfig();
+
+        // 阶段 3B: 构建能力系统（当 usePlayerConfigFromCastleDb = true 时）
+        if (usePlayerConfigFromCastleDb)
+        {
+            BuildAbilitySystem();
+        }
     }
 
     /// <summary>
@@ -453,47 +466,94 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 应用Projectile伤害覆盖（阶段 3A）
-    /// 在实例化Projectile后调用此方法，根据Resources路径从PlayerConfig计算最终伤害
-    ///
-    /// 使用方法：
-    /// GameObject projectile = Instantiate(projectilePrefab, ...);
-    /// GetComponent&lt;PlayerController&gt;().ApplyProjectileDamageOverride(projectile, "Prefabs/Projectiles/Player/Arrow");
+    /// 构建能力系统（阶段 3B）
+    /// - 从 Resources 加载 AbilityCatalog
+    /// - 根据 catalog 构建 AbilitySystem 并注册能力
+    /// - 如果某个 hookType 没有任何启用的能力，输出警告（但允许运行）
     /// </summary>
-    /// <param name="projectileObject">实例化的Projectile GameObject</param>
-    /// <param name="resourcesPath">Projectile的Resources路径（不含.prefab后缀），例如: "Prefabs/Projectiles/Player/Arrow"</param>
+    private void BuildAbilitySystem()
+    {
+        // 加载 AbilityCatalog
+        AbilityCatalog catalog = Resources.Load<AbilityCatalog>("Config/AbilityCatalog");
+        if (catalog == null)
+        {
+            Debug.LogError("[PlayerController] 未找到 AbilityCatalog (Resources/Config/AbilityCatalog.asset)，能力系统构建失败");
+            return;
+        }
+
+        Debug.Log($"[PlayerController] 开始构建能力系统，共 {catalog.entries.Count} 个能力配置");
+
+        // 创建 AbilitySystem 实例
+        abilitySystem = new AbilitySystem();
+
+        // 统计每个 hookType 的注册数量（用于验证覆盖率）
+        Dictionary<AbilityHookType, int> hookTypeCount = new Dictionary<AbilityHookType, int>();
+        foreach (AbilityHookType hookType in System.Enum.GetValues(typeof(AbilityHookType)))
+        {
+            hookTypeCount[hookType] = 0;
+        }
+
+        // 遍历 catalog，为每个启用的能力创建实例并注册
+        int registeredCount = 0;
+        int skippedCount = 0;
+        foreach (var entry in catalog.entries)
+        {
+            // 跳过禁用的能力
+            if (!entry.enabled)
+            {
+                Debug.Log($"[PlayerController] 跳过禁用的能力: {entry.id}");
+                skippedCount++;
+                continue;
+            }
+
+            // 使用 AbilityRegistry 创建能力实例
+            IPlayerAbility ability = AbilityRegistry.CreateAbility(
+                entry.id,
+                this,
+                entry.priority,
+                entry.enabled
+            );
+
+            if (ability == null)
+            {
+                Debug.LogError($"[PlayerController] 能力创建失败: {entry.id}，跳过注册");
+                continue;
+            }
+
+            // 注册到 AbilitySystem
+            abilitySystem.RegisterAbility(entry.hookType, ability);
+            hookTypeCount[entry.hookType]++;
+            registeredCount++;
+
+            Debug.Log($"[PlayerController] 已注册能力: {entry.id}, hookType={entry.hookType}, priority={entry.priority}");
+        }
+
+        // 验证覆盖率：检查每个 hookType 是否至少有一个启用的能力
+        foreach (var kvp in hookTypeCount)
+        {
+            if (kvp.Value == 0)
+            {
+                Debug.LogWarning($"[PlayerController] hookType {kvp.Key} 没有任何启用的能力，输入将无效");
+            }
+        }
+
+        Debug.Log($"[PlayerController] 能力系统构建完成: 注册 {registeredCount} 个，跳过 {skippedCount} 个");
+    }
+
+    /// <summary>
+    /// [已废弃 - 阶段 3A] 应用Projectile伤害覆盖
+    ///
+    /// 注意：此方法已废弃，不再使用。
+    /// 阶段 3A 使用 prefab 级一次性赋值（在 CastleDB Import 时完成）。
+    /// Projectile prefab 的 damage 字段在导入时已被正确设置，运行时不需要再修改。
+    ///
+    /// 保留此方法仅用于向后兼容，实际运行时不应调用。
+    /// </summary>
+    [System.Obsolete("使用 prefab 级一次性赋值，此方法已废弃", true)]
     public void ApplyProjectileDamageOverride(GameObject projectileObject, string resourcesPath)
     {
-        if (!usePlayerConfigFromCastleDb || playerConfig == null)
-        {
-            return;
-        }
-
-        if (projectileObject == null)
-        {
-            Debug.LogWarning("[PlayerController] ApplyProjectileDamageOverride: projectileObject is null");
-            return;
-        }
-
-        var projectile = projectileObject.GetComponent<Projectile>();
-        if (projectile == null)
-        {
-            Debug.LogWarning($"[PlayerController] Projectile component not found on '{projectileObject.name}'");
-            return;
-        }
-
-        // 从 PlayerConfig 计算最终伤害
-        int finalDamage = playerConfig.CalculateFinalDamage(
-            PlayerAttackOverride.TargetType.Projectile,
-            resourcesPath
-        );
-
-        // 应用伤害值
-        projectile.damage = finalDamage;
-
-        Debug.Log($"[PlayerController] 已应用Projectile伤害覆盖: " +
-            $"resourcesPath={resourcesPath}, finalDamage={finalDamage}, " +
-            $"GameObject={projectileObject.name}");
+        // 此方法已废弃，不应调用
+        Debug.LogWarning("[PlayerController] ApplyProjectileDamageOverride 已废弃，使用 prefab 级赋值");
     }
 
     // Start is called before the first frame update
@@ -550,32 +610,34 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 移动输入回调函数
+    /// 移动输入回调函数（阶段 3B：适配器模式）
     /// 由Input System在输入事件发生时调用
     ///
-    /// 参数说明:
-    /// - context: 输入事件的上下文，包含输入值和事件类型
+    /// 适配器职责（阶段 3B）：
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统，不执行业务逻辑
+    /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
-    /// 功能:
+    /// 原有功能（回退模式）:
     /// - 读取移动输入的Vector2值(WASD或摇杆)
     /// - 分离处理水平输入(X轴/A/D)和垂直输入(Y轴/W/S)
     /// - 水平输入驱动行走/奔跑动画和角色朝向
     /// - 垂直输入用于爬墙系统(W/S控制上下爬行)
-    ///
-    /// 爬墙逻辑:
-    /// - 检查是否接触墙壁(IsOnWall)
-    /// - 检查是否有垂直输入(moveInputVertical ≠ 0)
-    /// - 如果两者都满足，进入爬墙状态(IsClimbing = true)
-    /// - 爬墙时禁止水平移动，IsMoving = false
-    /// - 爬墙时保持朝向，不改变facing
     /// </summary>
     public void OnMove(InputAction.CallbackContext context)
     {
         // 从输入事件读取Vector2值(来自WASD键或左摇杆)
         moveInput = context.ReadValue<Vector2>();
 
+        // 阶段 3B: 适配器模式分支
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            // Dispatch 到能力系统（不执行业务逻辑）
+            AbilityInput input = AbilityInput.Performed(moveInput, true);
+            abilitySystem.Dispatch(AbilityHookType.Move, input);
+            return; // 立即返回，不执行下方的原有逻辑
+        }
 
-
+        // 回退模式：执行原有业务逻辑
         if (IsAlive)
         {
             // 分离水平和垂直输入分量
@@ -614,12 +676,10 @@ public class PlayerController : MonoBehaviour
                 // 朝向保持不变，不调用SetFacingDirection
             }
         }
-        else 
+        else
         {
             IsMoving = false;
         }
-
-        
     }
 
     /// <summary>
@@ -654,21 +714,43 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 奔跑输入回调函数
+    /// 奔跑输入回调函数（阶段 3B：适配器模式）
     /// 由Input System在按下/释放奔跑键时调用(默认Shift键)
     ///
-    /// 参数说明:
-    /// - context: 输入事件的上下文
-    ///   - context.started: 键按下时
-    ///   - context.canceled: 键释放时
+    /// 适配器职责（阶段 3B）：
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
-    /// 功能:
+    /// 原有功能（回退模式）:
     /// - 按下时设置IsRunning=true，启用奔跑状态
     /// - 释放时设置IsRunning=false，返回行走状态
     /// </summary>
     public void OnRun(InputAction.CallbackContext context)
     {
-        // 检查输入事件类型
+        // 阶段 3B: 适配器模式分支
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            // 适配输入阶段
+            AbilityInput input;
+            if (context.started)
+            {
+                input = AbilityInput.Started(isPressed: true);
+            }
+            else if (context.canceled)
+            {
+                input = AbilityInput.Canceled();
+            }
+            else
+            {
+                return; // 忽略其他阶段
+            }
+
+            // Dispatch 到能力系统
+            abilitySystem.Dispatch(AbilityHookType.Run, input);
+            return;
+        }
+
+        // 回退模式：执行原有业务逻辑
         if (context.started)
         {
             // 奔跑键按下 - 启用奔跑
@@ -682,26 +764,34 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 跳跃输入回调函数
+    /// 跳跃输入回调函数（阶段 3B：适配器模式）
     /// 由Input System在按下空格键时调用
     ///
-    /// 跳跃条件(二选一):
-    /// - 地面跳跃: 在地面上(IsGrounded = true)
-    /// - 壁跳: 正在爬墙(IsClimbing = true)且接触墙壁(IsOnWall = true)
+    /// 适配器职责（阶段 3B）：
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
-    /// 前置条件:
-    /// - context.started: 空格键刚按下
-    /// - CanMove: 允许移动(不在攻击等特殊状态)
-    ///
-    /// 功能:
+    /// 原有功能（回退模式）:
+    /// - 支持地面跳跃和壁跳
     /// - 触发Animator的跳跃动画
     /// - 给予Y轴速度(jumpImpules)实现向上运动
-    /// - 如果是壁跳，给予横向冲力(离墙方向)，实现推离墙壁
-    /// - 壁跳后立即退出爬墙状态
+    /// - 壁跳时给予横向冲力
     /// </summary>
     public void OnJump(InputAction.CallbackContext context)
     {
-        // 检查是否满足跳跃条件
+        // 阶段 3B: 适配器模式分支
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            // 只处理 started 阶段
+            if (context.started)
+            {
+                AbilityInput input = AbilityInput.Started(isPressed: true);
+                abilitySystem.Dispatch(AbilityHookType.Jump, input);
+            }
+            return;
+        }
+
+        // 回退模式：执行原有业务逻辑
         if (context.started && CanMove)
         {
             // 支持地面跳跃或壁跳
@@ -716,8 +806,6 @@ public class PlayerController : MonoBehaviour
                 if (canJumpFromWall)
                 {
                     // 壁跳逻辑: 给予离墙的横向冲力 + 向上冲力
-                    // 横向冲力大小: 8f(可在Inspector中调整)
-                    // 方向: 与当前朝向相反(推离墙壁)
                     float wallJumpForce = 8f;
                     float horizontalForce = IsFacingRight ? -wallJumpForce : wallJumpForce;
 
@@ -737,20 +825,32 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 攻击输入回调函数
+    /// 攻击输入回调函数（阶段 3B：适配器模式）
     /// 由Input System在按下攻击键时调用(默认Z键或J键)
     ///
-    /// 参数说明:
-    /// - context: 输入事件的上下文
-    ///   - context.started: 攻击键刚按下
+    /// 适配器职责（阶段 3B）：
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
-    /// 功能:
+    /// 原有功能（回退模式）:
     /// - 触发Animator的攻击动画
     /// - 动画系统会自动控制CanMove参数，禁止攻击时的移动
     /// </summary>
     public void OnAttack(InputAction.CallbackContext context)
     {
-        // 检查攻击键是否刚按下
+        // 阶段 3B: 适配器模式分支
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            // 只处理 started 阶段
+            if (context.started)
+            {
+                AbilityInput input = AbilityInput.Started(isPressed: true);
+                abilitySystem.Dispatch(AbilityHookType.Attack, input);
+            }
+            return;
+        }
+
+        // 回退模式：执行原有业务逻辑
         if (context.started)
         {
             // 触发Animator的攻击动画
@@ -759,9 +859,32 @@ public class PlayerController : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// 远程攻击输入回调函数（阶段 3B：适配器模式）
+    /// 由Input System在按下远程攻击键时调用
+    ///
+    /// 适配器职责（阶段 3B）：
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
+    ///
+    /// 原有功能（回退模式）:
+    /// - 触发Animator的远程攻击动画
+    /// </summary>
     public void OnRangedAttack(InputAction.CallbackContext context)
     {
-        // 远程攻击
+        // 阶段 3B: 适配器模式分支
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            // 只处理 started 阶段
+            if (context.started)
+            {
+                AbilityInput input = AbilityInput.Started(isPressed: true);
+                abilitySystem.Dispatch(AbilityHookType.RangedAttack, input);
+            }
+            return;
+        }
+
+        // 回退模式：执行原有业务逻辑
         if (context.started)
         {
             // 触发Animator的攻击动画

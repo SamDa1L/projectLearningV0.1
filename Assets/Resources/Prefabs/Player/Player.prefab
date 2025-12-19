@@ -441,10 +441,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 60f1d431b6b930a4e98a797d8fa59e35, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 4694569668316640340, guid: 3fe02455579132b47a8d0d98e6e33ddd, type: 3}
+  m_EditorClassIdentifier:
+  projectilePrefab: {fileID: 4694569668316640340, guid: 54b64f3f910399e41be63194c8594571, type: 3}
   launchPoint: {fileID: 8757556435578522254}
-  projectileResourcesPath: 
+  projectileResourcesPath: Prefabs/Projectiles/Player/Arrow
 --- !u!1 &717923170876553134
 GameObject:
   m_ObjectHideFlags: 0

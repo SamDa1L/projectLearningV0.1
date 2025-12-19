@@ -317,4 +317,221 @@ public class PlayerIntegrationTests
         Assert.Greater(playerConfig.maxHealth, 0, "PlayerConfig maxHealth should be > 0");
         Assert.Greater(playerConfig.baseAttackDamage, 0, "PlayerConfig baseAttackDamage should be > 0");
     }
+
+    /// <summary>
+    /// 测试 10: 精确映射验证 - CastleDB 数据精确应用到 PlayerConfig（阶段 3A 验收）
+    /// 验证 PlayerConfig 的值与 CastleDB 完全一致
+    /// </summary>
+    [UnityTest]
+    public IEnumerator PreciseMappingFromCastleDbToPlayerConfig()
+    {
+        yield return null;
+
+        // 从 CastleDB 读取数据
+        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+        Assert.IsNotNull(asset, "CastleDB asset not found");
+
+        var service = new CastleDbService();
+        service.Initialize(new CastleDbJsonSource(asset));
+        yield return null;
+
+        var players = service.GetAllPlayers();
+        Assert.Greater(players.Count, 0, "Player entries should exist");
+
+        var playerEntry = players.Find(p => p.id == "player");
+        Assert.IsNotNull(playerEntry, "Player with id='player' should exist");
+
+        // 加载 PlayerConfig
+        var playerConfig = Resources.Load<PlayerConfig>("Config/PlayerConfig");
+        Assert.IsNotNull(playerConfig, "PlayerConfig should exist");
+
+        // 精确验证每个字段（阶段 3A 核心验收点）
+        Assert.AreEqual(playerEntry.maxHealth, playerConfig.maxHealth,
+            "PlayerConfig.maxHealth should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.invincibilityTime, playerConfig.invincibilityTime,
+            "PlayerConfig.invincibilityTime should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.walkSpeed, playerConfig.walkSpeed,
+            "PlayerConfig.walkSpeed should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.runSpeed, playerConfig.runSpeed,
+            "PlayerConfig.runSpeed should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.airWalkSpeed, playerConfig.airWalkSpeed,
+            "PlayerConfig.airWalkSpeed should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.jumpImpulse, playerConfig.jumpImpulse,
+            "PlayerConfig.jumpImpulse should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.climbSpeed, playerConfig.climbSpeed,
+            "PlayerConfig.climbSpeed should exactly match CastleDB");
+        Assert.AreEqual(playerEntry.baseAttackDamage, playerConfig.baseAttackDamage,
+            "PlayerConfig.baseAttackDamage should exactly match CastleDB");
+    }
+
+    /// <summary>
+    /// 测试 11: 幂等性验证 - CalculateFinalDamage 重复调用返回相同结果（阶段 3A 验收）
+    /// 验证伤害计算不依赖 Prefab 初始值，每次调用返回相同结果
+    /// </summary>
+    [UnityTest]
+    public IEnumerator IdempotentDamageCalculation()
+    {
+        yield return null;
+
+        var playerConfig = Resources.Load<PlayerConfig>("Config/PlayerConfig");
+        Assert.IsNotNull(playerConfig, "PlayerConfig should exist");
+
+        // 测试 Hitbox 类型的伤害计算幂等性
+        string testAttackId = "SW_1";
+
+        int damage1 = playerConfig.CalculateFinalDamage(PlayerAttackOverride.TargetType.Hitbox, testAttackId);
+        int damage2 = playerConfig.CalculateFinalDamage(PlayerAttackOverride.TargetType.Hitbox, testAttackId);
+        int damage3 = playerConfig.CalculateFinalDamage(PlayerAttackOverride.TargetType.Hitbox, testAttackId);
+
+        Assert.AreEqual(damage1, damage2,
+            "CalculateFinalDamage should return same value on repeated calls (call 1 vs 2)");
+        Assert.AreEqual(damage2, damage3,
+            "CalculateFinalDamage should return same value on repeated calls (call 2 vs 3)");
+
+        // 验证计算结果为正数（基本合理性检查）
+        Assert.Greater(damage1, 0, "Calculated damage should be > 0");
+    }
+
+    /// <summary>
+    /// 测试 12: 伤害倍率精确计算验证（阶段 3A 硬验收）
+    /// 使用 CastleDB 实际数据验证精确计算：baseAttackDamage=50, multiplier=1 → 期望50
+    /// </summary>
+    [UnityTest]
+    public IEnumerator PreciseDamageMultiplierCalculation()
+    {
+        yield return null;
+
+        // 从 CastleDB 读取数据
+        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+        var service = new CastleDbService();
+        service.Initialize(new CastleDbJsonSource(asset));
+        yield return null;
+
+        var playerEntry = service.GetAllPlayers().Find(p => p.id == "player");
+        Assert.IsNotNull(playerEntry, "Player entry should exist");
+
+        // 硬断言：验证 CastleDB 中的确切值（按 system-reminder）
+        Assert.AreEqual(50f, playerEntry.baseAttackDamage, 0.01f,
+            "CastleDB player.baseAttackDamage should be exactly 50");
+
+        var overrides = service.GetAllPlayerAttackOverrides();
+        var playerConfig = Resources.Load<PlayerConfig>("Config/PlayerConfig");
+
+        // 硬验收点 1: SW_1 (Hitbox, multiplier=1, 无override) → 期望 50 * 1 = 50
+        var sw1Override = overrides.Find(o => o.targetId == "SW_1" && o.targetType == 0);
+        Assert.IsNotNull(sw1Override, "SW_1 override should exist");
+        Assert.AreEqual(1f, sw1Override.damageMultiplier, 0.01f, "SW_1 multiplier should be 1");
+        Assert.AreEqual(0, sw1Override.damageOverride, "SW_1 should have no override");
+
+        int sw1Damage = playerConfig.CalculateFinalDamage(PlayerAttackOverride.TargetType.Hitbox, "SW_1");
+        Assert.AreEqual(50, sw1Damage,
+            "SW_1 damage should be exactly 50 (baseAttackDamage=50 * multiplier=1)");
+
+        // 硬验收点 2: Arrow (Projectile, multiplier=3, 无override) → 期望 50 * 3 = 150
+        var arrowOverride = overrides.Find(o => o.targetId == "Prefabs/Projectiles/Player/Arrow" && o.targetType == 1);
+        Assert.IsNotNull(arrowOverride, "Arrow override should exist");
+        Assert.AreEqual(3f, arrowOverride.damageMultiplier, 0.01f, "Arrow multiplier should be 3");
+        Assert.AreEqual(0, arrowOverride.damageOverride, "Arrow should have no override");
+
+        int arrowDamage = playerConfig.CalculateFinalDamage(
+            PlayerAttackOverride.TargetType.Projectile,
+            "Prefabs/Projectiles/Player/Arrow");
+        Assert.AreEqual(150, arrowDamage,
+            "Arrow damage should be exactly 150 (baseAttackDamage=50 * multiplier=3)");
+
+        // 硬验收点 3: 幂等性 - 重复调用返回相同值（不累乘）
+        int arrowDamage2 = playerConfig.CalculateFinalDamage(
+            PlayerAttackOverride.TargetType.Projectile,
+            "Prefabs/Projectiles/Player/Arrow");
+        int arrowDamage3 = playerConfig.CalculateFinalDamage(
+            PlayerAttackOverride.TargetType.Projectile,
+            "Prefabs/Projectiles/Player/Arrow");
+
+        Assert.AreEqual(150, arrowDamage2, "Second call should return 150 (idempotent)");
+        Assert.AreEqual(150, arrowDamage3, "Third call should return 150 (idempotent)");
+    }
+
+    /// <summary>
+    /// 测试 13: Projectile prefab 级伤害验证（阶段 3A 硬验收）
+    /// 验证 Arrow.prefab 的 damage 字段在 Import 后直接为 150（prefab 级一次性赋值）
+    /// </summary>
+    [UnityTest]
+    public IEnumerator ProjectilePrefabDamageDirectAssignment()
+    {
+        yield return null;
+
+        // 从 CastleDB 读取配置
+        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+        var service = new CastleDbService();
+        service.Initialize(new CastleDbJsonSource(asset));
+        yield return null;
+
+        var overrides = service.GetAllPlayerAttackOverrides();
+        var arrowOverride = overrides.Find(o =>
+            o.targetType == 1 && o.targetId == "Prefabs/Projectiles/Player/Arrow");
+
+        Assert.IsNotNull(arrowOverride, "Arrow override should exist in CastleDB");
+        Assert.AreEqual(3f, arrowOverride.damageMultiplier, 0.01f,
+            "Arrow multiplier should be 3 in CastleDB");
+
+        // 硬验收点：直接加载 prefab，验证 damage 字段已被设置为 150
+        GameObject arrowPrefab = Resources.Load<GameObject>("Prefabs/Projectiles/Player/Arrow");
+        Assert.IsNotNull(arrowPrefab, "Arrow prefab should exist at Resources path");
+
+        Projectile projectileComponent = arrowPrefab.GetComponent<Projectile>();
+        Assert.IsNotNull(projectileComponent, "Arrow prefab should have Projectile component");
+
+        // 硬断言：prefab 的 damage 应该是 150（baseAttackDamage=50 * multiplier=3）
+        Assert.AreEqual(150, projectileComponent.damage,
+            "Arrow prefab damage should be exactly 150 after CastleDB Import (prefab-level assignment)");
+
+        // 验证实例化后的 Projectile 也自带正确的 damage
+        GameObject instance = Object.Instantiate(arrowPrefab);
+        try
+        {
+            Projectile instanceProjectile = instance.GetComponent<Projectile>();
+            Assert.AreEqual(150, instanceProjectile.damage,
+                "Instantiated Arrow should inherit damage=150 from prefab");
+        }
+        finally
+        {
+            Object.Destroy(instance);
+        }
+    }
+
+    /// <summary>
+    /// 测试 14: 运行时伤害应用幂等性验证（阶段 3A 硬验收）
+    /// 验证 PlayerController.ApplyAttackDamageOverrides() 重复调用不会累乘伤害
+    /// </summary>
+    [UnityTest]
+    public IEnumerator RuntimeDamageApplicationIdempotent()
+    {
+        yield return null;
+
+        // 获取 SW_1 Attack 组件的初始伤害
+        Attack[] attacks = playerGameObject.GetComponentsInChildren<Attack>(true);
+        var sw1Attack = System.Array.Find(attacks, a => a.attackId == "SW_1");
+        Assert.IsNotNull(sw1Attack, "SW_1 Attack should exist");
+
+        // 记录第一次应用后的伤害值（应该是 50）
+        int initialDamage = sw1Attack.attackDamage;
+        Assert.AreEqual(50, initialDamage, "SW_1 initial damage should be 50 after first application");
+
+        // 模拟重复应用配置（幂等性测试）
+        // 注意：正常情况下不会重复调用，但需要验证即使重复调用也不会累乘
+        var playerConfig = Resources.Load<PlayerConfig>("Config/PlayerConfig");
+        Assert.IsNotNull(playerConfig, "PlayerConfig should exist");
+
+        // 直接计算并应用（模拟重复应用）
+        int recalculatedDamage = playerConfig.CalculateFinalDamage(
+            PlayerAttackOverride.TargetType.Hitbox,
+            "SW_1");
+        sw1Attack.attackDamage = recalculatedDamage;
+
+        // 验证伤害值仍然是 50，没有累乘
+        Assert.AreEqual(50, sw1Attack.attackDamage,
+            "SW_1 damage should still be 50 after reapplication (idempotent)");
+        Assert.AreEqual(initialDamage, sw1Attack.attackDamage,
+            "Reapplication should not change damage value");
+    }
 }

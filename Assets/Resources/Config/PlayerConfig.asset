@@ -17,11 +17,11 @@ MonoBehaviour:
   maxHealth: 500
   invincibilityTime: 2
   walkSpeed: 3
-  runSpeed: 60
+  runSpeed: 8
   airWalkSpeed: 5
   jumpImpulse: 5
   climbSpeed: 3
-  baseAttackDamage: 20
+  baseAttackDamage: 50
   attackOverrides:
   - id: SW_1
     playerId: player
@@ -56,6 +56,6 @@ MonoBehaviour:
   - id: Arrow_1
     playerId: player
     targetType: 1
-    targetId: Assets/Resources/Prefabs/Projectiles/Player/Arrow.prefab
-    damageMultiplier: 1
+    targetId: Prefabs/Projectiles/Player/Arrow
+    damageMultiplier: 3
     damageOverride: 0
