@@ -330,4 +330,277 @@ public class CastleDbBridgeTests
         // 实际攻击触发已在 Knight.TickState 中实现并使用 AttackCooldown
         Assert.AreEqual(knightEntry.attackCooldown, profile.attackCooldown, "AttackCooldown 应与 CastleDB 一致");
     }
+
+    // ===== Stage 3B: 能力系统测试 =====
+
+    /// <summary>
+    /// Stage 3B 测试用例 C：能力调度语义（priority/handled）
+    /// 验证：
+    /// 1. 能力按 Priority 从高到低执行
+    /// 2. 当能力返回 handled=true 时，后续能力不再执行
+    /// 3. 绕过 InputSystem，直接调用 Dispatch
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AbilityDispatchPriorityAndHandled()
+    {
+        yield return null;
+
+        // 创建能力系统实例
+        var abilitySystem = new AbilitySystem();
+
+        // 创建 Mock 能力用于测试
+        var highPriorityAbility = new MockAbility(priority: 100, returnsHandled: true, "HighPriority");
+        var lowPriorityAbility = new MockAbility(priority: 50, returnsHandled: false, "LowPriority");
+
+        // 注册能力到 Move Hook
+        abilitySystem.RegisterAbility(AbilityHookType.Move, highPriorityAbility);
+        abilitySystem.RegisterAbility(AbilityHookType.Move, lowPriorityAbility);
+
+        // 直接调用 Dispatch（绕过 InputSystem）
+        AbilityInput input = AbilityInput.Performed(new Vector2(1, 0), true);
+        bool result = abilitySystem.Dispatch(AbilityHookType.Move, input);
+
+        // 断言：Dispatch 应该返回 true（被高优先级能力消费）
+        Assert.IsTrue(result, "Dispatch should return true when ability handles input");
+
+        // 断言：高优先级能力被调用
+        Assert.IsTrue(highPriorityAbility.WasCalled, "High priority ability should be called");
+
+        // 断言：低优先级能力不被调用（因为高优先级返回 handled=true）
+        Assert.IsFalse(lowPriorityAbility.WasCalled, "Low priority ability should NOT be called when high priority returns handled=true");
+
+        Debug.Log("[CastleDbBridgeTests] Stage 3B - Priority/Handled 语义验证通过");
+    }
+
+    /// <summary>
+    /// Stage 3B 测试用例：多个能力都不消费输入时的传播
+    /// 验证：当所有能力都返回 handled=false 时，所有能力都会被执行
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AbilityDispatchPropagation()
+    {
+        yield return null;
+
+        var abilitySystem = new AbilitySystem();
+
+        // 创建多个都不消费输入的能力
+        var ability1 = new MockAbility(priority: 100, returnsHandled: false, "Ability1");
+        var ability2 = new MockAbility(priority: 50, returnsHandled: false, "Ability2");
+        var ability3 = new MockAbility(priority: 10, returnsHandled: false, "Ability3");
+
+        abilitySystem.RegisterAbility(AbilityHookType.Jump, ability1);
+        abilitySystem.RegisterAbility(AbilityHookType.Jump, ability2);
+        abilitySystem.RegisterAbility(AbilityHookType.Jump, ability3);
+
+        AbilityInput input = AbilityInput.Started(isPressed: true);
+        bool result = abilitySystem.Dispatch(AbilityHookType.Jump, input);
+
+        // 断言：Dispatch 返回 false（没有能力消费输入）
+        Assert.IsFalse(result, "Dispatch should return false when no ability handles input");
+
+        // 断言：所有能力都被调用
+        Assert.IsTrue(ability1.WasCalled, "Ability1 should be called");
+        Assert.IsTrue(ability2.WasCalled, "Ability2 should be called");
+        Assert.IsTrue(ability3.WasCalled, "Ability3 should be called");
+
+        Debug.Log("[CastleDbBridgeTests] Stage 3B - 传播验证通过：所有能力都被调用");
+    }
+
+    /// <summary>
+    /// Stage 3B 测试用例：Priority 顺序验证
+    /// 验证：能力按 Priority 从高到低的顺序执行
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AbilityDispatchOrderByPriority()
+    {
+        yield return null;
+
+        var abilitySystem = new AbilitySystem();
+
+        // 创建记录执行顺序的能力
+        var executionOrder = new System.Collections.Generic.List<string>();
+
+        var abilityLow = new OrderTrackingAbility(priority: 10, executionOrder, "Low");
+        var abilityHigh = new OrderTrackingAbility(priority: 100, executionOrder, "High");
+        var abilityMedium = new OrderTrackingAbility(priority: 50, executionOrder, "Medium");
+
+        // 故意乱序注册，测试系统是否能正确排序
+        abilitySystem.RegisterAbility(AbilityHookType.Attack, abilityMedium);
+        abilitySystem.RegisterAbility(AbilityHookType.Attack, abilityLow);
+        abilitySystem.RegisterAbility(AbilityHookType.Attack, abilityHigh);
+
+        AbilityInput input = AbilityInput.Started(isPressed: true);
+        abilitySystem.Dispatch(AbilityHookType.Attack, input);
+
+        // 断言：执行顺序应该是 High → Medium → Low
+        Assert.AreEqual(3, executionOrder.Count, "All three abilities should be called");
+        Assert.AreEqual("High", executionOrder[0], "High priority ability should execute first");
+        Assert.AreEqual("Medium", executionOrder[1], "Medium priority ability should execute second");
+        Assert.AreEqual("Low", executionOrder[2], "Low priority ability should execute last");
+
+        Debug.Log($"[CastleDbBridgeTests] Stage 3B - Priority 顺序验证通过: {string.Join(" → ", executionOrder)}");
+    }
+
+    /// <summary>
+    /// Stage 3B 测试用例：Enabled 属性过滤
+    /// 验证：Enabled=false 的能力不会被调用
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AbilityDispatchEnabledFilter()
+    {
+        yield return null;
+
+        var abilitySystem = new AbilitySystem();
+
+        var enabledAbility = new MockAbility(priority: 100, returnsHandled: false, "Enabled", enabled: true);
+        var disabledAbility = new MockAbility(priority: 50, returnsHandled: false, "Disabled", enabled: false);
+
+        abilitySystem.RegisterAbility(AbilityHookType.Run, enabledAbility);
+        abilitySystem.RegisterAbility(AbilityHookType.Run, disabledAbility);
+
+        AbilityInput input = AbilityInput.Performed(new Vector2(0, 0), true);
+        abilitySystem.Dispatch(AbilityHookType.Run, input);
+
+        // 断言：启用的能力被调用
+        Assert.IsTrue(enabledAbility.WasCalled, "Enabled ability should be called");
+
+        // 断言：禁用的能力不被调用
+        Assert.IsFalse(disabledAbility.WasCalled, "Disabled ability should NOT be called");
+
+        Debug.Log("[CastleDbBridgeTests] Stage 3B - Enabled 过滤验证通过");
+    }
+
+    /// <summary>
+    /// Stage 3B 测试用例：不同 HookType 隔离
+    /// 验证：注册到不同 HookType 的能力互不干扰
+    /// </summary>
+    [UnityTest]
+    public IEnumerator AbilityDispatchHookTypeIsolation()
+    {
+        yield return null;
+
+        var abilitySystem = new AbilitySystem();
+
+        var moveAbility = new MockAbility(priority: 100, returnsHandled: true, "MoveAbility");
+        var jumpAbility = new MockAbility(priority: 100, returnsHandled: true, "JumpAbility");
+
+        abilitySystem.RegisterAbility(AbilityHookType.Move, moveAbility);
+        abilitySystem.RegisterAbility(AbilityHookType.Jump, jumpAbility);
+
+        // 触发 Move
+        AbilityInput moveInput = AbilityInput.Performed(new Vector2(1, 0), true);
+        abilitySystem.Dispatch(AbilityHookType.Move, moveInput);
+
+        // 断言：只有 Move 能力被调用
+        Assert.IsTrue(moveAbility.WasCalled, "Move ability should be called");
+        Assert.IsFalse(jumpAbility.WasCalled, "Jump ability should NOT be called when dispatching Move");
+
+        // 重置状态
+        moveAbility.Reset();
+        jumpAbility.Reset();
+
+        // 触发 Jump
+        AbilityInput jumpInput = AbilityInput.Started(isPressed: true);
+        abilitySystem.Dispatch(AbilityHookType.Jump, jumpInput);
+
+        // 断言：只有 Jump 能力被调用
+        Assert.IsFalse(moveAbility.WasCalled, "Move ability should NOT be called when dispatching Jump");
+        Assert.IsTrue(jumpAbility.WasCalled, "Jump ability should be called");
+
+        Debug.Log("[CastleDbBridgeTests] Stage 3B - HookType 隔离验证通过");
+    }
+
+    // ===== Mock 能力类（用于测试）=====
+
+    /// <summary>
+    /// Mock 能力：用于测试 priority/handled/enabled 语义
+    /// </summary>
+    private class MockAbility : IPlayerAbility
+    {
+        public int Priority { get; private set; }
+        public bool Enabled { get; private set; }
+        public bool WasCalled { get; private set; }
+        private bool returnsHandled;
+        private string name;
+
+        public MockAbility(int priority, bool returnsHandled, string name, bool enabled = true)
+        {
+            this.Priority = priority;
+            this.returnsHandled = returnsHandled;
+            this.name = name;
+            this.Enabled = enabled;
+            this.WasCalled = false;
+        }
+
+        public void Reset()
+        {
+            WasCalled = false;
+        }
+
+        public bool OnMove(AbilityInput input)
+        {
+            WasCalled = true;
+            Debug.Log($"[MockAbility] {name} OnMove called (priority={Priority}, handled={returnsHandled})");
+            return returnsHandled;
+        }
+
+        public bool OnRun(AbilityInput input)
+        {
+            WasCalled = true;
+            Debug.Log($"[MockAbility] {name} OnRun called (priority={Priority}, handled={returnsHandled})");
+            return returnsHandled;
+        }
+
+        public bool OnJump(AbilityInput input)
+        {
+            WasCalled = true;
+            Debug.Log($"[MockAbility] {name} OnJump called (priority={Priority}, handled={returnsHandled})");
+            return returnsHandled;
+        }
+
+        public bool OnAttack(AbilityInput input)
+        {
+            WasCalled = true;
+            Debug.Log($"[MockAbility] {name} OnAttack called (priority={Priority}, handled={returnsHandled})");
+            return returnsHandled;
+        }
+
+        public bool OnRangedAttack(AbilityInput input)
+        {
+            WasCalled = true;
+            Debug.Log($"[MockAbility] {name} OnRangedAttack called (priority={Priority}, handled={returnsHandled})");
+            return returnsHandled;
+        }
+    }
+
+    /// <summary>
+    /// 顺序追踪能力：用于验证执行顺序
+    /// </summary>
+    private class OrderTrackingAbility : IPlayerAbility
+    {
+        public int Priority { get; private set; }
+        public bool Enabled => true;
+        private System.Collections.Generic.List<string> executionOrder;
+        private string name;
+
+        public OrderTrackingAbility(int priority, System.Collections.Generic.List<string> executionOrder, string name)
+        {
+            this.Priority = priority;
+            this.executionOrder = executionOrder;
+            this.name = name;
+        }
+
+        public bool OnMove(AbilityInput input) => RecordExecution();
+        public bool OnRun(AbilityInput input) => RecordExecution();
+        public bool OnJump(AbilityInput input) => RecordExecution();
+        public bool OnAttack(AbilityInput input) => RecordExecution();
+        public bool OnRangedAttack(AbilityInput input) => RecordExecution();
+
+        private bool RecordExecution()
+        {
+            executionOrder.Add(name);
+            Debug.Log($"[OrderTrackingAbility] {name} executed (priority={Priority})");
+            return false; // 不消费输入，让所有能力都执行
+        }
+    }
 }

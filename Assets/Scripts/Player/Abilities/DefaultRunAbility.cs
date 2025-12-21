@@ -23,14 +23,15 @@ public class DefaultRunAbility : IPlayerAbility
 
     public bool OnRun(AbilityInput input)
     {
-        // 封装原有 OnRun 逻辑
+        // 使用 PlayerController 的公开 API 设置奔跑状态
+        // 这会使用 IsRunning 属性 setter，保证 Animator 参数同步
         if (input.Phase == AbilityInputPhase.Started)
         {
-            playerController._isRunning = true;
+            playerController.SetRunning(true);
         }
         else if (input.Phase == AbilityInputPhase.Canceled)
         {
-            playerController._isRunning = false;
+            playerController.SetRunning(false);
         }
 
         return true; // 消费输入

@@ -24,57 +24,11 @@ public class DefaultMoveAbility : IPlayerAbility
 
     public bool OnMove(AbilityInput input)
     {
-        // 封装原有 OnMove 逻辑
-        Vector2 moveInput = input.Move;
-
-        if (!playerController.IsAlive)
-        {
-            playerController._isMoving = false;
-            return true; // 消费输入（死亡时不传播）
-        }
-
-        // 分离水平和垂直输入分量
-        float moveInputHorizontal = moveInput.x;
-        float moveInputVertical = moveInput.y;
-
-        // 注意：这里需要访问 PlayerController 的私有字段
-        // 我们需要将这些字段改为 public 或提供 accessor 方法
-
-        // 爬墙逻辑判断
-        var touchingDirections = playerController.GetComponent<TouchingDirections>();
-        if (touchingDirections.IsOnWall && moveInputVertical != 0 && playerController.CanMove)
-        {
-            playerController._isClimbing = true;
-        }
-        else if (!touchingDirections.IsOnWall || moveInputVertical == 0)
-        {
-            playerController._isClimbing = false;
-        }
-
-        // 根据爬墙状态更新行走状态和朝向
-        if (!playerController._isClimbing)
-        {
-            playerController._isMoving = moveInputHorizontal != 0;
-            SetFacingDirection(moveInput);
-        }
-        else
-        {
-            playerController._isMoving = false;
-        }
+        // 使用 PlayerController 的公开 API 应用移动输入
+        // 这会更新输入缓存、爬墙逻辑、IsMoving 状态和朝向
+        playerController.ApplyMoveInput(input.Move);
 
         return true; // 消费输入
-    }
-
-    private void SetFacingDirection(Vector2 moveInput)
-    {
-        if (moveInput.x > 0 && !playerController._isFacingRight)
-        {
-            playerController._isFacingRight = true;
-        }
-        else if (moveInput.x < 0 && playerController._isFacingRight)
-        {
-            playerController._isFacingRight = false;
-        }
     }
 
     public bool OnRun(AbilityInput input) => false;

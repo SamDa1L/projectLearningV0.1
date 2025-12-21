@@ -470,6 +470,7 @@ public class PlayerController : MonoBehaviour
     /// - 从 Resources 加载 AbilityCatalog
     /// - 根据 catalog 构建 AbilitySystem 并注册能力
     /// - 如果某个 hookType 没有任何启用的能力，输出警告（但允许运行）
+    /// - 如果 usePlayerConfigFromCastleDb=true 但 AbilityCatalog 缺失，抛出异常（硬失败）
     /// </summary>
     private void BuildAbilitySystem()
     {
@@ -477,8 +478,11 @@ public class PlayerController : MonoBehaviour
         AbilityCatalog catalog = Resources.Load<AbilityCatalog>("Config/AbilityCatalog");
         if (catalog == null)
         {
-            Debug.LogError("[PlayerController] 未找到 AbilityCatalog (Resources/Config/AbilityCatalog.asset)，能力系统构建失败");
-            return;
+            // 硬失败：能力系统是必需的，不允许回退到旧逻辑
+            string errorMsg = "[PlayerController] usePlayerConfigFromCastleDb=true 但未找到 AbilityCatalog (Resources/Config/AbilityCatalog.asset)，" +
+                "能力系统构建失败。请运行 Tools/CastleDB/Import All 生成 AbilityCatalog，或将 usePlayerConfigFromCastleDb 设为 false。";
+            Debug.LogError(errorMsg, this);
+            throw new System.InvalidOperationException(errorMsg);
         }
 
         Debug.Log($"[PlayerController] 开始构建能力系统，共 {catalog.entries.Count} 个能力配置");
@@ -897,5 +901,70 @@ public class PlayerController : MonoBehaviour
     public void OnHit(int damage, Vector2 knockback)
     {
         rb.velocity = new Vector2(knockback.x, rb.velocity.y + knockback.y);
+    }
+
+    // ===== 阶段 3B: 能力系统公开 API =====
+
+    /// <summary>
+    /// 应用移动输入（阶段 3B 能力系统专用 API）
+    ///
+    /// 功能：
+    /// - 更新输入缓存（moveInput, moveInputHorizontal, moveInputVertical, climbInput）
+    /// - 执行爬墙逻辑判断
+    /// - 更新 IsMoving 状态（触发 Animator 同步）
+    /// - 更新角色朝向（触发 Transform 翻转）
+    ///
+    /// 设计原则：
+    /// - 能力实现不直接操作私有字段，通过此 API 复用现有逻辑
+    /// - 保证 Animator 参数、Transform 翻转、物理输入缓存三者一致
+    /// </summary>
+    public void ApplyMoveInput(Vector2 move)
+    {
+        // 更新输入缓存
+        moveInput = move;
+        moveInputHorizontal = move.x;
+        moveInputVertical = move.y;
+        climbInput = move;
+
+        if (!IsAlive)
+        {
+            IsMoving = false;
+            return;
+        }
+
+        // 爬墙逻辑判断
+        if (touchingDirections.IsOnWall && moveInputVertical != 0 && CanMove)
+        {
+            IsClimbing = true;
+        }
+        else if (!touchingDirections.IsOnWall || moveInputVertical == 0)
+        {
+            IsClimbing = false;
+        }
+
+        // 根据爬墙状态更新行走状态和朝向
+        if (!IsClimbing)
+        {
+            IsMoving = moveInputHorizontal != 0;
+            SetFacingDirection(moveInput);
+        }
+        else
+        {
+            IsMoving = false;
+        }
+    }
+
+    /// <summary>
+    /// 设置奔跑状态（阶段 3B 能力系统专用 API）
+    ///
+    /// 功能：
+    /// - 使用 IsRunning 属性 setter，保证 Animator 参数同步
+    ///
+    /// 设计原则：
+    /// - 能力实现不直接操作 _isRunning 字段，通过此 API 保证副作用一致
+    /// </summary>
+    public void SetRunning(bool running)
+    {
+        IsRunning = running;
     }
 }

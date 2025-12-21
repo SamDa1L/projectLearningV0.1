@@ -85,11 +85,21 @@ public class AbilityCatalog : ScriptableObject
     private void OnValidate()
     {
         // 警告：此资产应由 Import All 生成，不应手动编辑
-        // 0.2 仅输出警告，不强制回退（避免 Inspector 编辑时频繁弹窗）
-        if (Application.isPlaying)
+        // 0.2 在编辑器和运行时都输出警告，不强制回退（避免 Inspector 编辑时频繁弹窗）
+#if UNITY_EDITOR
+        // 编辑器模式：使用 EditorApplication.delayCall 延迟输出，避免序列化线程问题
+        UnityEditor.EditorApplication.delayCall += () =>
         {
-            Debug.LogWarning("[AbilityCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。" +
-                "如需修改能力配置，请在 CastleDB 中编辑 Ability Sheet 并重新导入。");
-        }
+            if (this != null) // 确保资产未被销毁
+            {
+                Debug.LogWarning("[AbilityCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。" +
+                    "如需修改能力配置，请在 CastleDB 中编辑 Ability Sheet 并重新导入。", this);
+            }
+        };
+#else
+        // 运行时模式：直接输出警告
+        Debug.LogWarning("[AbilityCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。" +
+            "如需修改能力配置，请在 CastleDB 中编辑 Ability Sheet 并重新导入。");
+#endif
     }
 }

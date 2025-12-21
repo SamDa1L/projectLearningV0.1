@@ -297,19 +297,23 @@ public class CastleDbImporter
                     }
                 }
 
-                // 2. paramsJson 校验：若非空，必须是合法 JSON
+                // 2. paramsJson 校验：若非空，必须是合法 JSON 对象（不允许 primitives/arrays）
                 foreach (var ability in abilities)
                 {
                     if (!string.IsNullOrWhiteSpace(ability.paramsJson))
                     {
-                        try
-                        {
-                            // 尝试解析 JSON
-                            UnityEngine.JsonUtility.FromJson<object>(ability.paramsJson);
-                        }
-                        catch (System.Exception)
+                        // 使用 SimpleJsonParser 解析 JSON 并检查是否为对象
+                        var parsed = SimpleJsonParser.Parse(ability.paramsJson);
+
+                        if (parsed == null)
                         {
                             validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 不是合法的 JSON: {ability.paramsJson}");
+                        }
+                        else if (!(parsed is Dictionary<string, object>))
+                        {
+                            // paramsJson 必须是 JSON 对象，不允许是 primitive（string/number/boolean）或 array
+                            string actualType = parsed is List<object> ? "array" : parsed.GetType().Name;
+                            validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 必须是 JSON 对象（{{...}}），当前是: {actualType}");
                         }
                     }
                 }
