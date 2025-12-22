@@ -103,3 +103,4 @@ InitTestScene*.unity*
 Assets/Logs/
 AGENTS.md
 CLAUDE.md
+*.md

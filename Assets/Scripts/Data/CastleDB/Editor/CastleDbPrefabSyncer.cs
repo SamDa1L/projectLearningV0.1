@@ -178,8 +178,8 @@ public class CastleDbPrefabSyncer : EditorWindow
             if (!dryRun && autoValidate)
             {
                 Debug.Log("\n[CastleDbPrefabSyncer] 执行同步后校验...");
-                // 调用 ValidateEnemyPrefabsWindow 的校验逻辑
-                EditorApplication.ExecuteMenuItem("Tools/Stage1/Validate Enemy Prefabs");
+                // 直接调用验证逻辑而不是通过菜单（更可靠）
+                ValidateAfterSync();
             }
 
             Debug.Log("\n========== CastleDB Prefab 同步完成 ==========\n");
@@ -215,12 +215,26 @@ public class CastleDbPrefabSyncer : EditorWindow
         {
             // 1. 定位 Prefab
             string prefabPath = FindPrefabPath(npcId, npcData);
+
+            // 阶段4：Prefab 缺失时自动生成
             if (string.IsNullOrEmpty(prefabPath))
             {
-                result.success = false;
-                result.message = "找不到对应的 Prefab";
-                Debug.LogWarning($"[CastleDbPrefabSyncer] NPC '{npcId}' 找不到 Prefab");
-                return result;
+                if (!npcData.TryGetValue(npcId, out var npc))
+                {
+                    result.success = false;
+                    result.message = "找不到对应的 NPC 数据";
+                    Debug.LogWarning($"[CastleDbPrefabSyncer] NPC '{npcId}' 在 CastleDB 中不存在");
+                    return result;
+                }
+
+                Debug.Log($"[CastleDbPrefabSyncer] Prefab 不存在，自动创建: {npcId}");
+                prefabPath = CreatePrefabForNpc(npc, result);
+
+                if (string.IsNullOrEmpty(prefabPath))
+                {
+                    // CreatePrefabForNpc 已经设置了 result 的错误信息
+                    return result;
+                }
             }
             result.prefabPath = prefabPath;
 
@@ -370,7 +384,7 @@ public class CastleDbPrefabSyncer : EditorWindow
                 var expectedRole = DetectionZoneRoleMapper.ToBindingRole(castleDbZone.role);
                 string expectedChildId = castleDbZone.childId;
 
-                // 查找子物体
+                // 查找或创建子物体
                 var childTransform = prefabContents.transform.Find(expectedChildId);
                 if (childTransform == null)
                 {
@@ -378,20 +392,49 @@ public class CastleDbPrefabSyncer : EditorWindow
                     childTransform = FindChildRecursive(prefabContents.transform, expectedChildId);
                 }
 
+                bool childWasCreated = false;
                 if (childTransform == null)
                 {
-                    result.changes.Add($"[跳过] role={expectedRole}: 找不到子物体 '{expectedChildId}'");
-                    Debug.LogWarning($"[CastleDbPrefabSyncer] {prefabPath}: 找不到子物体 '{expectedChildId}'");
-                    continue;
+                    // 自动创建缺失的子物体（阶段4新增功能）
+                    Debug.Log($"[CastleDbPrefabSyncer] {prefabPath}: 自动创建检测区子物体 '{expectedChildId}'");
+                    var childObj = new GameObject(expectedChildId);
+                    childObj.transform.SetParent(prefabContents.transform, false);
+                    childTransform = childObj.transform;
+                    childWasCreated = true;
+                    result.changes.Add($"[创建] role={expectedRole}: 新建子物体 '{expectedChildId}'");
                 }
 
-                // 获取 DetectionZone 组件
+                // 获取或添加 DetectionZone 组件
                 var detectionZone = childTransform.GetComponent<DetectionZone>();
+                bool componentWasAdded = false;
                 if (detectionZone == null)
                 {
-                    result.changes.Add($"[跳过] role={expectedRole}: 子物体 '{expectedChildId}' 缺少 DetectionZone 组件");
-                    Debug.LogWarning($"[CastleDbPrefabSyncer] {prefabPath}: 子物体 '{expectedChildId}' 缺少 DetectionZone 组件");
-                    continue;
+                    Debug.Log($"[CastleDbPrefabSyncer] {prefabPath}: 为 '{expectedChildId}' 添加 DetectionZone 组件");
+                    detectionZone = childTransform.gameObject.AddComponent<DetectionZone>();
+                    componentWasAdded = true;
+
+                    if (!childWasCreated)
+                    {
+                        result.changes.Add($"[添加组件] role={expectedRole}: 为 '{expectedChildId}' 添加 DetectionZone");
+                    }
+                }
+
+                // 获取或添加 Collider2D 组件（DetectionZone 需要 Trigger）
+                var collider2D = childTransform.GetComponent<Collider2D>();
+                if (collider2D == null)
+                {
+                    Debug.Log($"[CastleDbPrefabSyncer] {prefabPath}: 为 '{expectedChildId}' 添加 BoxCollider2D");
+                    var boxCollider = childTransform.gameObject.AddComponent<BoxCollider2D>();
+                    boxCollider.isTrigger = true;
+                    boxCollider.size = new Vector2(1f, 1f); // 默认尺寸，需要在 Prefab Inspector 中调整
+
+                    result.changes.Add($"[添加碰撞器] role={expectedRole}: 为 '{expectedChildId}' 添加 BoxCollider2D (isTrigger=true)");
+                }
+                else if (!collider2D.isTrigger)
+                {
+                    Debug.LogWarning($"[CastleDbPrefabSyncer] {prefabPath}: '{expectedChildId}' 的 Collider2D.isTrigger 为 false，已自动设置为 true");
+                    collider2D.isTrigger = true;
+                    result.changes.Add($"[修正] role={expectedRole}: '{expectedChildId}' 的 isTrigger 已设置为 true");
                 }
 
                 if (currentBindingIndices.TryGetValue(expectedRole, out int existingIndex))
@@ -440,6 +483,13 @@ public class CastleDbPrefabSyncer : EditorWindow
                 }
             }
 
+            // 阶段4：确保核心组件存在并正确配置
+            bool componentModified = EnsureEssentialComponents(prefabContents, enemyAgent, result);
+            if (componentModified)
+            {
+                modified = true;
+            }
+
             if (modified)
             {
                 serializedObject.ApplyModifiedPropertiesWithoutUndo();
@@ -450,6 +500,98 @@ public class CastleDbPrefabSyncer : EditorWindow
         finally
         {
             PrefabUtility.UnloadPrefabContents(prefabContents);
+        }
+
+        return modified;
+    }
+
+    /// <summary>
+    /// 阶段4：确保Prefab具备所有必需组件（自动修复）
+    /// </summary>
+    private bool EnsureEssentialComponents(GameObject prefabContents, EnemyAgentBase enemyAgent, SyncResult result)
+    {
+        bool modified = false;
+
+        // 1. 检查并添加 Animator
+        var animator = prefabContents.GetComponent<Animator>();
+        if (animator == null)
+        {
+            animator = prefabContents.AddComponent<Animator>();
+            result.changes.Add($"[添加组件] 添加 Animator 组件");
+            modified = true;
+            Debug.Log($"[CastleDbPrefabSyncer] 自动添加 Animator 组件");
+        }
+
+        // 2. 检查并添加 Damageable
+        var damageable = prefabContents.GetComponent<Damageable>();
+        if (damageable == null)
+        {
+            damageable = prefabContents.AddComponent<Damageable>();
+            result.changes.Add($"[添加组件] 添加 Damageable 组件");
+            modified = true;
+            Debug.Log($"[CastleDbPrefabSyncer] 自动添加 Damageable 组件");
+        }
+
+        // 3. 检查并添加 Rigidbody2D
+        var rb2d = prefabContents.GetComponent<Rigidbody2D>();
+        if (rb2d == null)
+        {
+            rb2d = prefabContents.AddComponent<Rigidbody2D>();
+            rb2d.bodyType = RigidbodyType2D.Dynamic;
+            rb2d.gravityScale = 1f;
+            rb2d.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb2d.constraints = RigidbodyConstraints2D.FreezeRotation; // 防止敌人旋转
+            result.changes.Add($"[添加组件] 添加 Rigidbody2D 组件（Dynamic, Freeze Rotation）");
+            modified = true;
+            Debug.Log($"[CastleDbPrefabSyncer] 自动添加 Rigidbody2D 组件");
+        }
+
+        // 4. 检查并添加主 Collider2D（用于物理碰撞，非检测区）
+        var mainColliders = prefabContents.GetComponents<Collider2D>();
+        bool hasNonTriggerCollider = false;
+        foreach (var col in mainColliders)
+        {
+            // 检查是否有非 Trigger 的碰撞器（排除检测区）
+            if (!col.isTrigger && col.gameObject == prefabContents)
+            {
+                hasNonTriggerCollider = true;
+                break;
+            }
+        }
+
+        if (!hasNonTriggerCollider)
+        {
+            var capsuleCollider = prefabContents.AddComponent<CapsuleCollider2D>();
+            capsuleCollider.isTrigger = false;
+            capsuleCollider.size = new Vector2(0.5f, 1f); // 默认人形尺寸
+            result.changes.Add($"[添加组件] 添加 CapsuleCollider2D（主碰撞器，非 Trigger）");
+            modified = true;
+            Debug.Log($"[CastleDbPrefabSyncer] 自动添加主 CapsuleCollider2D");
+        }
+
+        // 5. 检查 EnemyTuningProfile 是否已分配
+        var serializedEnemy = new SerializedObject(enemyAgent);
+        var profileProp = serializedEnemy.FindProperty("profile");
+        if (profileProp != null && profileProp.objectReferenceValue == null)
+        {
+            // 尝试根据命名规则查找对应的 Profile
+            string prefabName = prefabContents.name;
+            string profilePath = $"Assets/Resources/Profiles/Profile_{prefabName}.asset";
+            var profile = AssetDatabase.LoadAssetAtPath<EnemyTuningProfile>(profilePath);
+
+            if (profile != null)
+            {
+                profileProp.objectReferenceValue = profile;
+                serializedEnemy.ApplyModifiedPropertiesWithoutUndo();
+                result.changes.Add($"[配置] 自动关联 EnemyTuningProfile: {profile.name}");
+                modified = true;
+                Debug.Log($"[CastleDbPrefabSyncer] 自动关联 Profile: {profilePath}");
+            }
+            else
+            {
+                result.changes.Add($"[警告] 未找到对应的 EnemyTuningProfile: {profilePath}");
+                Debug.LogWarning($"[CastleDbPrefabSyncer] 未找到 Profile: {profilePath}，请手动配置或运行 Import All");
+            }
         }
 
         return modified;
@@ -682,6 +824,122 @@ public class CastleDbPrefabSyncer : EditorWindow
     // ===== 日志 =====
 
     /// <summary>
+    /// 同步后验证（阶段4：简化的验证流程）
+    /// </summary>
+    private void ValidateAfterSync()
+    {
+        int issueCount = 0;
+        var validationResults = new System.Text.StringBuilder();
+        validationResults.AppendLine("\n======== 同步后验证结果 ========");
+
+        foreach (var syncResult in syncResults)
+        {
+            if (!syncResult.success || string.IsNullOrEmpty(syncResult.prefabPath))
+            {
+                continue;
+            }
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(syncResult.prefabPath);
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            var issues = new List<string>();
+
+            // 验证必需组件
+            if (prefab.GetComponent<EnemyAgentBase>() == null)
+            {
+                issues.Add("缺少 EnemyAgentBase 组件");
+            }
+
+            if (prefab.GetComponent<Animator>() == null)
+            {
+                issues.Add("缺少 Animator 组件");
+            }
+
+            if (prefab.GetComponent<Damageable>() == null)
+            {
+                issues.Add("缺少 Damageable 组件");
+            }
+
+            if (prefab.GetComponent<Rigidbody2D>() == null)
+            {
+                issues.Add("缺少 Rigidbody2D 组件");
+            }
+
+            // 验证 EnemyTuningProfile
+            var enemyAgent = prefab.GetComponent<EnemyAgentBase>();
+            if (enemyAgent != null)
+            {
+                var serializedEnemy = new SerializedObject(enemyAgent);
+                var profileProp = serializedEnemy.FindProperty("profile");
+                if (profileProp != null && profileProp.objectReferenceValue == null)
+                {
+                    issues.Add("未分配 EnemyTuningProfile");
+                }
+
+                // 验证 zoneBindings
+                var zoneBindingsProp = serializedEnemy.FindProperty("zoneBindings");
+                if (zoneBindingsProp == null || zoneBindingsProp.arraySize == 0)
+                {
+                    issues.Add("zoneBindings 为空");
+                }
+                else
+                {
+                    bool hasPrimaryAttack = false;
+                    for (int i = 0; i < zoneBindingsProp.arraySize; i++)
+                    {
+                        var element = zoneBindingsProp.GetArrayElementAtIndex(i);
+                        var role = (DetectionZoneBinding.Role)element.FindPropertyRelative("role").enumValueIndex;
+                        if (role == DetectionZoneBinding.Role.PrimaryAttack)
+                        {
+                            hasPrimaryAttack = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasPrimaryAttack)
+                    {
+                        issues.Add("zoneBindings 缺少 PrimaryAttack 检测区");
+                    }
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                issueCount += issues.Count;
+                validationResults.AppendLine($"\n[警告] {syncResult.npcId} ({Path.GetFileName(syncResult.prefabPath)}):");
+                foreach (var issue in issues)
+                {
+                    validationResults.AppendLine($"  • {issue}");
+                }
+            }
+            else
+            {
+                validationResults.AppendLine($"[通过] {syncResult.npcId} - 所有检查项通过");
+            }
+        }
+
+        validationResults.AppendLine($"\n总计: {issueCount} 个问题");
+        validationResults.AppendLine("================================\n");
+
+        string validationLog = validationResults.ToString();
+        Debug.Log(validationLog);
+
+        if (issueCount > 0)
+        {
+            Debug.LogWarning($"[CastleDbPrefabSyncer] 验证发现 {issueCount} 个问题，请查看详细日志");
+        }
+        else
+        {
+            Debug.Log($"[CastleDbPrefabSyncer] 所有 Prefab 验证通过！");
+        }
+    }
+
+    // ===== 日志 =====
+
+    /// <summary>
     /// 写入同步日志
     /// </summary>
     private void WriteSyncLog(string backupDir)
@@ -745,6 +1003,86 @@ public class CastleDbPrefabSyncer : EditorWindow
         catch (System.Exception ex)
         {
             Debug.LogWarning($"[CastleDbPrefabSyncer] 写入日志失败: {ex.Message}");
+        }
+    }
+
+    // ===== 阶段4：Prefab 自动生成 =====
+
+    /// <summary>
+    /// 阶段4：为 NPC 创建新的 Prefab
+    /// </summary>
+    private string CreatePrefabForNpc(NpcEntry npc, SyncResult result)
+    {
+        try
+        {
+            // 使用 prefabName 或 displayName 作为 Prefab 文件名
+            string prefabName = !string.IsNullOrEmpty(npc.prefabName) ? npc.prefabName : npc.displayName;
+            if (string.IsNullOrEmpty(prefabName))
+            {
+                prefabName = npc.id; // fallback 到 id
+            }
+
+            // 清理文件名（移除非法字符）
+            prefabName = System.Text.RegularExpressions.Regex.Replace(prefabName, @"[^a-zA-Z0-9_\u4e00-\u9fa5]", "");
+            if (string.IsNullOrEmpty(prefabName))
+            {
+                result.success = false;
+                result.message = "无法生成有效的 Prefab 文件名";
+                Debug.LogError($"[CastleDbPrefabSyncer] NPC '{npc.id}' 的 prefabName/displayName 无效");
+                return null;
+            }
+
+            string prefabPath = $"{PREFAB_SEARCH_PATH}/{prefabName}.prefab";
+
+            // 检查文件是否已存在（避免覆盖）
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null)
+            {
+                result.success = false;
+                result.message = $"Prefab 文件已存在但未被识别: {prefabPath}";
+                Debug.LogWarning($"[CastleDbPrefabSyncer] Prefab 文件存在但查找失败，可能是命名规则问题");
+                return null;
+            }
+
+            Debug.Log($"[CastleDbPrefabSyncer] 正在创建 Prefab: {prefabPath}");
+
+            // 创建 GameObject
+            GameObject enemyRoot = new GameObject(prefabName);
+
+            // 添加基础组件
+            var rb2d = enemyRoot.AddComponent<Rigidbody2D>();
+            rb2d.bodyType = RigidbodyType2D.Dynamic;
+            rb2d.gravityScale = 1f;
+            rb2d.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb2d.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+            var mainCollider = enemyRoot.AddComponent<CapsuleCollider2D>();
+            mainCollider.isTrigger = false;
+            mainCollider.size = new Vector2(0.5f, 1f);
+
+            enemyRoot.AddComponent<Animator>();
+            enemyRoot.AddComponent<Damageable>();
+
+            // 注意：EnemyAgentBase 是抽象类，不能直接添加
+            // 使用 LegacyEnemyAdapter 作为默认实现（通用适配器）
+            enemyRoot.AddComponent<LegacyEnemyAdapter>();
+
+            // 保存为 Prefab
+            PrefabUtility.SaveAsPrefabAsset(enemyRoot, prefabPath);
+
+            // 清理临时 GameObject
+            UnityEngine.Object.DestroyImmediate(enemyRoot);
+
+            result.changes.Add($"[创建 Prefab] {prefabPath}");
+            Debug.Log($"[CastleDbPrefabSyncer] Prefab 创建成功: {prefabPath}");
+
+            return prefabPath;
+        }
+        catch (System.Exception ex)
+        {
+            result.success = false;
+            result.message = $"创建 Prefab 失败: {ex.Message}";
+            Debug.LogError($"[CastleDbPrefabSyncer] 创建 Prefab 失败: {ex.Message}\n{ex.StackTrace}");
+            return null;
         }
     }
 }

@@ -5,6 +5,36 @@ using UnityEngine;
 namespace CastleDB.Runtime
 {
     /// <summary>
+    /// CastleDB JSON 工具类（公开 API）
+    /// 用于跨程序集访问 JSON 解析功能
+    /// </summary>
+    public static class CastleDbJsonUtil
+    {
+        /// <summary>
+        /// 尝试解析 JSON 字符串为对象（Dictionary）
+        /// 用于校验 paramsJson 是否为合法的 JSON 对象
+        /// </summary>
+        /// <param name="json">JSON 字符串</param>
+        /// <returns>如果是对象则返回 Dictionary，否则返回 null</returns>
+        public static Dictionary<string, object> TryParseJsonObject(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                return null;
+
+            try
+            {
+                var parser = new SimpleJsonParser(json);
+                var result = parser.Parse();
+                return result as Dictionary<string, object>;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
     /// 从 TextAsset 读取 CastleDB JSON 数据
     /// 用于在 Unity 中加载 .cdb 文件
     /// 使用简单的 JSON 解析支持动态对象和字典反序列化

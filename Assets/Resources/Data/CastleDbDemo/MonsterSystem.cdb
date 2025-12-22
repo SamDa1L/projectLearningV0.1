@@ -75,7 +75,7 @@
 					"displayName": "Knight",
 					"prefabName": "KnightEnemy",
 					"animationTrigger": "Attack",
-					"maxHealth": 200,
+					"maxHealth": 800,
 					"attackDamage": 40,
 					"moveSpeed": 3,
 					"attackRange": 10,
@@ -120,6 +120,23 @@
 					"useLegacyLogicFallback": false,
 					"perceptionRadius": 4,
 					"knockbackToPlayer": 1
+				},
+				{
+					"id": "M_Ghost",
+					"displayName": "Ghost",
+					"prefabName": "Ghost",
+					"animationTrigger": "Attack",
+					"maxHealth": 100,
+					"attackDamage": 100,
+					"moveSpeed": 3,
+					"attackRange": 10,
+					"attackCooldown": 2,
+					"invincibleDuration": 0.5,
+					"knockbackToPlayer": 1,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 2
 				}
 			],
 			"separators": [],
@@ -289,6 +306,12 @@
 					"npcId": "M_Knight",
 					"role": 1,
 					"childId": "DZ_NewAttack"
+				},
+				{
+					"id": "M_Ghost_DZ",
+					"npcId": "M_Ghost",
+					"role": 0,
+					"childId": "DZ_Attack"
 				}
 			],
 			"separators": [],

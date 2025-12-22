@@ -302,18 +302,13 @@ public class CastleDbImporter
                 {
                     if (!string.IsNullOrWhiteSpace(ability.paramsJson))
                     {
-                        // 使用 SimpleJsonParser 解析 JSON 并检查是否为对象
-                        var parsed = SimpleJsonParser.Parse(ability.paramsJson);
+                        // 使用公开的 CastleDbJsonUtil 校验 JSON 对象
+                        var parsed = CastleDB.Runtime.CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson);
 
                         if (parsed == null)
                         {
-                            validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 不是合法的 JSON: {ability.paramsJson}");
-                        }
-                        else if (!(parsed is Dictionary<string, object>))
-                        {
-                            // paramsJson 必须是 JSON 对象，不允许是 primitive（string/number/boolean）或 array
-                            string actualType = parsed is List<object> ? "array" : parsed.GetType().Name;
-                            validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 必须是 JSON 对象（{{...}}），当前是: {actualType}");
+                            // 解析失败或不是对象（可能是 primitive/array）
+                            validationErrors.Add($"Ability '{ability.id}' 的 paramsJson 必须是 JSON 对象（{{...}}），当前值: {ability.paramsJson}");
                         }
                     }
                 }
@@ -474,6 +469,12 @@ public class CastleDbImporter
             AssetDatabase.Refresh();
 
             Debug.Log($"[CastleDbImporter] 导入完成！成功: {successCount}, 失败: {failureCount}");
+
+            // 阶段4：Import All 与 Sync 联动提示
+            if (status == "Success" || status == "CompletedWithFailures")
+            {
+                PromptUserToSyncPrefabs(successCount, failureCount);
+            }
         }
         catch (System.Exception ex)
         {
@@ -1323,5 +1324,49 @@ public class CastleDbImporter
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 阶段4：Import All 完成后提示用户运行 Sync NPC Prefabs
+    /// </summary>
+    private static void PromptUserToSyncPrefabs(int successCount, int failureCount)
+    {
+        // 使用 EditorApplication.delayCall 延迟弹窗，避免阻塞 Import 流程
+        EditorApplication.delayCall += () =>
+        {
+            string title = "导入完成";
+            string message;
+
+            if (failureCount == 0)
+            {
+                message = $"成功导入 {successCount} 个 NPC 配置！\n\n" +
+                         "建议立即运行 'Sync NPC Prefabs' 来更新 Prefab 资产。\n\n" +
+                         "是否现在同步？";
+            }
+            else
+            {
+                message = $"导入完成（成功: {successCount}, 失败: {failureCount}）\n\n" +
+                         "建议运行 'Sync NPC Prefabs' 来同步成功的 NPC。\n\n" +
+                         "是否现在同步？";
+            }
+
+            bool shouldSync = EditorUtility.DisplayDialog(
+                title,
+                message,
+                "立即同步",
+                "稍后手动同步"
+            );
+
+            if (shouldSync)
+            {
+                Debug.Log("[CastleDbImporter] 用户选择立即同步 Prefabs，正在打开同步工具...");
+                // 打开 Sync NPC Prefabs 窗口
+                EditorApplication.ExecuteMenuItem("Tools/CastleDB/Sync NPC Prefabs");
+            }
+            else
+            {
+                Debug.Log("[CastleDbImporter] 用户选择稍后手动同步。提示：请记得运行 'Tools → CastleDB → Sync NPC Prefabs'");
+            }
+        };
     }
 }
