@@ -83,6 +83,16 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected Transform currentTarget;
     protected List<Collider2D> detectedTargets = new List<Collider2D>();
 
+    // ===== 攻击系统（统一由基类管理）=====
+    private float _attackCooldownTimer = 0f;
+    private bool _hasTarget = false;  // 由 PrimaryAttack 检测区事件驱动更新
+    private DetectionZone _primaryAttackZone;  // 缓存 PrimaryAttack 检测区
+
+    /// <summary>
+    /// 是否有攻击目标（只读访问器，供子类查询）
+    /// </summary>
+    protected bool HasTarget => _hasTarget;
+
     // ===== 2A 数值缓存（由 ApplyTuningProfile 填充）=====
     // 以下字段在运行时从 EnemyTuningProfile 下发，供子类使用
     protected float _moveSpeed;
@@ -135,6 +145,51 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
         // ===== 初始化钩子 =====
         Initialize();
+    }
+
+    protected virtual void OnEnable()
+    {
+        // ===== 绑定 PrimaryAttack 检测区事件 =====
+        if (_primaryAttackZone != null)
+        {
+            _primaryAttackZone.OnDetectedTargetsChanged.AddListener(OnPrimaryAttackTargetsChanged);
+
+            if (debugStateOverlay)
+            {
+                Debug.Log($"[{gameObject.name}] 已绑定 PrimaryAttack 检测区事件", gameObject);
+            }
+        }
+    }
+
+    protected virtual void OnDisable()
+    {
+        // ===== 解绑 PrimaryAttack 检测区事件 =====
+        if (_primaryAttackZone != null)
+        {
+            _primaryAttackZone.OnDetectedTargetsChanged.RemoveListener(OnPrimaryAttackTargetsChanged);
+
+            if (debugStateOverlay)
+            {
+                Debug.Log($"[{gameObject.name}] 已解绑 PrimaryAttack 检测区事件", gameObject);
+            }
+        }
+    }
+
+    /// <summary>
+    /// PrimaryAttack 检测区目标变化事件回调
+    /// 由基类统一处理，更新 _hasTarget 标记
+    /// </summary>
+    private void OnPrimaryAttackTargetsChanged()
+    {
+        if (_primaryAttackZone != null)
+        {
+            _hasTarget = _primaryAttackZone.detectedColliders.Count > 0;
+
+            if (debugStateOverlay)
+            {
+                Debug.Log($"[{gameObject.name}] PrimaryAttack 目标变化：hasTarget={_hasTarget}, count={_primaryAttackZone.detectedColliders.Count}");
+            }
+        }
     }
 
     protected virtual void Update()
@@ -210,6 +265,10 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     /// - 无歧义的推断问题
     /// - GetDetectedTargets()和GetDetectedTargetsForRole()一致
     /// - 不需要冗余的缓存字段
+    ///
+    /// v0.3 更新（攻击系统重构）：
+    /// - 缓存 PrimaryAttack 检测区到 _primaryAttackZone
+    /// - 由基类在 OnEnable/OnDisable 中统一绑定/解绑事件
     /// </summary>
     private void ResolveDetectionZone()
     {
@@ -265,6 +324,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
         // 配置成功，缓存主检测区到detectionZone字段
         detectionZone = primaryBinding.zone;
+
+        // v0.3 新增：缓存到 _primaryAttackZone，供攻击系统使用
+        _primaryAttackZone = primaryBinding.zone;
 
         if (debugStateOverlay)
         {
@@ -801,6 +863,53 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     #endif
 
     // ===== 攻击系统 =====
+
+    /// <summary>
+    /// 统一的攻击系统更新方法（供子类在 TickState 中调用）
+    ///
+    /// 功能：
+    /// - 递减攻击冷却计时器
+    /// - 同步 hasTarget 布尔参数到 Animator（可选）
+    /// - 当满足攻击条件时（HasTarget && 冷却归零）触发攻击动画并执行回调
+    ///
+    /// 参数：
+    /// - deltaTime: 帧间隔时间
+    /// - onAttackTriggered: 攻击触发时的回调（可选），供子类做额外处理（如播放特效、状态切换）
+    ///
+    /// 文档来源：Docs代码冗余优化方案.md - 步骤2
+    /// </summary>
+    protected void TickAttackSystem(float deltaTime, System.Action onAttackTriggered = null)
+    {
+        // 1. 递减冷却计时器
+        if (_attackCooldownTimer > 0f)
+        {
+            _attackCooldownTimer -= deltaTime;
+        }
+
+        // 2. 同步 hasTarget 到 Animator（可选，如果 Animator 使用该参数）
+        if (animator != null)
+        {
+            animator.SetBool(AnimationStrings.hasTarget, _hasTarget);
+        }
+
+        // 3. 检查是否满足攻击条件
+        if (_hasTarget && _attackCooldownTimer <= 0f)
+        {
+            // 触发攻击动画
+            TriggerAttackAnimation();
+
+            // 执行回调（供子类做额外处理）
+            onAttackTriggered?.Invoke();
+
+            // 重置冷却计时器
+            _attackCooldownTimer = _attackCooldown;
+
+            if (debugStateOverlay)
+            {
+                Debug.Log($"[{gameObject.name}] TickAttackSystem 触发攻击 - Cooldown={_attackCooldown}s");
+            }
+        }
+    }
 
     /// <summary>
     /// 触发攻击动画（统一入口）
