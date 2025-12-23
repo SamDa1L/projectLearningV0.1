@@ -1,0 +1,451 @@
+{
+	"sheets": [
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.3"
+				},
+				{
+					"key": "providerId",
+					"value": "Monster"
+				},
+				{
+					"key": "displayName",
+					"value": "怪物数据"
+				},
+				{
+					"key": "dependencies",
+					"value": ""
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/MonsterSystem"
+				},
+				{
+					"key": "featureFlags",
+					"value": "UseNewDamageable=true"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "NPC",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "animationTrigger",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackDamage"
+				},
+				{
+					"typeStr": "4",
+					"name": "moveSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackRange"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackCooldown"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibleDuration"
+				},
+				{
+					"typeStr": "4",
+					"name": "knockbackToPlayer"
+				},
+				{
+					"typeStr": "4",
+					"name": "knockbackMultiplier"
+				},
+				{
+					"typeStr": "2",
+					"name": "enableDeathAnimation",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "useLegacyLogicFallback",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "perceptionRadius"
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight",
+					"displayName": "Knight",
+					"prefabName": "KnightEnemy",
+					"animationTrigger": "Attack",
+					"maxHealth": 800,
+					"attackDamage": 40,
+					"moveSpeed": 3,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 0.5,
+					"knockbackMultiplier": 3,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 5,
+					"knockbackToPlayer": 1
+				},
+				{
+					"id": "M_FlyingEye",
+					"displayName": "FlyingEye",
+					"prefabName": "FlyingEye",
+					"animationTrigger": "Attack",
+					"maxHealth": 50,
+					"attackDamage": 30,
+					"moveSpeed": 4,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 3,
+					"knockbackMultiplier": 2,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 8,
+					"knockbackToPlayer": 1
+				},
+				{
+					"id": "M_Goblin",
+					"displayName": "Goblin",
+					"prefabName": "Goblin",
+					"animationTrigger": "Attack",
+					"maxHealth": 60,
+					"attackDamage": 25,
+					"moveSpeed": 2.5,
+					"attackRange": 1.5,
+					"attackCooldown": 1,
+					"invincibleDuration": 0.3,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": false,
+					"perceptionRadius": 4,
+					"knockbackToPlayer": 1
+				},
+				{
+					"id": "M_Ghost",
+					"displayName": "Ghost",
+					"prefabName": "Ghost",
+					"animationTrigger": "Attack",
+					"maxHealth": 100,
+					"attackDamage": 100,
+					"moveSpeed": 3,
+					"attackRange": 10,
+					"attackCooldown": 2,
+					"invincibleDuration": 0.5,
+					"knockbackToPlayer": 1,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 2
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "DetectionZone",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:NPC",
+					"name": "npcId",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Cliff,Alert,Lookout,Custom",
+					"name": "role"
+				},
+				{
+					"typeStr": "1",
+					"name": "childId",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight_DZ",
+					"npcId": "M_Knight",
+					"childId": "DZ_Attack",
+					"role": 0
+				},
+				{
+					"id": "M_FlyingEye_DZ",
+					"npcId": "M_FlyingEye",
+					"role": 0,
+					"childId": "DZ_Attack"
+				},
+				{
+					"id": "M_Knight_DZ_SecondZone",
+					"npcId": "M_Knight",
+					"role": 1,
+					"childId": "DZ_NewAttack"
+				},
+				{
+					"id": "M_Ghost_DZ",
+					"npcId": "M_Ghost",
+					"role": 0,
+					"childId": "DZ_Attack"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Ability",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "5:Move,Run,Jump,Attack,RangedAttack",
+					"name": "hookType"
+				},
+				{
+					"typeStr": "3",
+					"name": "priority"
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "BasicMove",
+					"hookType": 0,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicRun",
+					"hookType": 1,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicJump",
+					"hookType": 2,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicAttack",
+					"hookType": 3,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicRangedAttack",
+					"hookType": 4,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Player",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibilityTime"
+				},
+				{
+					"typeStr": "4",
+					"name": "walkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "runSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "airWalkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "jumpImpulse"
+				},
+				{
+					"typeStr": "4",
+					"name": "climbSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "baseAttackDamage"
+				}
+			],
+			"lines": [
+				{
+					"maxHealth": 500,
+					"invincibilityTime": 2,
+					"walkSpeed": 3,
+					"runSpeed": 8,
+					"airWalkSpeed": 5,
+					"jumpImpulse": 5,
+					"climbSpeed": 3,
+					"baseAttackDamage": 50,
+					"id": "player"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "PlayerAttackOverride",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:Player",
+					"name": "playerId",
+					"display": null
+				},
+				{
+					"typeStr": "5:Hitbox,Projectile",
+					"name": "targetType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "targetId",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "damageMultiplier"
+				},
+				{
+					"typeStr": "3",
+					"name": "damageOverride"
+				}
+			],
+			"lines": [
+				{
+					"id": "SW_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SW_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SW_3",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SW_3",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AA_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AA_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AA_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AA_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "Arrow_1",
+					"playerId": "player",
+					"targetType": 1,
+					"targetId": "Prefabs/Projectiles/Player/Arrow",
+					"damageMultiplier": 3,
+					"damageOverride": 0
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

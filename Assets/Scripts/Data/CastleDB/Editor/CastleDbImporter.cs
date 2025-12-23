@@ -12,19 +12,25 @@ using CastleDB.Runtime;
 /// 功能：
 /// - 使用CastleDbService读取NPC数据
 /// - 创建/更新EnemyTuningProfile ScriptableObject
-/// - 验证schemaVersion=0.2
+/// - 支持 0.2 Legacy 模式和 0.3 Provider 模式
 /// - 生成导入日志
+///
+/// 0.3 版本更新：
+/// - 支持 Provider 流程（MonsterDataProvider）
+/// - 优先尝试 0.3 数据源（Assets/Resources/Data/MonsterSystem.cdb）
+/// - 回退到 0.2 Legacy 数据源（Assets/Resources/Data/CastleDbDemo/MonsterSystem.cdb）
 ///
 /// 使用方式：
 /// 1. 在Unity菜单中选择 Tools > CastleDB > Import All
-/// 2. 工具会自动通过CastleDbService读取数据
+/// 2. 工具会自动检测数据源版本并选择相应流程
 /// 3. 为每个NPC创建或更新对应的Profile资源
 /// 4. 生成导入日志到 Logs/CastleDbImport.log
 /// </summary>
 public class CastleDbImporter
 {
     // 配置常量
-    private const string CASTLEDB_RESOURCE_PATH = "Data/CastleDbDemo/MonsterSystem";
+    private const string CASTLEDB_RESOURCE_PATH = "Data/CastleDbDemo/MonsterSystem";  // 0.2 Legacy 路径
+    private const string CASTLEDB_V03_RESOURCE_PATH = "Data/MonsterSystem";  // 0.3 新路径
     private const string PROFILE_OUTPUT_DIR = "Assets/Resources/Profiles";
     private const string PLAYER_CONFIG_PATH = "Assets/Resources/Config/PlayerConfig.asset";
     private const string ABILITY_CATALOG_PATH = "Assets/Resources/Config/AbilityCatalog.asset";  // 阶段 3B
@@ -33,7 +39,8 @@ public class CastleDbImporter
     private const string BACKUP_DIR = "Logs/CastleDBImport/Backups";
 
     // 版本检查
-    private const string EXPECTED_SCHEMA_VERSION = "0.2";
+    private const string EXPECTED_SCHEMA_VERSION_LEGACY = "0.2";
+    private const string EXPECTED_SCHEMA_VERSION_V03 = "0.3";
 
     // ===== Step 0: 日志写入工具函数 =====
 
@@ -101,7 +108,329 @@ public class CastleDbImporter
     {
         Debug.Log("[CastleDbImporter] 开始导入CastleDB数据...");
 
-        // ===== Step 1: 会话上下文初始化 =====
+        // ===== 0.3 版本：尝试 Provider 流程 =====
+        if (TryImportWithProvider())
+        {
+            return;  // Provider 流程成功，直接返回
+        }
+
+        // ===== 回退到 Legacy 流程 =====
+        Debug.Log("[CastleDbImporter] 回退到 Legacy (0.2) 导入流程...");
+        ImportAllLegacy();
+    }
+
+    /// <summary>
+    /// 0.3 版本：尝试使用 Provider 流程导入
+    /// 返回 true 表示成功处理（无论导入成功还是失败），false 表示需要回退到 Legacy
+    /// </summary>
+    private static bool TryImportWithProvider()
+    {
+        // 1. 尝试加载 0.3 版本数据源
+        var asset = Resources.Load<TextAsset>(CASTLEDB_V03_RESOURCE_PATH);
+        if (asset == null)
+        {
+            Debug.Log($"[CastleDbImporter] 未找到 0.3 数据源：{CASTLEDB_V03_RESOURCE_PATH}，尝试 Legacy 路径");
+            return false;
+        }
+
+        // 2. 解析并检查是否有 providerId（判断是否为 0.3 格式）
+        var source = new CastleDbJsonSource(asset);
+        var root = source.ReadCastleDbJson();
+        if (root == null)
+        {
+            Debug.LogWarning("[CastleDbImporter] 无法解析 0.3 数据源");
+            return false;
+        }
+
+        // 查找 Meta Sheet 中的 providerId
+        var metaSheet = root.sheets.Find(s => s.name == "Meta");
+        if (metaSheet == null || metaSheet.lines == null)
+        {
+            Debug.Log("[CastleDbImporter] 数据源无 Meta Sheet，回退到 Legacy");
+            return false;
+        }
+
+        // 解析 Meta 条目
+        var metaEntries = new List<MetaEntry>();
+        foreach (var line in metaSheet.lines)
+        {
+            if (line is Dictionary<string, object> dict)
+            {
+                metaEntries.Add(new MetaEntry
+                {
+                    key = dict.TryGetValue("key", out var k) ? k?.ToString() ?? "" : "",
+                    value = dict.TryGetValue("value", out var v) ? v?.ToString() ?? "" : ""
+                });
+            }
+        }
+
+        var descriptor = CdbModuleDescriptor.FromMetaEntries(metaEntries, $"Assets/Resources/{CASTLEDB_V03_RESOURCE_PATH}.cdb");
+
+        // 检查是否有 providerId（0.3 格式标志）
+        if (descriptor.IsLegacy || string.IsNullOrEmpty(descriptor.ProviderId))
+        {
+            Debug.Log("[CastleDbImporter] 数据源无 providerId，回退到 Legacy");
+            return false;
+        }
+
+        // 3. 使用 Provider 流程导入
+        Debug.Log($"[CastleDbImporter] 检测到 0.3 格式数据源：providerId={descriptor.ProviderId}, schemaVersion={descriptor.SchemaVersion}");
+        return ImportWithProvider(source, descriptor);
+    }
+
+    /// <summary>
+    /// 使用 Provider 流程执行导入
+    /// </summary>
+    private static bool ImportWithProvider(CastleDbJsonSource source, CdbModuleDescriptor descriptor)
+    {
+        var startedAt = System.DateTime.Now;
+        var notes = new List<string>();
+        string status = "Failed";
+        string message = null;
+
+        try
+        {
+            // 1. 确保 Provider 已注册
+            CdbProviderBootstrap.EnsureRegistered();
+
+            var registry = CdbDataProviderRegistry.Instance;
+
+            // 2. 校验 schemaVersion
+            if (descriptor.SchemaVersion != EXPECTED_SCHEMA_VERSION_V03)
+            {
+                status = "VersionMismatch";
+                message = $"Schema 版本不匹配。期望: {EXPECTED_SCHEMA_VERSION_V03}, 实际: {descriptor.SchemaVersion}";
+                Debug.LogError($"[CastleDbImporter] {message}");
+                WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+                return true;  // 已处理，不回退
+            }
+
+            // 3. 注册描述符
+            registry.RegisterDescriptor(descriptor);
+
+            // 4. 获取 Provider
+            var provider = registry.GetProvider(descriptor.ProviderId);
+            if (provider == null)
+            {
+                status = "ProviderNotFound";
+                message = $"未找到 Provider：{descriptor.ProviderId}";
+                Debug.LogError($"[CastleDbImporter] {message}");
+                WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+                return true;
+            }
+
+            // 5. 生成备份
+            BackupExistingProfiles();
+            notes.Add("✅ 已生成备份");
+
+            // 6. 初始化 Provider
+            Debug.Log($"[CastleDbImporter] 初始化 Provider：{descriptor.ProviderId}");
+            provider.Initialize(source, descriptor);
+            notes.Add($"✅ Provider 初始化完成");
+
+            // 7. 校验
+            Debug.Log($"[CastleDbImporter] 校验数据：{descriptor.ProviderId}");
+            var validationErrors = provider.Validate(descriptor);
+            if (validationErrors.Count > 0)
+            {
+                status = "ValidationFailed";
+                message = $"数据校验失败，共 {validationErrors.Count} 个错误";
+                foreach (var error in validationErrors)
+                {
+                    notes.Add($"❌ {error}");
+                    Debug.LogError($"[CastleDbImporter] 校验错误：{error}");
+                }
+                WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+                return true;
+            }
+            notes.Add($"✅ 数据校验通过");
+
+            // 8. 导入
+            Debug.Log($"[CastleDbImporter] 导入数据：{descriptor.ProviderId}");
+            var importResult = provider.Import(descriptor);
+            importResult.LogToConsole();
+
+            // 9. 收集导入结果
+            foreach (var info in importResult.InfoLogs)
+            {
+                notes.Add($"ℹ️ {info}");
+            }
+            foreach (var warning in importResult.Warnings)
+            {
+                notes.Add($"⚠️ {warning}");
+            }
+
+            if (!importResult.Success)
+            {
+                status = "ImportFailed";
+                message = $"导入失败：{importResult.Errors.Count} 个错误";
+                foreach (var error in importResult.Errors)
+                {
+                    notes.Add($"❌ {error}");
+                }
+                WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+                return true;
+            }
+
+            // 10. 统一保存资产
+            if (importResult.DirtyAssets.Count > 0)
+            {
+                AssetDatabase.SaveAssets();
+                Debug.Log($"[CastleDbImporter] 已保存 {importResult.DirtyAssets.Count} 个资产");
+            }
+
+            // 11. 处理其他模块（Player/Ability 仍使用旧逻辑，因为对应 Provider 尚未实现）
+            ImportPlayerAndAbilityLegacy(source, notes);
+
+            // 12. 刷新资源
+            AssetDatabase.Refresh();
+
+            status = "Success";
+            message = $"Provider 导入成功：创建 {importResult.CreatedCount}，更新 {importResult.UpdatedCount}";
+            Debug.Log($"[CastleDbImporter] {message}");
+
+            WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+
+            // 提示用户同步 Prefab
+            PromptUserToSyncPrefabs(importResult.CreatedCount + importResult.UpdatedCount, 0);
+
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            status = "Exception";
+            message = $"{ex.Message}\n{ex.StackTrace}";
+            Debug.LogError($"[CastleDbImporter] Provider 导入异常：{ex.Message}");
+            WriteProviderImportLog(startedAt, status, message, descriptor, notes);
+            return true;  // 已处理，不回退
+        }
+    }
+
+    /// <summary>
+    /// 0.3 过渡期：使用旧逻辑导入 Player 和 Ability（待 Phase 4 实现对应 Provider 后移除）
+    /// </summary>
+    private static void ImportPlayerAndAbilityLegacy(CastleDbJsonSource source, List<string> notes)
+    {
+        try
+        {
+            var service = new CastleDbService();
+            // 不校验版本，直接读取数据
+            var root = source.ReadCastleDbJson();
+            if (root == null) return;
+
+            // 手动解析 Player/Ability 数据（跳过版本检查）
+            var players = new List<PlayerEntry>();
+            var playerAttackOverrides = new List<PlayerAttackOverrideEntry>();
+            var abilities = new List<AbilityEntry>();
+
+            foreach (var sheet in root.sheets)
+            {
+                switch (sheet.name)
+                {
+                    case "Player":
+                        players = ParsePlayerEntries(sheet.lines);
+                        break;
+                    case "PlayerAttackOverride":
+                        playerAttackOverrides = ParsePlayerAttackOverrideEntries(sheet.lines);
+                        break;
+                    case "Ability":
+                        abilities = ParseAbilityEntries(sheet.lines);
+                        break;
+                }
+            }
+
+            // 处理 PlayerConfig
+            var playerEntry = players.Find(p => p.id == "player");
+            if (playerEntry != null)
+            {
+                var playerConfig = CreateOrUpdatePlayerConfigInternal(playerEntry, playerAttackOverrides, notes);
+                if (playerConfig != null)
+                {
+                    EditorUtility.SetDirty(playerConfig);
+                    ApplyProjectileDamageToPrefabs(playerConfig, playerAttackOverrides, notes);
+                }
+            }
+
+            // 处理 AbilityCatalog
+            if (abilities.Count > 0)
+            {
+                var abilityCatalog = CreateOrUpdateAbilityCatalogInternal(abilities, notes);
+                if (abilityCatalog != null)
+                {
+                    EditorUtility.SetDirty(abilityCatalog);
+                }
+            }
+
+            notes.Add("✅ Player/Ability 数据已处理（Legacy 逻辑）");
+        }
+        catch (System.Exception ex)
+        {
+            notes.Add($"⚠️ Player/Ability 处理失败：{ex.Message}");
+            Debug.LogWarning($"[CastleDbImporter] Player/Ability 处理失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 写入 Provider 导入日志
+    /// </summary>
+    private static void WriteProviderImportLog(
+        System.DateTime startedAt,
+        string status,
+        string message,
+        CdbModuleDescriptor descriptor,
+        List<string> notes)
+    {
+        var finishedAt = System.DateTime.Now;
+        var logContent = new System.Text.StringBuilder();
+
+        logContent.AppendLine("════════════════════════════════════════════════════════");
+        logContent.AppendLine("         CastleDB Import Session Log (Provider Mode)");
+        logContent.AppendLine("════════════════════════════════════════════════════════");
+        logContent.AppendLine();
+        logContent.AppendLine($"开始时间: {startedAt:yyyy-MM-dd HH:mm:ss}");
+        logContent.AppendLine($"结束时间: {finishedAt:yyyy-MM-dd HH:mm:ss}");
+        logContent.AppendLine($"耗时: {(finishedAt - startedAt).TotalSeconds:F2} 秒");
+        logContent.AppendLine();
+        logContent.AppendLine($"状态: {status}");
+        logContent.AppendLine($"Provider: {descriptor?.ProviderId ?? "N/A"}");
+        logContent.AppendLine($"Schema 版本: {descriptor?.SchemaVersion ?? "N/A"}");
+        logContent.AppendLine($"资源路径: {descriptor?.ResourcePath ?? "N/A"}");
+        logContent.AppendLine();
+
+        if (!string.IsNullOrEmpty(message))
+        {
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            logContent.AppendLine("         消息");
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            logContent.AppendLine(message);
+            logContent.AppendLine();
+        }
+
+        if (notes.Count > 0)
+        {
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            logContent.AppendLine("         详细日志");
+            logContent.AppendLine("════════════════════════════════════════════════════════");
+            foreach (var note in notes)
+            {
+                logContent.AppendLine($"• {note}");
+            }
+            logContent.AppendLine();
+        }
+
+        logContent.AppendLine("════════════════════════════════════════════════════════");
+        logContent.AppendLine("         End of Log");
+        logContent.AppendLine("════════════════════════════════════════════════════════");
+
+        string absLogPath = GetAbsolutePath(IMPORT_LOG_FILE);
+        SafeWriteAllText(absLogPath, logContent.ToString());
+    }
+
+    /// <summary>
+    /// Legacy (0.2) 导入流程
+    /// </summary>
+    private static void ImportAllLegacy()
+    {
         var startedAt = System.DateTime.Now;
         string status = "Failed"; // 默认失败，成功时再改
         string message = null;
@@ -133,10 +462,10 @@ public class CastleDbImporter
 
             // 3. 验证版本
             var versionInfoObj = service.GetVersionInfo();
-            if (versionInfoObj == null || versionInfoObj.schemaVersion != EXPECTED_SCHEMA_VERSION)
+            if (versionInfoObj == null || versionInfoObj.schemaVersion != EXPECTED_SCHEMA_VERSION_LEGACY)
             {
                 status = "VersionMismatch";
-                message = $"版本不匹配。期望: {EXPECTED_SCHEMA_VERSION}, 实际: {versionInfoObj?.schemaVersion ?? "null"}";
+                message = $"版本不匹配。期望: {EXPECTED_SCHEMA_VERSION_LEGACY}, 实际: {versionInfoObj?.schemaVersion ?? "null"}";
                 versionInfo = $"{versionInfoObj?.schemaVersion ?? "null"}";
                 Debug.LogError($"[CastleDbImporter] {message}");
                 return;
@@ -1368,5 +1697,131 @@ public class CastleDbImporter
                 Debug.Log("[CastleDbImporter] 用户选择稍后手动同步。提示：请记得运行 'Tools → CastleDB → Sync NPC Prefabs'");
             }
         };
+    }
+
+    // ===== 0.3 版本：辅助解析方法 =====
+
+    /// <summary>
+    /// 解析 Player Sheet 数据
+    /// </summary>
+    private static List<PlayerEntry> ParsePlayerEntries(List<object> lines)
+    {
+        var result = new List<PlayerEntry>();
+        if (lines == null) return result;
+
+        foreach (var line in lines)
+        {
+            if (line is Dictionary<string, object> dict)
+            {
+                result.Add(new PlayerEntry
+                {
+                    id = GetStringValue(dict, "id"),
+                    maxHealth = GetFloatValue(dict, "maxHealth"),
+                    invincibilityTime = GetFloatValue(dict, "invincibilityTime"),
+                    walkSpeed = GetFloatValue(dict, "walkSpeed"),
+                    runSpeed = GetFloatValue(dict, "runSpeed"),
+                    airWalkSpeed = GetFloatValue(dict, "airWalkSpeed"),
+                    jumpImpulse = GetFloatValue(dict, "jumpImpulse"),
+                    climbSpeed = GetFloatValue(dict, "climbSpeed"),
+                    baseAttackDamage = GetFloatValue(dict, "baseAttackDamage")
+                });
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// 解析 PlayerAttackOverride Sheet 数据
+    /// </summary>
+    private static List<PlayerAttackOverrideEntry> ParsePlayerAttackOverrideEntries(List<object> lines)
+    {
+        var result = new List<PlayerAttackOverrideEntry>();
+        if (lines == null) return result;
+
+        foreach (var line in lines)
+        {
+            if (line is Dictionary<string, object> dict)
+            {
+                result.Add(new PlayerAttackOverrideEntry
+                {
+                    id = GetStringValue(dict, "id"),
+                    playerId = GetStringValue(dict, "playerId"),
+                    targetType = GetIntValue(dict, "targetType"),
+                    targetId = GetStringValue(dict, "targetId"),
+                    damageMultiplier = GetFloatValue(dict, "damageMultiplier"),
+                    damageOverride = GetIntValue(dict, "damageOverride")
+                });
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// 解析 Ability Sheet 数据
+    /// </summary>
+    private static List<AbilityEntry> ParseAbilityEntries(List<object> lines)
+    {
+        var result = new List<AbilityEntry>();
+        if (lines == null) return result;
+
+        foreach (var line in lines)
+        {
+            if (line is Dictionary<string, object> dict)
+            {
+                result.Add(new AbilityEntry
+                {
+                    id = GetStringValue(dict, "id"),
+                    hookType = GetIntValue(dict, "hookType"),
+                    priority = GetIntValue(dict, "priority"),
+                    enabled = GetBoolValue(dict, "enabled"),
+                    paramsJson = GetStringValue(dict, "paramsJson")
+                });
+            }
+        }
+        return result;
+    }
+
+    // ===== 字典辅助方法 =====
+
+    private static string GetStringValue(Dictionary<string, object> dict, string key)
+    {
+        if (dict.TryGetValue(key, out var value))
+        {
+            return value?.ToString() ?? "";
+        }
+        return "";
+    }
+
+    private static float GetFloatValue(Dictionary<string, object> dict, string key)
+    {
+        if (dict.TryGetValue(key, out var value))
+        {
+            if (value is float f) return f;
+            if (value is double d) return (float)d;
+            if (value is int i) return i;
+            if (float.TryParse(value?.ToString(), out var result)) return result;
+        }
+        return 0f;
+    }
+
+    private static int GetIntValue(Dictionary<string, object> dict, string key)
+    {
+        if (dict.TryGetValue(key, out var value))
+        {
+            if (value is int i) return i;
+            if (value is long l) return (int)l;
+            if (int.TryParse(value?.ToString(), out var result)) return result;
+        }
+        return 0;
+    }
+
+    private static bool GetBoolValue(Dictionary<string, object> dict, string key)
+    {
+        if (dict.TryGetValue(key, out var value))
+        {
+            if (value is bool b) return b;
+            if (bool.TryParse(value?.ToString(), out var result)) return result;
+        }
+        return false;
     }
 }
