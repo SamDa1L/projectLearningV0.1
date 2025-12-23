@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CastleDB.Runtime;
+using CastleDB.Editor;
 
 /// <summary>
 /// CastleDB 导入工具
@@ -36,7 +37,6 @@ public class CastleDbImporter
     private const string ABILITY_CATALOG_PATH = "Assets/Resources/Config/AbilityCatalog.asset";  // 阶段 3B
     private const string IMPORT_LOG_DIR = "Logs";
     private const string IMPORT_LOG_FILE = "Logs/CastleDbImport.log";
-    private const string BACKUP_DIR = "Logs/CastleDBImport/Backups";
 
     // 版本检查
     private const string EXPECTED_SCHEMA_VERSION_LEGACY = "0.2";
@@ -108,15 +108,36 @@ public class CastleDbImporter
     {
         Debug.Log("[CastleDbImporter] 开始导入CastleDB数据...");
 
-        // ===== 0.3 版本：尝试 Provider 流程 =====
-        if (TryImportWithProvider())
-        {
-            return;  // Provider 流程成功，直接返回
-        }
+        // ===== 0.3 版本：多文件 Provider 流程 =====
+        // 1. 确保 Provider 已注册
+        CdbProviderBootstrap.EnsureRegistered();
 
-        // ===== 回退到 Legacy 流程 =====
-        Debug.Log("[CastleDbImporter] 回退到 Legacy (0.2) 导入流程...");
-        ImportAllLegacy();
+        // 2. 使用 Coordinator 执行 Import All
+        var coordinator = new CdbImportCoordinator(CdbDataProviderRegistry.Instance);
+        var result = coordinator.ImportAll();
+
+        // 3. 输出日志
+        var logContent = result.GetFormattedLog();
+        Debug.Log($"[CastleDbImporter] Import All {(result.IsSuccess ? "成功" : "失败")}");
+
+        // 写入日志文件
+        string absLogPath = GetAbsolutePath(IMPORT_LOG_FILE);
+        SafeWriteAllText(absLogPath, logContent);
+
+        // 如果失败，显示错误对话框
+        if (!result.IsSuccess)
+        {
+            EditorUtility.DisplayDialog(
+                "Import All 失败",
+                "导入过程中发生错误，请查看 Console 和日志文件了解详情。\n\n" +
+                $"日志位置：{IMPORT_LOG_FILE}",
+                "确定"
+            );
+        }
+        else
+        {
+            Debug.Log($"[CastleDbImporter] 导入完成，日志已保存至：{IMPORT_LOG_FILE}");
+        }
     }
 
     /// <summary>
@@ -219,9 +240,8 @@ public class CastleDbImporter
                 return true;
             }
 
-            // 5. 生成备份
-            BackupExistingProfiles();
-            notes.Add("✅ 已生成备份");
+            // 5. 注意：备份已由 CdbImportCoordinator 统一管理（Phase 5）
+            notes.Add("ℹ️ 备份由 Coordinator 管理");
 
             // 6. 初始化 Provider
             Debug.Log($"[CastleDbImporter] 初始化 Provider：{descriptor.ProviderId}");
@@ -472,8 +492,8 @@ public class CastleDbImporter
             }
             versionInfo = versionInfoObj.schemaVersion;
 
-            // 4. 生成备份
-            BackupExistingProfiles();
+            // 4. 注意：备份已由 CdbImportCoordinator 统一管理（Phase 5）
+            // Legacy 流程不再单独备份
 
             // 5. 获取所有NPC数据
             npcs = service.GetAllNpcs();
@@ -1117,77 +1137,6 @@ public class CastleDbImporter
     }
 
     /// <summary>
-    /// 生成现有Profile、PlayerConfig和AbilityCatalog的备份
-    /// 阶段 3A: 同时备份 EnemyTuningProfile 和 PlayerConfig
-    /// 阶段 3B: 增加 AbilityCatalog 备份
-    /// </summary>
-    private static void BackupExistingProfiles()
-    {
-        try
-        {
-            // 生成备份时间戳
-            string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string backupPath = Path.Combine(BACKUP_DIR, $"Backup_{timestamp}");
-
-            int backupCount = 0;
-
-            // 1. 备份 EnemyTuningProfile 文件
-            if (Directory.Exists(PROFILE_OUTPUT_DIR))
-            {
-                var profileFiles = Directory.GetFiles(PROFILE_OUTPUT_DIR, "Profile_*.asset");
-                if (profileFiles.Length > 0)
-                {
-                    Directory.CreateDirectory(backupPath);
-                    foreach (var file in profileFiles)
-                    {
-                        string fileName = Path.GetFileName(file);
-                        string destPath = Path.Combine(backupPath, fileName);
-                        File.Copy(file, destPath, true);
-                        backupCount++;
-                    }
-                }
-            }
-
-            // 2. 备份 PlayerConfig 文件（阶段 3A）
-            if (File.Exists(PLAYER_CONFIG_PATH))
-            {
-                if (!Directory.Exists(backupPath))
-                {
-                    Directory.CreateDirectory(backupPath);
-                }
-
-                string fileName = Path.GetFileName(PLAYER_CONFIG_PATH);
-                string destPath = Path.Combine(backupPath, fileName);
-                File.Copy(PLAYER_CONFIG_PATH, destPath, true);
-                backupCount++;
-            }
-
-            // 3. 备份 AbilityCatalog 文件（阶段 3B）
-            if (File.Exists(ABILITY_CATALOG_PATH))
-            {
-                if (!Directory.Exists(backupPath))
-                {
-                    Directory.CreateDirectory(backupPath);
-                }
-
-                string fileName = Path.GetFileName(ABILITY_CATALOG_PATH);
-                string destPath = Path.Combine(backupPath, fileName);
-                File.Copy(ABILITY_CATALOG_PATH, destPath, true);
-                backupCount++;
-            }
-
-            if (backupCount > 0)
-            {
-                Debug.Log($"[CastleDbImporter] 备份完成: {backupPath} ({backupCount} 个文件)");
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"[CastleDbImporter] 备份失败: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// Step 3: 会话级日志写入（升级版 LogImportResult）
     /// 无论成功、失败、异常都会产出完整的会话日志
     /// </summary>
@@ -1467,7 +1416,8 @@ public class CastleDbImporter
 
         try
         {
-            string absBackupDir = GetAbsolutePath(BACKUP_DIR);
+            // 使用 CdbImportCoordinator 的回滚逻辑
+            string absBackupDir = GetAbsolutePath("Logs/CastleDBImport/Backups");
             if (!Directory.Exists(absBackupDir))
             {
                 Debug.LogError($"[CastleDbImporter] 备份目录不存在: {absBackupDir}");
@@ -1489,45 +1439,32 @@ public class CastleDbImporter
             string latestBackup = backupDirs[backupDirs.Length - 1];
             string backupName = Path.GetFileName(latestBackup);
 
-            Debug.Log($"[CastleDbImporter] 开始回滚到备份: {backupName}");
+            Debug.Log($"[CastleDbImporter] 调用 CdbImportCoordinator 回滚到备份: {backupName}");
 
-            int restoredCount = 0;
+            // 使用 Coordinator 的 RestoreFromBackup 通过反射调用（因为它是 private）
+            var coordinatorType = typeof(CdbImportCoordinator);
+            var restoreMethod = coordinatorType.GetMethod("RestoreFromBackup",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            // 1. 恢复 EnemyTuningProfile 文件
-            var profileBackupFiles = Directory.GetFiles(latestBackup, "Profile_*.asset");
-            foreach (var backupFile in profileBackupFiles)
+            if (restoreMethod == null)
             {
-                string fileName = Path.GetFileName(backupFile);
-                string destPath = Path.Combine(PROFILE_OUTPUT_DIR, fileName);
-
-                File.Copy(backupFile, destPath, true);
-                restoredCount++;
+                Debug.LogError("[CastleDbImporter] 无法找到 CdbImportCoordinator.RestoreFromBackup 方法");
+                EditorUtility.DisplayDialog("回滚失败", "内部错误：无法找到回滚方法", "确定");
+                return;
             }
 
-            // 2. 恢复 PlayerConfig 文件（阶段 3A）
-            string playerConfigBackup = Path.Combine(latestBackup, Path.GetFileName(PLAYER_CONFIG_PATH));
-            if (File.Exists(playerConfigBackup))
-            {
-                File.Copy(playerConfigBackup, PLAYER_CONFIG_PATH, true);
-                restoredCount++;
-                Debug.Log($"[CastleDbImporter] 已恢复 PlayerConfig");
-            }
+            var coordinator = new CdbImportCoordinator(CdbDataProviderRegistry.Instance);
 
-            // 3. 恢复 AbilityCatalog 文件（阶段 3B）
-            string abilityCatalogBackup = Path.Combine(latestBackup, Path.GetFileName(ABILITY_CATALOG_PATH));
-            if (File.Exists(abilityCatalogBackup))
-            {
-                File.Copy(abilityCatalogBackup, ABILITY_CATALOG_PATH, true);
-                restoredCount++;
-                Debug.Log($"[CastleDbImporter] 已恢复 AbilityCatalog");
-            }
+            // 提取时间戳（backupName 格式为 "Backup_yyyyMMdd_HHmmss"）
+            string timestamp = backupName.Replace("Backup_", "");
+            restoreMethod.Invoke(coordinator, new object[] { timestamp });
 
             AssetDatabase.Refresh();
 
-            Debug.Log($"[CastleDbImporter] 回滚完成！已恢复 {restoredCount} 个文件");
+            Debug.Log($"[CastleDbImporter] 回滚完成！备份：{backupName}");
             EditorUtility.DisplayDialog(
                 "回滚成功",
-                $"已从备份 {backupName} 恢复 {restoredCount} 个文件。",
+                $"已从备份 {backupName} 恢复资产。",
                 "确定");
         }
         catch (System.Exception ex)

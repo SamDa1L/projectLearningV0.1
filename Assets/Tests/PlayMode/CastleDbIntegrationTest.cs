@@ -18,9 +18,9 @@ namespace CastleDB.Tests.PlayMode
         [SetUp]
         public void Setup()
         {
-            // 加载 CastleDB JSON 文件
-            _castleDbAsset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-            Assert.IsNotNull(_castleDbAsset, "无法加载 CastleDB JSON 文件");
+            // 0.3 版本：加载 CastleDB MonsterSystem JSON 文件
+            _castleDbAsset = Resources.Load<TextAsset>("Data/MonsterSystem");
+            Assert.IsNotNull(_castleDbAsset, "无法加载 CastleDB MonsterSystem JSON 文件");
 
             // 初始化服务
             _service = new CastleDbService();

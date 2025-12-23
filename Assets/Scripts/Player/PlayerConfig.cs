@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using CastleDB.Runtime;
 
 /// <summary>
-/// 玩家配置资源（阶段 3A）
+/// 玩家配置资源（0.3 版本）
 /// 包含玩家基础属性与攻击覆盖配置
 ///
 /// 设计思路：
 /// - 将玩家所有参数集中在 ScriptableObject 中
-/// - 从 CastleDB 的 Player + PlayerAttackOverride 表导入生成
+/// - 从 CastleDB 的 Player.cdb（Player + PlayerAttackOverride 表）导入生成
 /// - 提供幂等的应用方法，确保重复调用不会累乘数值
 ///
 /// 使用步骤：
-/// 1. 在 CastleDB 中维护 Player 和 PlayerAttackOverride 表
+/// 1. 在 CastleDB 中维护 Player.cdb 的 Player 和 PlayerAttackOverride 表
 /// 2. 运行 Tools > CastleDB > Import All 生成/更新此资源
 /// 3. 运行时由 PlayerController 初始化时自动加载并应用
 /// </summary>
@@ -21,7 +21,7 @@ public class PlayerConfig : ScriptableObject
 {
     // ===== 版本管理 =====
     [Header("版本管理")]
-    [SerializeField] public string version = "0.2";
+    [SerializeField] public string version = "0.3";
     [SerializeField] public string playerId = "player";
 
     // ===== 基础属性（来自 Player Sheet）=====

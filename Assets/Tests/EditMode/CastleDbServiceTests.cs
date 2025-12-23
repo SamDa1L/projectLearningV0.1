@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using CastleDB.Runtime;
+using CastleDB.Tests.EditMode.TestHelpers;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -203,126 +204,6 @@ namespace CastleDB.Tests.EditMode
             Assert.AreEqual(2, knight.knockbackMultiplier);
             Assert.IsTrue(knight.enableDeathAnimation);
             Assert.IsTrue(knight.useLegacyLogicFallback);
-        }
-    }
-
-    /// <summary>
-    /// 模拟 CastleDB 数据源
-    /// 用于单元测试
-    /// 填充 lines 为 Dictionary<string, object> 列表，与真实加载路径一致
-    /// </summary>
-    public class MockCastleDbSource : ICastleDbSource
-    {
-        private CastleDbRoot _root;
-
-        public void SetupValidData()
-        {
-            _root = new CastleDbRoot();
-
-            // 创建 NPC Sheet，填充 lines 为字典列表
-            var npcSheet = new SheetData { name = "NPC" };
-            npcSheet.lines = new List<object>
-            {
-                new Dictionary<string, object>
-                {
-                    { "id", "M_Knight" },
-                    { "displayName", "Knight" },
-                    { "prefabName", "KnightEnemy" },
-                    { "animationTrigger", "hasTarget" },
-                    { "maxHealth", 100.0 },
-                    { "attackDamage", 20.0 },
-                    { "moveSpeed", 3.0 },
-                    { "attackRange", 10.0 },
-                    { "attackCooldown", 0.25 },
-                    { "invincibleDuration", 3.0 },
-                    { "knockbackMultiplier", 2.0 },
-                    { "enableDeathAnimation", true },
-                    { "useLegacyLogicFallback", true }
-                },
-                new Dictionary<string, object>
-                {
-                    { "id", "M_FlyingEye" },
-                    { "displayName", "FlyingEye" },
-                    { "prefabName", "FlyingEye" },
-                    { "animationTrigger", "hasTarget" },
-                    { "maxHealth", 50.0 },
-                    { "attackDamage", 30.0 },
-                    { "moveSpeed", 4.0 },
-                    { "attackRange", 10.0 },
-                    { "attackCooldown", 0.25 },
-                    { "invincibleDuration", 3.0 },
-                    { "knockbackMultiplier", 2.0 },
-                    { "enableDeathAnimation", true },
-                    { "useLegacyLogicFallback", true }
-                }
-            };
-
-            // 创建 DetectionZone Sheet，填充 lines 为字典列表
-            var dzSheet = new SheetData { name = "DetectionZone" };
-            dzSheet.lines = new List<object>
-            {
-                new Dictionary<string, object>
-                {
-                    { "id", "M_Knight_DZ" },
-                    { "npcId", "M_Knight" },
-                    { "role", 0 }, // PrimaryAttack
-                    { "childId", "HitboxDecetion" }
-                },
-                new Dictionary<string, object>
-                {
-                    { "id", "M_FlyingEye_DZ" },
-                    { "npcId", "M_FlyingEye" },
-                    { "role", 0 }, // PrimaryAttack
-                    { "childId", "AttackDetectionZone" }
-                }
-            };
-
-            // 创建 Meta Sheet，填充 lines 为字典列表
-            var metaSheet = new SheetData { name = "Meta" };
-            metaSheet.lines = new List<object>
-            {
-                new Dictionary<string, object>
-                {
-                    { "key", "schemaVersion" },
-                    { "value", "0.2" }
-                },
-                new Dictionary<string, object>
-                {
-                    { "key", "featureFlags" },
-                    { "value", "UseNewDamageable=true" }
-                }
-            };
-
-            _root.sheets.Add(npcSheet);
-            _root.sheets.Add(dzSheet);
-            _root.sheets.Add(metaSheet);
-        }
-
-        public void SetupVersionMismatch()
-        {
-            _root = new CastleDbRoot();
-
-            var metaSheet = new SheetData { name = "Meta" };
-            metaSheet.lines = new List<object>
-            {
-                new Dictionary<string, object>
-                {
-                    { "key", "schemaVersion" },
-                    { "value", "0.1" } // 版本不匹配
-                }
-            };
-
-            _root.sheets.Add(metaSheet);
-        }
-
-        public CastleDbRoot ReadCastleDbJson()
-        {
-            return _root;
-        }
-
-        public string GetSourceDescription()
-        {
-            return "MockCastleDbSource";
         }
     }
 }

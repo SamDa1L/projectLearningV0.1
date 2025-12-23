@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CastleDB.Runtime;
-using CastleDB.Runtime.Providers;
+using static CastleDB.Editor.CdbImportCoordinator;
 
 namespace CastleDB.Editor
 {
@@ -14,10 +16,12 @@ namespace CastleDB.Editor
     /// 菜单项：
     /// - Assets/CastleDB/Import This File - 仅对 .cdb 文件可见
     ///
-    /// 功能：
+    /// 功能（Phase 5）：
     /// - 自动检测 Meta Sheet 中的 providerId
-    /// - 调用对应的 Provider 执行导入
-    /// - 支持依赖检测与递归导入（待实现）
+    /// - 收集完整依赖链（多层递归）
+    /// - 提供 3 种导入模式：仅初始化依赖链/递归导入依赖链/直接导入
+    /// - 循环依赖检测
+    /// - 集成 ImportCoordinator 的备份回滚机制
     /// </summary>
     public static class CdbContextMenuExtension
     {
@@ -142,73 +146,68 @@ namespace CastleDB.Editor
                     return;
                 }
 
-                // 8. 检查依赖
+                // 8. 检查依赖并让用户选择处理方式
+                var importMode = DependencyImportMode.DirectImport;
+
                 if (descriptor.Dependencies.Count > 0)
                 {
                     string depsStr = string.Join(", ", descriptor.Dependencies);
-                    bool proceed = EditorUtility.DisplayDialog(
-                        "检测到依赖",
-                        $"此文件依赖以下模块：\n{depsStr}\n\n是否继续导入？\n（请确保依赖模块已导入）",
-                        "继续导入",
-                        "取消");
+                    importMode = ShowDependencyImportDialog(descriptor.ProviderId, depsStr);
 
-                    if (!proceed)
+                    if (importMode == DependencyImportMode.Cancel)
                     {
                         Debug.Log("[CdbContextMenu] 用户取消导入");
                         return;
                     }
                 }
 
-                // 9. 注册描述符
-                registry.RegisterDescriptor(descriptor);
+                // 9. 调用 ImportCoordinator 执行原子性导入
+                Debug.Log($"[CdbContextMenu] 调用 ImportCoordinator.ImportSingleModule（模式：{importMode}）");
 
-                // 10. 初始化 Provider
-                Debug.Log($"[CdbContextMenu] 初始化 Provider：{descriptor.ProviderId}");
-                provider.Initialize(source, descriptor);
-
-                // 11. 校验
-                var validationErrors = provider.Validate(descriptor);
-                if (validationErrors.Count > 0)
+                // 转换导入模式枚举
+                CdbImportCoordinator.DependencyImportMode coordinatorMode;
+                switch (importMode)
                 {
-                    string errorsStr = string.Join("\n", validationErrors);
-                    Debug.LogError($"[CdbContextMenu] 校验失败：\n{errorsStr}");
-                    EditorUtility.DisplayDialog(
-                        "校验失败",
-                        $"数据校验发现 {validationErrors.Count} 个错误：\n\n{errorsStr}",
-                        "确定");
-                    return;
+                    case DependencyImportMode.InitializeOnly:
+                        coordinatorMode = CdbImportCoordinator.DependencyImportMode.InitializeOnly;
+                        break;
+                    case DependencyImportMode.RecursiveImport:
+                        coordinatorMode = CdbImportCoordinator.DependencyImportMode.RecursiveImport;
+                        break;
+                    case DependencyImportMode.DirectImport:
+                        coordinatorMode = CdbImportCoordinator.DependencyImportMode.DirectImport;
+                        break;
+                    default:
+                        Debug.LogError($"[CdbContextMenu] 未知的导入模式：{importMode}");
+                        return;
                 }
 
-                // 12. 导入
-                Debug.Log($"[CdbContextMenu] 导入数据：{descriptor.ProviderId}");
-                var importResult = provider.Import(descriptor);
-                importResult.LogToConsole();
+                var coordinator = new CdbImportCoordinator(registry);
+                var result = coordinator.ImportSingleModule(descriptor, coordinatorMode);
 
-                // 13. 保存资产
-                if (importResult.Success && importResult.DirtyAssets.Count > 0)
+                // 10. 显示结果
+                if (result.Success)
                 {
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
+                    string summary = $"导入成功！\n\n" +
+                        $"模块：{descriptor.ProviderId}\n" +
+                        $"创建：{result.CreatedCount} 个资产\n" +
+                        $"更新：{result.UpdatedCount} 个资产\n\n" +
+                        $"详细日志：\n{string.Join("\n", result.LogMessages.Take(10))}";
 
-                // 14. 显示结果
-                if (importResult.Success)
-                {
-                    EditorUtility.DisplayDialog(
-                        "导入成功",
-                        $"Provider: {descriptor.ProviderId}\n" +
-                        $"创建: {importResult.CreatedCount}\n" +
-                        $"更新: {importResult.UpdatedCount}\n" +
-                        $"跳过: {importResult.SkippedCount}",
-                        "确定");
+                    if (result.LogMessages.Count > 10)
+                    {
+                        summary += $"\n... 以及 {result.LogMessages.Count - 10} 条其他日志";
+                    }
+
+                    EditorUtility.DisplayDialog("导入成功", summary, "确定");
                 }
                 else
                 {
-                    string errorsStr = string.Join("\n", importResult.Errors);
-                    EditorUtility.DisplayDialog(
-                        "导入失败",
-                        $"Provider: {descriptor.ProviderId}\n\n错误：\n{errorsStr}",
-                        "确定");
+                    string errorSummary = $"导入失败！\n\n" +
+                        $"模块：{descriptor.ProviderId}\n\n" +
+                        $"错误日志：\n{string.Join("\n", result.LogMessages.Skip(Math.Max(0, result.LogMessages.Count - 15)))}";
+
+                    EditorUtility.DisplayDialog("导入失败", errorSummary, "确定");
                 }
             }
             catch (System.Exception ex)
@@ -220,5 +219,55 @@ namespace CastleDB.Editor
                     "确定");
             }
         }
+
+        #region 依赖链处理
+
+        /// <summary>
+        /// 显示依赖导入选项对话框
+        /// </summary>
+        private static DependencyImportMode ShowDependencyImportDialog(string targetProviderId, string dependencies)
+        {
+            int choice = EditorUtility.DisplayDialogComplex(
+                "检测到依赖",
+                $"目标模块：{targetProviderId}\n" +
+                $"依赖：{dependencies}\n\n" +
+                $"请选择导入模式：\n\n" +
+                $"• 仅初始化依赖链：\n" +
+                $"  依赖链执行 Initialize + Validate（不导入）\n" +
+                $"  目标文件执行完整导入\n\n" +
+                $"• 递归导入依赖链：\n" +
+                $"  依赖链和目标文件都按顺序完整导入\n" +
+                $"  确保整条链路数据最新\n\n" +
+                $"• 取消：\n" +
+                $"  不执行任何操作",
+                "仅初始化依赖链",
+                "取消",
+                "递归导入依赖链");
+
+            switch (choice)
+            {
+                case 0:
+                    return DependencyImportMode.InitializeOnly;
+                case 1:
+                    return DependencyImportMode.Cancel;
+                case 2:
+                    return DependencyImportMode.RecursiveImport;
+                default:
+                    return DependencyImportMode.Cancel;
+            }
+        }
+
+        /// <summary>
+        /// 定义 Cancel 模式以支持对话框取消操作
+        /// </summary>
+        private enum DependencyImportMode
+        {
+            InitializeOnly = CdbImportCoordinator.DependencyImportMode.InitializeOnly,
+            RecursiveImport = CdbImportCoordinator.DependencyImportMode.RecursiveImport,
+            DirectImport = CdbImportCoordinator.DependencyImportMode.DirectImport,
+            Cancel = 999
+        }
+
+        #endregion
     }
 }

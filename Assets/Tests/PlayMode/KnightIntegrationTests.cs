@@ -163,8 +163,9 @@ public class KnightIntegrationTests
     {
         yield return null;
 
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 NPC 数据
+        var asset = Resources.Load<TextAsset>("Data/MonsterSystem");
+        Assert.IsNotNull(asset, "CastleDB MonsterSystem asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
@@ -202,9 +203,9 @@ public class KnightIntegrationTests
     {
         yield return null;
 
-        // 1. 从 CastleDB 读取 Knight 的 animationTrigger
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 1. 从 CastleDB 读取 Knight 的 animationTrigger（0.3 版本）
+        var asset = Resources.Load<TextAsset>("Data/MonsterSystem");
+        Assert.IsNotNull(asset, "CastleDB MonsterSystem asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));

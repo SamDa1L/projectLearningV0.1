@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEditor;
+using CastleDB.Runtime;
 
-namespace CastleDB.Runtime.Providers
+namespace CastleDB.Editor.Providers
 {
     /// <summary>
     /// Monster 数据提供者（0.3 版本 Phase 2）
@@ -253,7 +255,6 @@ namespace CastleDB.Runtime.Providers
 
         #region 导入（Editor Only）
 
-#if UNITY_EDITOR
         /// <summary>
         /// 导入 NPC 数据生成 EnemyTuningProfile 资产
         /// 迁移自 CastleDbImporter.cs:492-547
@@ -279,7 +280,7 @@ namespace CastleDB.Runtime.Providers
                     string profilePath = $"{PROFILE_OUTPUT_DIR}/Profile_{npc.id}.asset";
 
                     // 查找或创建 Profile
-                    EnemyTuningProfile profile = UnityEditor.AssetDatabase.LoadAssetAtPath<EnemyTuningProfile>(profilePath);
+                    EnemyTuningProfile profile = AssetDatabase.LoadAssetAtPath<EnemyTuningProfile>(profilePath);
 
                     // 记录旧的 animationTrigger（用于变更日志）
                     string oldTrigger = profile != null ? profile.animationTrigger : null;
@@ -290,7 +291,7 @@ namespace CastleDB.Runtime.Providers
                         // 创建新 Profile
                         profile = ScriptableObject.CreateInstance<EnemyTuningProfile>();
                         profile.profileName = npc.displayName;
-                        UnityEditor.AssetDatabase.CreateAsset(profile, profilePath);
+                        AssetDatabase.CreateAsset(profile, profilePath);
                         builder.Created(profilePath);
                     }
                     else
@@ -308,7 +309,7 @@ namespace CastleDB.Runtime.Providers
                     }
 
                     // 标记为 dirty（由 ImportCoordinator 统一保存）
-                    UnityEditor.EditorUtility.SetDirty(profile);
+                    EditorUtility.SetDirty(profile);
                 }
                 catch (Exception ex)
                 {
@@ -324,7 +325,6 @@ namespace CastleDB.Runtime.Providers
 
             return builder.Build();
         }
-#endif
 
         #endregion
 

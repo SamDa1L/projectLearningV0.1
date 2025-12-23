@@ -1,15 +1,15 @@
 using UnityEngine;
-using CastleDB.Runtime.Providers;
+using CastleDB.Runtime;
+using CastleDB.Editor.Providers;
 
-namespace CastleDB.Runtime
+namespace CastleDB.Editor
 {
     /// <summary>
     /// CastleDB Provider 启动引导（0.3 版本）
-    /// 负责在运行时/编辑器启动时注册默认 Provider
+    /// 负责在编辑器启动时注册默认 Provider
     ///
     /// 使用方式：
     /// - Editor：在 Import All 入口调用 EnsureRegistered()
-    /// - Runtime：在游戏启动时调用 EnsureRegistered()（如需要）
     ///
     /// 注意：
     /// - 0.3 版本采用保守策略，运行时仍以导入产物为权威
@@ -48,17 +48,19 @@ namespace CastleDB.Runtime
                 Debug.Log("[CdbProviderBootstrap] 注册 MonsterDataProvider");
             }
 
-            // Phase 4: Player Provider（待实现）
-            // if (!registry.IsRegistered("Player"))
-            // {
-            //     registry.Register(new PlayerDataProvider());
-            // }
+            // Phase 4: Player Provider
+            if (!registry.IsRegistered("Player"))
+            {
+                registry.Register(new PlayerDataProvider());
+                Debug.Log("[CdbProviderBootstrap] 注册 PlayerDataProvider");
+            }
 
-            // Phase 4: Ability Provider（待实现）
-            // if (!registry.IsRegistered("PlayerAbility"))
-            // {
-            //     registry.Register(new AbilityDataProvider());
-            // }
+            // Phase 4: Ability Provider
+            if (!registry.IsRegistered("PlayerAbility"))
+            {
+                registry.Register(new AbilityDataProvider());
+                Debug.Log("[CdbProviderBootstrap] 注册 AbilityDataProvider");
+            }
 
             Debug.Log($"[CdbProviderBootstrap] Provider 注册完成，当前注册数：{registry.GetStats().RegisteredCount}");
         }

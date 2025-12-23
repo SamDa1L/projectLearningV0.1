@@ -2,7 +2,8 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
 using CastleDB.Runtime;
-using CastleDB.Runtime.Providers;
+using CastleDB.Editor.Providers;
+using CastleDB.Tests.EditMode.TestHelpers;
 
 namespace CastleDB.Tests.EditMode
 {
@@ -487,31 +488,4 @@ namespace CastleDB.Tests.EditMode
 
         #endregion
     }
-
-    #region Mock Classes
-
-    /// <summary>
-    /// Mock CastleDbSource 用于测试
-    /// </summary>
-    public class MockCastleDbSource : ICastleDbSource
-    {
-        private readonly CastleDbRoot _root;
-
-        public MockCastleDbSource(CastleDbRoot root)
-        {
-            _root = root;
-        }
-
-        public CastleDbRoot ReadCastleDbJson()
-        {
-            return _root;
-        }
-
-        public string GetSourceDescription()
-        {
-            return "MockSource";
-        }
-    }
-
-    #endregion
 }

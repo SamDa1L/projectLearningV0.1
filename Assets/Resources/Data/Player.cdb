@@ -1,0 +1,189 @@
+{
+	"sheets": [
+		{
+			"name": "Player",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibilityTime"
+				},
+				{
+					"typeStr": "4",
+					"name": "walkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "runSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "airWalkSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "jumpImpulse"
+				},
+				{
+					"typeStr": "4",
+					"name": "climbSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "baseAttackDamage"
+				}
+			],
+			"lines": [
+				{
+					"id": "player",
+					"maxHealth": 200,
+					"invincibilityTime": 2,
+					"walkSpeed": 5,
+					"runSpeed": 10,
+					"airWalkSpeed": 5,
+					"jumpImpulse": 5,
+					"climbSpeed": 5,
+					"baseAttackDamage": 10
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "PlayerAttackOverride",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:Player",
+					"name": "playerId",
+					"display": null
+				},
+				{
+					"typeStr": "5:Hitbox,Projectile",
+					"name": "targetType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "targetId",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "damageMultiplier"
+				},
+				{
+					"typeStr": "3",
+					"name": "damageOverride"
+				}
+			],
+			"lines": [
+				{
+					"id": "SwordAttack_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SwordAttack_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SwordAttack_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SwordAttack_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "SwordAttack_3",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "SwordAttack_3",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AirSwordAttack_1",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AirSwordAttack_1",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "AirSwordAttack_2",
+					"playerId": "player",
+					"targetType": 0,
+					"targetId": "AirSwordAttack_2",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				},
+				{
+					"id": "Arrow_1",
+					"playerId": "player",
+					"targetType": 1,
+					"targetId": "Prefabs/Projectiles/Player/Arrow",
+					"damageMultiplier": 1,
+					"damageOverride": 0
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key"
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.3"
+				},
+				{
+					"key": "providerId",
+					"value": "Player"
+				},
+				{
+					"key": "displayName",
+					"value": "玩家数据"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/Player"
+				},
+				{
+					"key": "dependencies",
+					"value": ""
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Player"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

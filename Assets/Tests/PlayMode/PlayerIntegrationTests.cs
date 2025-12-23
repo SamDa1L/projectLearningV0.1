@@ -113,9 +113,9 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取 Player 数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 Player 数据
+        var asset = Resources.Load<TextAsset>("Data/Player");
+        Assert.IsNotNull(asset, "CastleDB Player asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
@@ -184,9 +184,9 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取 PlayerAttackOverride 数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 PlayerAttackOverride 数据
+        var asset = Resources.Load<TextAsset>("Data/Player");
+        Assert.IsNotNull(asset, "CastleDB Player asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
@@ -230,9 +230,9 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 Player 数据
+        var asset = Resources.Load<TextAsset>("Data/Player");
+        Assert.IsNotNull(asset, "CastleDB Player asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
@@ -327,9 +327,9 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 Player 数据
+        var asset = Resources.Load<TextAsset>("Data/Player");
+        Assert.IsNotNull(asset, "CastleDB Player asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
@@ -401,8 +401,8 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+        // 0.3 版本：从新数据源读取 Player 数据
+        var asset = Resources.Load<TextAsset>("Data/Player");
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
         yield return null;
@@ -460,8 +460,8 @@ public class PlayerIntegrationTests
     {
         yield return null;
 
-        // 从 CastleDB 读取配置
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+        // 0.3 版本：从新数据源读取配置
+        var asset = Resources.Load<TextAsset>("Data/Player");
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
         yield return null;

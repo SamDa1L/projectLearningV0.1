@@ -7,6 +7,13 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 阶段4自动化测试：Prefab 同步、回滚、场景刷新
+///
+/// TODO (Phase 4+5): 需要补充以下测试：
+/// - PlayerDataProvider: Player/PlayerAttackOverride 解析与校验
+/// - AbilityDataProvider: Ability 解析与校验（含 paramsJson 格式）
+/// - CdbImportCoordinator: 多模块扫描、拓扑排序、Meta 校验
+/// - ImportAll: schemaVersion/resourcePath 不一致拒绝、依赖缺失拒绝
+/// - 跨文件引用校验（当 Phase 5 实现后）
 /// </summary>
 public class Stage4SyncTests
 {

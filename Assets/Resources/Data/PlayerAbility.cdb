@@ -1,0 +1,116 @@
+{
+	"sheets": [
+		{
+			"name": "Ability",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "5:Move,Run,Jump,Attack,RangedAttack",
+					"name": "hookType"
+				},
+				{
+					"typeStr": "3",
+					"name": "priority",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "BasicMove",
+					"hookType": 0,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicRun",
+					"hookType": 1,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicJump",
+					"hookType": 2,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicAttack",
+					"hookType": 3,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				},
+				{
+					"id": "BasicRangedAttack",
+					"hookType": 4,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key"
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.3"
+				},
+				{
+					"key": "providerId",
+					"value": "PlayerAbility"
+				},
+				{
+					"key": "displayName",
+					"value": "玩家能力数据"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/PlayerAbility"
+				},
+				{
+					"key": "dependencies",
+					"value": "Player"
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Ability"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

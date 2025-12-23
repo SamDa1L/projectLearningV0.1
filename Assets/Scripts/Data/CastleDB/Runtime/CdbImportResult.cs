@@ -67,6 +67,12 @@ namespace CastleDB.Runtime
         public IReadOnlyList<string> DirtyAssets { get; }
 
         /// <summary>
+        /// 完整日志消息列表（用于 ImportCoordinator 聚合结果）
+        /// 包含所有步骤的详细日志，用于显示给用户或写入日志文件
+        /// </summary>
+        public IReadOnlyList<string> LogMessages { get; }
+
+        /// <summary>
         /// 私有构造函数，使用静态方法创建
         /// </summary>
         private CdbImportResult(
@@ -78,7 +84,8 @@ namespace CastleDB.Runtime
             IReadOnlyList<string> errors,
             IReadOnlyList<string> warnings,
             IReadOnlyList<string> infoLogs,
-            IReadOnlyList<string> dirtyAssets)
+            IReadOnlyList<string> dirtyAssets,
+            IReadOnlyList<string> logMessages)
         {
             ProviderId = providerId;
             Success = success;
@@ -89,10 +96,11 @@ namespace CastleDB.Runtime
             Warnings = warnings ?? new List<string>();
             InfoLogs = infoLogs ?? new List<string>();
             DirtyAssets = dirtyAssets ?? new List<string>();
+            LogMessages = logMessages ?? new List<string>();
         }
 
         /// <summary>
-        /// 创建成功的导入结果
+        /// 创建成功的导入结果（标准用法：Provider.Import() 内部使用）
         /// </summary>
         public static CdbImportResult Succeeded(
             string providerId,
@@ -112,12 +120,40 @@ namespace CastleDB.Runtime
                 errors: new List<string>(),
                 warnings: warnings,
                 infoLogs: infoLogs,
-                dirtyAssets: dirtyAssets
+                dirtyAssets: dirtyAssets,
+                logMessages: new List<string>()
             );
         }
 
         /// <summary>
-        /// 创建失败的导入结果
+        /// 创建成功的导入结果（ImportCoordinator 专用，包含完整日志）
+        /// </summary>
+        public static CdbImportResult SucceededWithLogs(
+            string providerId,
+            List<string> logMessages,
+            int createdCount = 0,
+            int updatedCount = 0,
+            List<string> dirtyAssets = null,
+            int skippedCount = 0,
+            List<string> warnings = null,
+            List<string> infoLogs = null)
+        {
+            return new CdbImportResult(
+                providerId: providerId,
+                success: true,
+                createdCount: createdCount,
+                updatedCount: updatedCount,
+                skippedCount: skippedCount,
+                errors: new List<string>(),
+                warnings: warnings,
+                infoLogs: infoLogs,
+                dirtyAssets: dirtyAssets,
+                logMessages: logMessages ?? new List<string>()
+            );
+        }
+
+        /// <summary>
+        /// 创建失败的导入结果（标准用法：Provider.Import() 内部使用）
         /// </summary>
         public static CdbImportResult Failed(
             string providerId,
@@ -134,7 +170,29 @@ namespace CastleDB.Runtime
                 errors: errors ?? new List<string> { "未知错误" },
                 warnings: warnings,
                 infoLogs: infoLogs,
-                dirtyAssets: new List<string>()
+                dirtyAssets: new List<string>(),
+                logMessages: new List<string>()
+            );
+        }
+
+        /// <summary>
+        /// 创建失败的导入结果（ImportCoordinator 专用，包含完整日志）
+        /// </summary>
+        public static CdbImportResult FailedWithLogs(
+            string providerId,
+            List<string> logMessages)
+        {
+            return new CdbImportResult(
+                providerId: providerId,
+                success: false,
+                createdCount: 0,
+                updatedCount: 0,
+                skippedCount: 0,
+                errors: new List<string> { "导入失败" },
+                warnings: new List<string>(),
+                infoLogs: new List<string>(),
+                dirtyAssets: new List<string>(),
+                logMessages: logMessages ?? new List<string>()
             );
         }
 

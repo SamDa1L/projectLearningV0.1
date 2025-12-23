@@ -671,7 +671,17 @@ public class CastleDbPrefabSyncer : EditorWindow
 
         try
         {
-            var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+            // 0.3 版本：优先尝试新路径，回退到 Legacy 路径
+            var asset = Resources.Load<TextAsset>("Data/MonsterSystem");
+            if (asset == null)
+            {
+                asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
+                if (asset != null)
+                {
+                    Debug.LogWarning("[CastleDbPrefabSyncer] 使用 Legacy 路径加载数据: Data/CastleDbDemo/MonsterSystem");
+                }
+            }
+
             if (asset == null)
             {
                 return result;

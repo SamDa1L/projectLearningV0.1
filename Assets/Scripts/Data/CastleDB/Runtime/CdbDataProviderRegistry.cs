@@ -127,6 +127,7 @@ namespace CastleDB.Runtime
 
         /// <summary>
         /// 注册模块描述符
+        /// 如果已存在则抛出异常（Phase 5：严格模式）
         /// </summary>
         public void RegisterDescriptor(CdbModuleDescriptor descriptor)
         {
@@ -137,7 +138,10 @@ namespace CastleDB.Runtime
 
             if (_descriptors.ContainsKey(descriptor.ProviderId))
             {
-                Debug.LogWarning($"[CdbRegistry] Descriptor '{descriptor.ProviderId}' 已存在，将被覆盖");
+                throw new System.InvalidOperationException(
+                    $"[CdbRegistry] Descriptor '{descriptor.ProviderId}' 已存在。" +
+                    $"不允许重复注册相同的 providerId。" +
+                    $"请检查是否有多个 .cdb 文件使用了相同的 providerId。");
             }
 
             _descriptors[descriptor.ProviderId] = descriptor;

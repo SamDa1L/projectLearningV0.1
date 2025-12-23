@@ -14,48 +14,48 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 0.2
   playerId: player
-  maxHealth: 500
+  maxHealth: 200
   invincibilityTime: 2
-  walkSpeed: 3
-  runSpeed: 8
+  walkSpeed: 5
+  runSpeed: 10
   airWalkSpeed: 5
   jumpImpulse: 5
-  climbSpeed: 3
-  baseAttackDamage: 50
+  climbSpeed: 5
+  baseAttackDamage: 10
   attackOverrides:
-  - id: SW_1
+  - id: SwordAttack_1
     playerId: player
     targetType: 0
-    targetId: SW_1
+    targetId: SwordAttack_1
     damageMultiplier: 1
     damageOverride: 0
-  - id: SW_2
+  - id: SwordAttack_2
     playerId: player
     targetType: 0
-    targetId: SW_2
+    targetId: SwordAttack_2
     damageMultiplier: 1
     damageOverride: 0
-  - id: SW_3
+  - id: SwordAttack_3
     playerId: player
     targetType: 0
-    targetId: SW_3
+    targetId: SwordAttack_3
     damageMultiplier: 1
     damageOverride: 0
-  - id: AA_1
+  - id: AirSwordAttack_1
     playerId: player
     targetType: 0
-    targetId: AA_1
+    targetId: AirSwordAttack_1
     damageMultiplier: 1
     damageOverride: 0
-  - id: AA_2
+  - id: AirSwordAttack_2
     playerId: player
     targetType: 0
-    targetId: AA_2
+    targetId: AirSwordAttack_2
     damageMultiplier: 1
     damageOverride: 0
   - id: Arrow_1
     playerId: player
     targetType: 1
     targetId: Prefabs/Projectiles/Player/Arrow
-    damageMultiplier: 3
+    damageMultiplier: 1
     damageOverride: 0

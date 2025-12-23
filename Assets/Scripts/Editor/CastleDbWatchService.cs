@@ -18,7 +18,8 @@ using System.IO;
 public class CastleDbWatchService
 {
     // ===== 配置 =====
-    private const string CASTLEDB_FILE_PATH = "Assets/Resources/Data/CastleDbDemo/MonsterSystem.cdb";
+    // 0.3 版本：监听整个 Data 目录（排除 CastleDbDemo）
+    private const string CASTLEDB_WATCH_DIR = "Assets/Resources/Data";
     private const string WATCH_ENABLED_KEY = "CastleDbWatchService_Enabled";
     private const string AUTO_CHAIN_KEY = "CastleDbWatchService_AutoChain";  // 自动执行完整链路
     private const string LOG_FILE = "Logs/CastleDbWatch.log";
@@ -138,32 +139,27 @@ public class CastleDbWatchService
 
         try
         {
-            // 检查文件是否存在
+            // 0.3 版本：监听整个 Data 目录（排除 CastleDbDemo）
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            string fullPath = Path.Combine(projectRoot, CASTLEDB_FILE_PATH);
+            string fullPath = Path.Combine(projectRoot, CASTLEDB_WATCH_DIR);
 
-            if (!File.Exists(fullPath))
+            if (!Directory.Exists(fullPath))
             {
-                Debug.LogWarning($"[CastleDbWatchService] CastleDB 文件不存在: {fullPath}");
-                WriteLog($"启动失败：文件不存在 {fullPath}");
+                Debug.LogWarning($"[CastleDbWatchService] CastleDB 数据目录不存在: {fullPath}");
+                WriteLog($"启动失败：目录不存在 {fullPath}");
                 return;
             }
 
-            // 初始化文件哈希
-            lastKnownHash = ComputeFileHash(fullPath);
-
-            // 创建 FileSystemWatcher
-            string directory = Path.GetDirectoryName(fullPath);
-            string fileName = Path.GetFileName(fullPath);
-
-            watcher = new FileSystemWatcher(directory, fileName);
+            // 创建 FileSystemWatcher 监听 .cdb 文件
+            watcher = new FileSystemWatcher(fullPath, "*.cdb");
             watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size;
+            watcher.IncludeSubdirectories = true;
             watcher.Changed += OnFileChanged;
             watcher.EnableRaisingEvents = true;
 
             isWatcherActive = true;
-            Debug.Log($"[CastleDbWatchService] 开始监听: {CASTLEDB_FILE_PATH}");
-            WriteLog($"开始监听: {CASTLEDB_FILE_PATH}");
+            Debug.Log($"[CastleDbWatchService] 开始监听: {CASTLEDB_WATCH_DIR}/**/*.cdb (排除 CastleDbDemo)");
+            WriteLog($"开始监听: {CASTLEDB_WATCH_DIR}/**/*.cdb");
         }
         catch (System.Exception ex)
         {
@@ -201,6 +197,14 @@ public class CastleDbWatchService
 
     private static void OnFileChanged(object sender, FileSystemEventArgs e)
     {
+        // 0.3 版本：过滤 CastleDbDemo 目录
+        string normalizedPath = e.FullPath.Replace("\\", "/");
+        if (normalizedPath.Contains("/CastleDbDemo/"))
+        {
+            WriteLog($"忽略 Legacy 文件变化: {e.FullPath}");
+            return;
+        }
+
         // 记录变化时间（用于防抖）
         lastChangeTime = EditorApplication.timeSinceStartup;
 
@@ -215,25 +219,14 @@ public class CastleDbWatchService
         {
             lastChangeTime = 0; // 重置
 
-            // 验证文件确实发生了变化（通过哈希对比）
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            string fullPath = Path.Combine(projectRoot, CASTLEDB_FILE_PATH);
+            // 0.3 版本：检测到任何 .cdb 文件变化后触发 Import All
+            WriteLog($"文件变化稳定，提示用户导入");
 
-            if (File.Exists(fullPath))
+            // 提示用户
+            EditorApplication.delayCall += () =>
             {
-                string currentHash = ComputeFileHash(fullPath);
-                if (currentHash != lastKnownHash)
-                {
-                    lastKnownHash = currentHash;
-                    WriteLog($"文件哈希变化，提示用户导入");
-
-                    // 提示用户
-                    EditorApplication.delayCall += () =>
-                    {
-                        PromptUserToImport();
-                    };
-                }
-            }
+                PromptUserToImport();
+            };
         }
     }
 

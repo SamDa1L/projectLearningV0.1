@@ -44,9 +44,9 @@ public class CastleDbBridgeTests
         profile = knight.TuningProfile;
         Assert.IsNotNull(profile, "TuningProfile missing");
 
-        // 从 CastleDB 读取 Knight 数据
-        var asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-        Assert.IsNotNull(asset, "CastleDB asset not found");
+        // 0.3 版本：从新数据源读取 Knight 数据
+        var asset = Resources.Load<TextAsset>("Data/MonsterSystem");
+        Assert.IsNotNull(asset, "CastleDB MonsterSystem asset not found");
 
         var service = new CastleDbService();
         service.Initialize(new CastleDbJsonSource(asset));
