@@ -1,4 +1,4 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using System.Collections.Generic;
 using CastleDB.Runtime;
 using CastleDB.Tests.EditMode.TestHelpers;
@@ -8,8 +8,8 @@ using UnityEngine.TestTools;
 namespace CastleDB.Tests.EditMode
 {
     /// <summary>
-    /// CastleDbService 单元测试
-    /// 测试 DTO 解析、版本检查、数据查询等功能
+    /// CastleDbService ��Ԫ����
+    /// ���� DTO �������汾��顢���ݲ�ѯ�ȹ���
     /// </summary>
     public class CastleDbServiceTests
     {
@@ -31,7 +31,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：成功加载有效的 CastleDB 数据
+        /// ���ԣ��ɹ�������Ч�� CastleDB ����
         /// </summary>
         [Test]
         public void TestInitializeWithValidData()
@@ -49,7 +49,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：版本不匹配时拒绝加载
+        /// ���ԣ��汾��ƥ��ʱ�ܾ�����
         /// </summary>
         [Test]
         public void TestInitializeWithVersionMismatch()
@@ -60,7 +60,7 @@ namespace CastleDB.Tests.EditMode
 
             // Act
             _service.OnVersionMismatch += (msg) => versionMismatchCalled = true;
-            LogAssert.Expect(LogType.Error, "[CastleDbService] Schema 版本不匹配！期望 0.2，实际 0.1");
+            LogAssert.Expect(LogType.Error, $"[CastleDbService] Schema 版本不匹配！期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 0.1");
             _service.Initialize(_mockSource);
 
             // Assert
@@ -68,7 +68,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：按 ID 查询 NPC
+        /// ���ԣ��� ID ��ѯ NPC
         /// </summary>
         [Test]
         public void TestGetNpcById()
@@ -88,7 +88,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：查询不存在的 NPC 返回 null
+        /// ���ԣ���ѯ�����ڵ� NPC ���� null
         /// </summary>
         [Test]
         public void TestGetNpcByIdNotFound()
@@ -105,7 +105,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：获取所有 NPC
+        /// ���ԣ���ȡ���� NPC
         /// </summary>
         [Test]
         public void TestGetAllNpcs()
@@ -124,7 +124,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：按 NPC ID 获取检测区
+        /// ���ԣ��� NPC ID ��ȡ�����
         /// </summary>
         [Test]
         public void TestGetDetectionZonesByNpcId()
@@ -144,7 +144,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：获取所有检测区
+        /// ���ԣ���ȡ���м����
         /// </summary>
         [Test]
         public void TestGetAllDetectionZones()
@@ -161,7 +161,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：版本信息正确解析
+        /// ���ԣ��汾��Ϣ��ȷ����
         /// </summary>
         [Test]
         public void TestVersionInfoParsing()
@@ -179,7 +179,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// 测试：NPC 数据完整性
+        /// ���ԣ�NPC ����������
         /// </summary>
         [Test]
         public void TestNpcDataIntegrity()
@@ -207,3 +207,4 @@ namespace CastleDB.Tests.EditMode
         }
     }
 }
+

@@ -319,7 +319,8 @@ public class KnightIntegrationTests
 
         void HandleLog(string condition, string stackTrace, LogType type)
         {
-            if (condition != null && condition.Contains("[Knight] 触发攻击 - Cooldown="))
+            // 0.3 日志来自 EnemyAgentBase: "[<Name>] TickAttackSystem 触发攻击 - Cooldown=..."
+            if (!string.IsNullOrEmpty(condition) && condition.Contains("触发攻击") && condition.Contains("Cooldown="))
             {
                 attackTriggerCount++;
             }

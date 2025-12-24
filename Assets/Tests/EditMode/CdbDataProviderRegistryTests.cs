@@ -2,6 +2,8 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
 using CastleDB.Runtime;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace CastleDB.Tests.EditMode
 {
@@ -45,6 +47,9 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void Register_NullProvider_ReturnsFalse()
         {
+            // Assert log
+            LogAssert.Expect(LogType.Error, "[CdbRegistry] 尝试注册 null Provider");
+
             // Act
             var result = _registry.Register(null);
 

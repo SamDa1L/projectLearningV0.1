@@ -47,7 +47,7 @@ namespace CastleDB.Tests.PlayMode
 
             // Assert
             Assert.IsNotNull(_service.GetVersionInfo());
-            Assert.AreEqual("0.2", _service.GetVersionInfo().schemaVersion);
+            Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, _service.GetVersionInfo().schemaVersion);
             Debug.Log($"[CastleDbIntegrationTest] 成功加载 CastleDB，NPC 数量：{_service.GetAllNpcs().Count}");
         }
 
@@ -115,9 +115,10 @@ namespace CastleDB.Tests.PlayMode
             var allZones = _service.GetAllDetectionZones();
 
             // Assert
-            Assert.AreEqual(1, knightZones.Count);
-            Assert.AreEqual(2, allZones.Count);
-            Assert.AreEqual("HitboxDecetion", knightZones[0].childId);
+            Assert.AreEqual(2, knightZones.Count);
+            Assert.AreEqual(4, allZones.Count);
+            CollectionAssert.AreEquivalent(new[] { "DZ_Attack", "DZ_NewAttack" },
+                new[] { knightZones[0].childId, knightZones[1].childId });
             Debug.Log($"[CastleDbIntegrationTest] Knight 检测区：{knightZones[0]}");
         }
 
@@ -159,7 +160,7 @@ namespace CastleDB.Tests.PlayMode
 
             // Assert
             Assert.IsNotNull(versionInfo);
-            Assert.AreEqual("0.2", versionInfo.schemaVersion);
+            Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, versionInfo.schemaVersion);
             Assert.AreEqual("UseNewDamageable=true", versionInfo.featureFlags);
             Assert.IsNotNull(versionInfo.loadTime);
             Debug.Log($"[CastleDbIntegrationTest] 版本信息：{versionInfo}");

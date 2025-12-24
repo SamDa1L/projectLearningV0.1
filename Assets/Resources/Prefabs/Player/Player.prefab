@@ -441,7 +441,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 60f1d431b6b930a4e98a797d8fa59e35, type: 3}
   m_Name: 
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   projectilePrefab: {fileID: 4694569668316640340, guid: 54b64f3f910399e41be63194c8594571, type: 3}
   launchPoint: {fileID: 8757556435578522254}
   projectileResourcesPath: Prefabs/Projectiles/Player/Arrow
@@ -551,7 +551,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackId: AA_1
+  attackId: AirSwordAttack_1
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &2380609363039472820
@@ -659,7 +659,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackId: SW_1
+  attackId: ' SwordAttack_1'
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &2544925186212235424
@@ -767,7 +767,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackId: SW_3
+  attackId: ' SwordAttack_3'
   attackDamage: 25
   knockback: {x: 5, y: 2}
 --- !u!1 &4144285741232646864
@@ -877,7 +877,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackId: AA_2
+  attackId: AirSwordAttack_1
   attackDamage: 15
   knockback: {x: 1, y: 2}
 --- !u!1 &4783766941176099912
@@ -985,7 +985,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a50401933ffe6343a774dce2e7a4bb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackId: SW_2
+  attackId: ' SwordAttack_2'
   attackDamage: 20
   knockback: {x: 1, y: 2}
 --- !u!1 &6214352526223808250

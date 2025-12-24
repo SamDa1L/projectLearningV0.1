@@ -49,12 +49,20 @@ namespace CastleDB.Runtime
                 _versionInfo = _repository.GetVersionInfo();
 
                 // 检查版本
-                if (!_repository.IsVersionMatched("0.2"))
+                if (!_repository.IsVersionMatched(CdbDataProviderRegistry.ExpectedSchemaVersion))
                 {
-                    string errorMsg = $"Schema 版本不匹配！期望 0.2，实际 {_versionInfo.schemaVersion}";
-                    LogError(errorMsg);
-                    OnVersionMismatch?.Invoke(errorMsg);
-                    return;
+                    // 兼容：允许 0.2（警告）以避免旧数据直接中断；其他版本仍视为错误。
+                    if (_versionInfo != null && _versionInfo.schemaVersion == "0.2")
+                    {
+                        LogWarning($"Schema 版本不匹配，进入兼容模式：期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 {_versionInfo.schemaVersion}");
+                    }
+                    else
+                    {
+                        string errorMsg = $"Schema 版本不匹配！期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 {_versionInfo?.schemaVersion}";
+                        LogError(errorMsg);
+                        OnVersionMismatch?.Invoke(errorMsg);
+                        return;
+                    }
                 }
 
                 _initialized = true;
