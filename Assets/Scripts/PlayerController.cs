@@ -542,6 +542,47 @@ public class PlayerController : MonoBehaviour
         }
 
         Debug.Log($"[PlayerController] 能力系统构建完成: 注册 {registeredCount} 个，跳过 {skippedCount} 个");
+
+        // ===== Phase 4 集成：注入 AbilitySystem 到 PlayerContext =====
+        PlayerContext playerContext = GetComponent<PlayerContext>();
+        if (playerContext != null)
+        {
+            playerContext.SetAbilitySystem(abilitySystem);
+            Debug.Log("[PlayerController] 已注入 AbilitySystem 到 PlayerContext");
+        }
+        else
+        {
+            Debug.LogError("[PlayerController] 未找到 PlayerContext 组件，无法注入 AbilitySystem");
+        }
+
+        // ===== Phase 4 集成：初始化 PlayerInventory =====
+        PlayerInventory inventory = GetComponent<PlayerInventory>();
+        if (inventory != null)
+        {
+            // 加载 ItemCatalog
+            var itemCatalog = Resources.Load<CastleDB.Runtime.ItemCatalog>("Config/ItemCatalog");
+            if (itemCatalog == null)
+            {
+                Debug.LogError("[PlayerController] 未找到 ItemCatalog (Resources/Config/ItemCatalog.asset)，无法初始化 PlayerInventory");
+            }
+            else
+            {
+                // 创建 CastleDbService 实例
+                var castleDbService = new CastleDB.Runtime.CastleDbService();
+                castleDbService.SetItemCatalog(itemCatalog);
+
+                // 加载 GameplayConfig（可选）
+                var gameplayConfig = Resources.Load<GameplayConfig>("Config/GameplayConfig");
+
+                // 初始化 PlayerInventory
+                inventory.Initialize(castleDbService, gameplayConfig);
+                Debug.Log("[PlayerController] 已初始化 PlayerInventory");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[PlayerController] 未找到 PlayerInventory 组件");
+        }
     }
 
     /// <summary>

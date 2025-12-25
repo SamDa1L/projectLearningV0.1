@@ -18,6 +18,9 @@ GameObject:
   - component: {fileID: 5688832267645984175}
   - component: {fileID: 8042548726888523234}
   - component: {fileID: 522005193886461813}
+  - component: {fileID: 4141397019082064398}
+  - component: {fileID: 2162528640944512698}
+  - component: {fileID: 3352916610591604471}
   m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
@@ -445,6 +448,42 @@ MonoBehaviour:
   projectilePrefab: {fileID: 4694569668316640340, guid: 54b64f3f910399e41be63194c8594571, type: 3}
   launchPoint: {fileID: 8757556435578522254}
   projectileResourcesPath: Prefabs/Projectiles/Player/Arrow
+--- !u!114 &4141397019082064398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 575829110812012758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c7923a6a69184a489e1654866542e25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &2162528640944512698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 575829110812012758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37ecaae9ec13b344f8c29b0e53f35861, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &3352916610591604471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 575829110812012758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d7d25b4d11ea3b4c9a80ce108f22b8f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &717923170876553134
 GameObject:
   m_ObjectHideFlags: 0
