@@ -1,0 +1,128 @@
+{
+	"sheets": [
+		{
+			"name": "Item",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "itemType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "icon",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStack",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "abilityId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "consumeEffectJson",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uiTag",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "potion_red",
+					"displayName": "红色药水",
+					"itemType": "Consumable",
+					"icon": "UI/Items/Potion_Red",
+					"maxStack": 99,
+					"abilityId": "",
+					"consumeEffectJson": "{\"heal\":50}",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_dash",
+					"displayName": "冲刺能力",
+					"itemType": "Ability",
+					"icon": "UI/Items/Ability_Dash",
+					"maxStack": 1,
+					"abilityId": "BasicRun",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_walk",
+					"displayName": "行走能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicMove",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "Item"
+				},
+				{
+					"key": "displayName",
+					"value": "物品数据"
+				},
+				{
+					"key": "dependencies",
+					"value": "PlayerAbility"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/Item"
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Item"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

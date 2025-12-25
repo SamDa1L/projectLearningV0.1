@@ -1,12 +1,12 @@
 # projectLearningV0.1
 
-Unity 2D 学习项目 - 0.2 版本（Monster System）
+Unity 2D 学习项目 - 0.4 版本（Monster System）
 
 ## 快速开始
 
 ### 版本信息
 - Unity 版本：2022.3.14f1c1 (URP 2D)
-- 当前版本：0.2（Monster System）
+- 当前版本：0.4（Monster System）
 - 主场景：`Assets/Scenes/GamePlayScene.unity`
 - 测试场景：`Assets/Scenes/NPCTestScenes/TestEnemy.unity`
 
@@ -135,7 +135,7 @@ A: 确保执行了完整流程：
 
 ### Q: Import All 失败？
 A: 检查：
-- `schemaVersion` 是否为 `0.2`
+- `schemaVersion` 是否为 `0.4`
 - Required 字段是否都填写了
 - 查看 `Logs/CastleDbImport.log` 了解详情
 
@@ -166,4 +166,4 @@ A: 检查：
 
 **最后更新**：2025-12-21（Stage 4 完成）
 **Unity 版本**：2022.3.14f1c1
-**项目版本**：0.2
+**项目版本**：0.4

@@ -9,7 +9,7 @@ using CastleDB.Runtime;
 namespace CastleDB.Editor
 {
     /// <summary>
-    /// CastleDB 导入协调器（0.3 版本 Phase 4/5）
+    /// CastleDB 导入协调器（0.4 版本 Phase 4/5）
     /// 负责多文件扫描、拓扑排序、Provider 初始化与导入
     ///
     /// 职责：
@@ -27,7 +27,6 @@ namespace CastleDB.Editor
     {
         private const string DEFAULT_SCAN_PATH = "Assets/Resources/Data";
         private const string LEGACY_EXCLUDE_PATH = "Assets/Resources/Data/CastleDbDemo";
-        private const string EXPECTED_SCHEMA_VERSION = "0.3";
 
         private readonly CdbDataProviderRegistry _registry;
         private readonly List<string> _logMessages = new List<string>();
@@ -165,7 +164,7 @@ namespace CastleDB.Editor
         {
             var startTime = DateTime.Now;
             _logMessages.Clear();
-            _logMessages.Add("=== CastleDB Import All (0.3 多模块流程) ===");
+            _logMessages.Add("=== CastleDB Import All (0.4 多模块流程) ===");
             _logMessages.Add($"开始时间：{startTime:yyyy-MM-dd HH:mm:ss}");
 
             try
@@ -203,9 +202,9 @@ namespace CastleDB.Editor
                 var versionMismatches = new List<string>();
                 foreach (var descriptor in descriptors)
                 {
-                    if (descriptor.SchemaVersion != EXPECTED_SCHEMA_VERSION)
+                    if (descriptor.SchemaVersion != CdbDataProviderRegistry.ExpectedSchemaVersion)
                     {
-                        versionMismatches.Add($"{descriptor.ProviderId}: 期望 {EXPECTED_SCHEMA_VERSION}，实际 {descriptor.SchemaVersion}");
+                        versionMismatches.Add($"{descriptor.ProviderId}: 期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 {descriptor.SchemaVersion}");
                     }
                 }
 
@@ -219,7 +218,7 @@ namespace CastleDB.Editor
                     _logMessages.Add("所有模块必须使用相同的 schemaVersion");
                     return CdbImportAllResult.Failure(_logMessages);
                 }
-                _logMessages.Add($"✓ 所有模块 schemaVersion = {EXPECTED_SCHEMA_VERSION}");
+                _logMessages.Add($"✓ 所有模块 schemaVersion = {CdbDataProviderRegistry.ExpectedSchemaVersion}");
 
                 // 4. 校验 resourcePath 一致性
                 _logMessages.Add("\n【步骤 4/7】校验 resourcePath 一致性");
@@ -607,13 +606,13 @@ namespace CastleDB.Editor
 
                 foreach (var desc in allDescriptors)
                 {
-                    if (desc.SchemaVersion != EXPECTED_SCHEMA_VERSION)
+                    if (desc.SchemaVersion != CdbDataProviderRegistry.ExpectedSchemaVersion)
                     {
-                        _logMessages.Add($"  ✗ {desc.ProviderId}: schemaVersion={desc.SchemaVersion}, 期望={EXPECTED_SCHEMA_VERSION}");
+                        _logMessages.Add($"  ✗ {desc.ProviderId}: schemaVersion={desc.SchemaVersion}, 期望={CdbDataProviderRegistry.ExpectedSchemaVersion}");
                         return CdbImportResult.FailedWithLogs(targetDescriptor.ProviderId, _logMessages);
                     }
                 }
-                _logMessages.Add($"  ✓ 所有模块 schemaVersion = {EXPECTED_SCHEMA_VERSION}");
+                _logMessages.Add($"  ✓ 所有模块 schemaVersion = {CdbDataProviderRegistry.ExpectedSchemaVersion}");
 
                 // 3.2 resourcePath 校验
                 _logMessages.Add("  检查 resourcePath 一致性...");

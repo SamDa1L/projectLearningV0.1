@@ -64,6 +64,9 @@ namespace CastleDB.Runtime
 
         [System.NonSerialized]
         public List<MetaEntry> metaLines = new List<MetaEntry>();
+
+        [System.NonSerialized]
+        public List<ItemEntry> itemLines = new List<ItemEntry>();
     }
 
     /// <summary>

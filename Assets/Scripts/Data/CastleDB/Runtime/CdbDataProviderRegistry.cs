@@ -6,7 +6,7 @@ using UnityEngine;
 namespace CastleDB.Runtime
 {
     /// <summary>
-    /// CastleDB 数据提供者注册表（0.3 版本）
+    /// CastleDB 数据提供者注册表（0.4 版本）
     ///
     /// 职责：
     /// - Provider 注册与获取
@@ -36,9 +36,10 @@ namespace CastleDB.Runtime
         private readonly Dictionary<string, CdbModuleDescriptor> _descriptors = new Dictionary<string, CdbModuleDescriptor>();
 
         /// <summary>
-        /// 期望的 schema 版本
+        /// 期望的 schema 版本（0.4 版本）
+        /// 这是版本号的"单一真相源"，其他地方应引用此常量
         /// </summary>
-        public const string ExpectedSchemaVersion = "0.3";
+        public const string ExpectedSchemaVersion = "0.4";
 
         /// <summary>
         /// 默认扫描路径
@@ -211,6 +212,19 @@ namespace CastleDB.Runtime
                     return TopologicalSortResult.Failure(cyclePath);
                 }
             }
+
+            // 调试：输出依赖信息
+            #if UNITY_EDITOR
+            foreach (var id in ids)
+            {
+                var desc = GetDescriptor(id);
+                if (desc != null && desc.Dependencies.Count > 0)
+                {
+                    UnityEngine.Debug.Log($"[TopologicalSort] {id} depends on: {string.Join(", ", desc.Dependencies)}");
+                }
+            }
+            UnityEngine.Debug.Log($"[TopologicalSort] Result before output: {string.Join(" → ", result)}");
+            #endif
 
             return TopologicalSortResult.Success(result);
         }

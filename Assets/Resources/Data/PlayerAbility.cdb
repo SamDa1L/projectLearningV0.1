@@ -84,7 +84,7 @@
 			"lines": [
 				{
 					"key": "schemaVersion",
-					"value": "0.3"
+					"value": "0.4"
 				},
 				{
 					"key": "providerId",

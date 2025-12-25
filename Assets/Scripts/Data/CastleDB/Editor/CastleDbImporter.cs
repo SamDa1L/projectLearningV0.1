@@ -13,12 +13,12 @@ using CastleDB.Editor;
 /// 功能：
 /// - 使用CastleDbService读取NPC数据
 /// - 创建/更新EnemyTuningProfile ScriptableObject
-/// - 支持 0.2 Legacy 模式和 0.3 Provider 模式
+/// - 支持 0.2 Legacy 模式和 0.4 Provider 模式
 /// - 生成导入日志
 ///
-/// 0.3 版本更新：
+/// 0.4 版本更新：
 /// - 支持 Provider 流程（MonsterDataProvider）
-/// - 优先尝试 0.3 数据源（Assets/Resources/Data/MonsterSystem.cdb）
+/// - 优先尝试 0.4 数据源（Assets/Resources/Data/MonsterSystem.cdb）
 /// - 回退到 0.2 Legacy 数据源（Assets/Resources/Data/CastleDbDemo/MonsterSystem.cdb）
 ///
 /// 使用方式：
@@ -31,7 +31,7 @@ public class CastleDbImporter
 {
     // 配置常量
     private const string CASTLEDB_RESOURCE_PATH = "Data/CastleDbDemo/MonsterSystem";  // 0.2 Legacy 路径
-    private const string CASTLEDB_V03_RESOURCE_PATH = "Data/MonsterSystem";  // 0.3 新路径
+    private const string CASTLEDB_V03_RESOURCE_PATH = "Data/MonsterSystem";  // 0.4 新路径
     private const string PROFILE_OUTPUT_DIR = "Assets/Resources/Profiles";
     private const string PLAYER_CONFIG_PATH = "Assets/Resources/Config/PlayerConfig.asset";
     private const string ABILITY_CATALOG_PATH = "Assets/Resources/Config/AbilityCatalog.asset";  // 阶段 3B
@@ -40,7 +40,7 @@ public class CastleDbImporter
 
     // 版本检查
     private const string EXPECTED_SCHEMA_VERSION_LEGACY = "0.2";
-    private const string EXPECTED_SCHEMA_VERSION_V03 = "0.3";
+    // 注意：0.4+ 版本使用 CdbDataProviderRegistry.ExpectedSchemaVersion（单一真相源）
 
     // ===== Step 0: 日志写入工具函数 =====
 
@@ -108,7 +108,7 @@ public class CastleDbImporter
     {
         Debug.Log("[CastleDbImporter] 开始导入CastleDB数据...");
 
-        // ===== 0.3 版本：多文件 Provider 流程 =====
+        // ===== 0.4 版本：多文件 Provider 流程 =====
         // 1. 确保 Provider 已注册
         CdbProviderBootstrap.EnsureRegistered();
 
@@ -141,25 +141,25 @@ public class CastleDbImporter
     }
 
     /// <summary>
-    /// 0.3 版本：尝试使用 Provider 流程导入
+    /// 0.4 版本：尝试使用 Provider 流程导入
     /// 返回 true 表示成功处理（无论导入成功还是失败），false 表示需要回退到 Legacy
     /// </summary>
     private static bool TryImportWithProvider()
     {
-        // 1. 尝试加载 0.3 版本数据源
+        // 1. 尝试加载 0.4 版本数据源
         var asset = Resources.Load<TextAsset>(CASTLEDB_V03_RESOURCE_PATH);
         if (asset == null)
         {
-            Debug.Log($"[CastleDbImporter] 未找到 0.3 数据源：{CASTLEDB_V03_RESOURCE_PATH}，尝试 Legacy 路径");
+            Debug.Log($"[CastleDbImporter] 未找到 0.4 数据源：{CASTLEDB_V03_RESOURCE_PATH}，尝试 Legacy 路径");
             return false;
         }
 
-        // 2. 解析并检查是否有 providerId（判断是否为 0.3 格式）
+        // 2. 解析并检查是否有 providerId（判断是否为 0.4 格式）
         var source = new CastleDbJsonSource(asset);
         var root = source.ReadCastleDbJson();
         if (root == null)
         {
-            Debug.LogWarning("[CastleDbImporter] 无法解析 0.3 数据源");
+            Debug.LogWarning("[CastleDbImporter] 无法解析 0.4 数据源");
             return false;
         }
 
@@ -187,7 +187,7 @@ public class CastleDbImporter
 
         var descriptor = CdbModuleDescriptor.FromMetaEntries(metaEntries, $"Assets/Resources/{CASTLEDB_V03_RESOURCE_PATH}.cdb");
 
-        // 检查是否有 providerId（0.3 格式标志）
+        // 检查是否有 providerId（0.4 格式标志）
         if (descriptor.IsLegacy || string.IsNullOrEmpty(descriptor.ProviderId))
         {
             Debug.Log("[CastleDbImporter] 数据源无 providerId，回退到 Legacy");
@@ -195,7 +195,7 @@ public class CastleDbImporter
         }
 
         // 3. 使用 Provider 流程导入
-        Debug.Log($"[CastleDbImporter] 检测到 0.3 格式数据源：providerId={descriptor.ProviderId}, schemaVersion={descriptor.SchemaVersion}");
+        Debug.Log($"[CastleDbImporter] 检测到 0.4 格式数据源：providerId={descriptor.ProviderId}, schemaVersion={descriptor.SchemaVersion}");
         return ImportWithProvider(source, descriptor);
     }
 
@@ -217,10 +217,10 @@ public class CastleDbImporter
             var registry = CdbDataProviderRegistry.Instance;
 
             // 2. 校验 schemaVersion
-            if (descriptor.SchemaVersion != EXPECTED_SCHEMA_VERSION_V03)
+            if (descriptor.SchemaVersion != CdbDataProviderRegistry.ExpectedSchemaVersion)
             {
                 status = "VersionMismatch";
-                message = $"Schema 版本不匹配。期望: {EXPECTED_SCHEMA_VERSION_V03}, 实际: {descriptor.SchemaVersion}";
+                message = $"Schema 版本不匹配。期望: {CdbDataProviderRegistry.ExpectedSchemaVersion}, 实际: {descriptor.SchemaVersion}";
                 Debug.LogError($"[CastleDbImporter] {message}");
                 WriteProviderImportLog(startedAt, status, message, descriptor, notes);
                 return true;  // 已处理，不回退
@@ -327,7 +327,7 @@ public class CastleDbImporter
     }
 
     /// <summary>
-    /// 0.3 过渡期：使用旧逻辑导入 Player 和 Ability（待 Phase 4 实现对应 Provider 后移除）
+    /// 0.4 过渡期：使用旧逻辑导入 Player 和 Ability（待 Phase 4 实现对应 Provider 后移除）
     /// </summary>
     private static void ImportPlayerAndAbilityLegacy(CastleDbJsonSource source, List<string> notes)
     {
@@ -1636,7 +1636,7 @@ public class CastleDbImporter
         };
     }
 
-    // ===== 0.3 版本：辅助解析方法 =====
+    // ===== 0.4 版本：辅助解析方法 =====
 
     /// <summary>
     /// 解析 Player Sheet 数据

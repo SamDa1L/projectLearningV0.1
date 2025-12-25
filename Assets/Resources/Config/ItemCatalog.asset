@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f0a3a31ac42b0046af566b09b5d0e9e, type: 3}
+  m_Name: ItemCatalog
+  m_EditorClassIdentifier: 
+  items:
+  - id: potion_red
+    displayName: "\u7EA2\u8272\u836F\u6C34"
+    itemType: 1
+    icon: UI/Items/Potion_Red
+    abilityId: 
+    maxStack: 99
+    consumeEffect:
+      heal: 50
+    consumeEffectRawJson: '{"heal":50}'
+    uiTag: 
+  - id: ability_dash
+    displayName: "\u51B2\u523A\u80FD\u529B"
+    itemType: 0
+    icon: UI/Items/Ability_Dash
+    abilityId: BasicRun
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_walk
+    displayName: "\u884C\u8D70\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicMove
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 

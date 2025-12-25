@@ -62,6 +62,13 @@ namespace CastleDB.Editor
                 Debug.Log("[CdbProviderBootstrap] 注册 AbilityDataProvider");
             }
 
+            // 0.4 Phase 1: Item Provider
+            if (!registry.IsRegistered("Item"))
+            {
+                registry.Register(new ItemDataProvider());
+                Debug.Log("[CdbProviderBootstrap] 注册 ItemDataProvider");
+            }
+
             Debug.Log($"[CdbProviderBootstrap] Provider 注册完成，当前注册数：{registry.GetStats().RegisteredCount}");
         }
 
