@@ -23,12 +23,14 @@ namespace CastleDB.Runtime
         private ICastleDbRepository _repository;
         private CastleDbVersionInfo _versionInfo;
         private bool _initialized = false;
+        private ItemCatalog _itemCatalog; // 0.4 版本：Item 目录引用（懒加载或显式注入）
 
         public event Action OnDataChanged;
         public event Action<string> OnVersionMismatch;
 
         private const string LOG_FILE = "Logs/CastleDbLoad.log";
         private const string IMPORT_LOG_FILE = "Logs/CastleDbImport.log";
+        private static readonly ItemDefinition[] EmptyItems = new ItemDefinition[0];
 
         /// <summary>
         /// 初始化 CastleDbService
@@ -225,6 +227,86 @@ namespace CastleDB.Runtime
             }
 
             return _repository.GetDetectionZonesByNpcId(npcId);
+        }
+
+        /// <summary>
+        /// 设置 ItemCatalog 引用（0.4 版本）
+        /// 由 GameBootstrap 或调用方在初始化后显式设置
+        /// </summary>
+        public void SetItemCatalog(ItemCatalog itemCatalog)
+        {
+            _itemCatalog = itemCatalog;
+            if (_initialized && itemCatalog != null)
+            {
+                LogInfo($"ItemCatalog 已设置：{itemCatalog.GetAllItems().Count} 个 Item");
+            }
+        }
+
+        /// <summary>
+        /// 尝试获取 Item 定义（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 桥接到 ItemCatalog.TryGetItem()
+        /// - 不存在返回 false，不写日志
+        /// </summary>
+        public bool TryGetItem(string itemId, out ItemDefinition def)
+        {
+            def = null;
+
+            // 懒加载 ItemCatalog
+            if (_itemCatalog == null)
+            {
+                _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
+                if (_itemCatalog == null)
+                {
+                    // ItemCatalog 不存在，不输出日志（由调用方判断）
+                    return false;
+                }
+            }
+
+            return _itemCatalog.TryGetItem(itemId, out def);
+        }
+
+        /// <summary>
+        /// 获取所有 Item 定义（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 桥接到 ItemCatalog.GetAllItems()
+        /// - 返回只读列表，零分配
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<ItemDefinition> GetAllItems()
+        {
+            // 懒加载 ItemCatalog
+            if (_itemCatalog == null)
+            {
+                _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
+                if (_itemCatalog == null)
+                {
+                    // 返回空数组，避免每次分配
+                    return EmptyItems;
+                }
+            }
+
+            return _itemCatalog.GetAllItems();
+        }
+
+        /// <summary>
+        /// 资源是否有效（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 检查 ItemCatalog 是否加载成功且有效
+        /// - 供 Bootstrap 检测资源损坏情况
+        /// </summary>
+        public bool IsValid
+        {
+            get
+            {
+                // 如果 ItemCatalog 未加载，尝试懒加载
+                if (_itemCatalog == null)
+                {
+                    _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
+                }
+                
+                // ItemCatalog 不存在或损坏，返回 false
+                return _itemCatalog != null && _itemCatalog.IsValid;
+            }
         }
 
         /// <summary>

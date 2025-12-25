@@ -70,6 +70,11 @@ public class GameplayConfig : ScriptableObject
     [Tooltip("玩家攻击伤害（1-50）")]
     public int playerAttackDamage = 15;
 
+    [Range(1, 999)]
+    [SerializeField]
+    [Tooltip("血瓶最大携带数量（1-999，0.4 版本 Consumable 上限唯一真相源）")]
+    public int potionMaxCount = 99;
+
     // ===== 物理全局参数 =====
     [Header("物理参数")]
     [Min(0f)]
@@ -162,6 +167,7 @@ public class GameplayConfig : ScriptableObject
         playerMaxHealth = Mathf.Max(1, playerMaxHealth);
         playerMoveSpeed = Mathf.Max(0.1f, playerMoveSpeed);
         playerAttackDamage = Mathf.Max(1, playerAttackDamage);
+        potionMaxCount = Mathf.Max(1, potionMaxCount);
 
         // 物理参数
         gravityScale = Mathf.Max(0f, gravityScale);

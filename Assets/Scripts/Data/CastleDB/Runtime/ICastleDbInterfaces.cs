@@ -140,6 +140,30 @@ namespace CastleDB.Runtime
         List<DetectionZoneEntry> GetDetectionZonesByNpcId(string npcId);
 
         /// <summary>
+        /// 尝试获取 Item 定义（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 桥接到 ItemCatalog.TryGetItem()
+        /// - 不存在返回 false，不写日志
+        /// </summary>
+        bool TryGetItem(string itemId, out ItemDefinition def);
+
+        /// <summary>
+        /// 获取所有 Item 定义（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 桥接到 ItemCatalog.GetAllItems()
+        /// - 返回只读列表，零分配
+        /// </summary>
+        System.Collections.Generic.IReadOnlyList<ItemDefinition> GetAllItems();
+
+        /// <summary>
+        /// 资源是否有效（0.4 版本）
+        /// 规范（[C-Runtime-1]）：
+        /// - 检查 ItemCatalog 是否加载成功且有效
+        /// - 供 Bootstrap 检测资源损坏情况
+        /// </summary>
+        bool IsValid { get; }
+
+        /// <summary>
         /// 获取版本信息
         /// </summary>
         CastleDbVersionInfo GetVersionInfo();
