@@ -95,25 +95,27 @@ public class PlayerContext : MonoBehaviour
     /// </summary>
     private void ValidateDependencies()
     {
-        bool hasError = false;
+        // 硬缺失（组件层面）：Inventory 和 Damageable 应该在 Awake 时就存在
+        bool hasHardMissingDependencies = false;
 
-        // 校验 Inventory
+        // 校验 Inventory（硬缺失）
         if (Inventory == null)
         {
             Debug.LogError($"[PlayerContext] 缺少必需依赖：PlayerInventory", this);
-            hasError = true;
+            hasHardMissingDependencies = true;
         }
 
-        // 校验 Damageable
+        // 校验 Damageable（硬缺失）
         if (Damageable == null)
         {
             Debug.LogError($"[PlayerContext] 缺少必需依赖：Damageable", this);
-            hasError = true;
+            hasHardMissingDependencies = true;
         }
 
-        // 校验 AbilitySystem（必需依赖，由外部通过 SetAbilitySystem 注入）
-        // 注意：AbilitySystem 不是 MonoBehaviour，需要外部注入后才能校验
-        // 这里仅在 Awake 时检查，如果为空会在 SetAbilitySystem 时再次校验
+        // 校验 AbilitySystem（等待注入）
+        // AbilitySystem 不是 MonoBehaviour，需要外部通过 SetAbilitySystem 注入
+        // Awake 阶段为 null 是预期行为，仅 Warning 不报 Error
+        bool abilitySystemNotReady = false;
         if (AbilitySystem == null)
         {
             string key = "PlayerContext_MissingAbilitySystem_Awake";
@@ -122,7 +124,7 @@ public class PlayerContext : MonoBehaviour
                 Debug.LogWarning($"[PlayerContext] AbilitySystem 尚未注入（需要外部调用 SetAbilitySystem），交互功能将在注入前被禁用", this);
                 _loggedWarnings.Add(key);
             }
-            hasError = true;
+            abilitySystemNotReady = true;
         }
 
         // 校验 ReplaceController（建议依赖）
@@ -137,10 +139,16 @@ public class PlayerContext : MonoBehaviour
         }
 
         // 设置 InteractionEnabled
-        if (hasError)
+        // 只有硬缺失或 AbilitySystem 未就绪时才禁用交互
+        if (hasHardMissingDependencies || abilitySystemNotReady)
         {
             InteractionEnabled = false;
-            Debug.LogError($"[PlayerContext] 必需依赖缺失，交互功能已禁用", this);
+
+            // 仅硬缺失时输出 Error，等待注入时不输出
+            if (hasHardMissingDependencies)
+            {
+                Debug.LogError($"[PlayerContext] 必需组件缺失（Inventory/Damageable），交互功能已禁用", this);
+            }
         }
     }
 

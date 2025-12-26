@@ -14,15 +14,17 @@ public class DefaultJumpAbility : IPlayerAbility
     private Animator animator;
     private TouchingDirections touchingDirections;
 
+    public string AbilityId { get; private set; }
     public int Priority { get; private set; }
-    public bool Enabled { get; private set; }
+    public bool Enabled { get; set; }
 
-    public DefaultJumpAbility(PlayerController playerController, int priority, bool enabled)
+    public DefaultJumpAbility(PlayerController playerController, string abilityId, int priority, bool enabled)
     {
         this.playerController = playerController;
         this.rb = playerController.GetComponent<Rigidbody2D>();
         this.animator = playerController.GetComponent<Animator>();
         this.touchingDirections = playerController.GetComponent<TouchingDirections>();
+        this.AbilityId = abilityId;
         this.Priority = priority;
         this.Enabled = enabled;
     }

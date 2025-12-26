@@ -21,6 +21,12 @@ public struct DamageableStats
 	    public UnityEvent damageableDeath = new UnityEvent();
 	    public event System.Action<DamageableStats> DamageableStateChanged;
 
+	    /// <summary>
+	    /// Phase 7: 生命值变化事件（用于 HUD 订阅）
+	    /// 契约 [C-Runtime-6]: 必须在 Health 变化时触发，参数为 (current, max)
+	    /// </summary>
+	    public event Action<int, int> OnHealthChanged;
+
     private Animator animator;
 
     private void EnsureAnimator()
@@ -59,6 +65,12 @@ public struct DamageableStats
         }
     }
 
+    /// <summary>
+    /// Phase 7: CurrentHealth 只读属性（用于 HUD 初始刷新）
+    /// 契约 [C-Runtime-6]: 返回当前生命值（四舍五入到 int）
+    /// </summary>
+    public int CurrentHealth => Mathf.RoundToInt(_health);
+
     [SerializeField]
     private float _health = 100;
 
@@ -70,7 +82,18 @@ public struct DamageableStats
         }
         set
         {
+            // Phase 7: 计算变化前后的 int 值，只有实际变化时才触发事件
+            int oldHealthInt = Mathf.RoundToInt(_health);
             _health = value;
+            int newHealthInt = Mathf.RoundToInt(_health);
+
+            // 触发 OnHealthChanged 事件（Phase 7: 契约 [C-Runtime-6]）
+            if (oldHealthInt != newHealthInt)
+            {
+                int current = Mathf.Clamp(newHealthInt, 0, Mathf.RoundToInt(_maxHealth));
+                int max = Mathf.RoundToInt(_maxHealth);
+                OnHealthChanged?.Invoke(current, max);
+            }
 
             // 当生命值小于等于0时，角色死亡
             if(_health <= 0)
@@ -152,6 +175,7 @@ public struct DamageableStats
     /// <summary>
     /// 使用 DamageableStats 配置此组件
     /// 将传入的数值应用到组件（最大生命、当前生命、无敌时间等）
+    /// Phase 7: 配置后必须触发 OnHealthChanged 事件进行初始刷新
     /// </summary>
     /// <param name="stats">包含配置数值的结构体</param>
     public void Configure(DamageableStats? stats)
@@ -160,7 +184,7 @@ public struct DamageableStats
         {
             var value = stats.Value;
             MaxHealth = value.maxHealth;
-            Health = value.maxHealth;  // 初始化当前生命为最大生命
+            Health = value.maxHealth;  // 初始化当前生命为最大生命（会触发 OnHealthChanged）
             invincibilityTime = value.invincibilityTime;
             knockbackMultiplier = value.knockbackMultiplier;
 

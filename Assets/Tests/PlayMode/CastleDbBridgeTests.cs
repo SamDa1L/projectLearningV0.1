@@ -517,14 +517,16 @@ public class CastleDbBridgeTests
     /// </summary>
     private class MockAbility : IPlayerAbility
     {
+        public string AbilityId { get; private set; }
         public int Priority { get; private set; }
-        public bool Enabled { get; private set; }
+        public bool Enabled { get; set; } // Phase 5: 改为 public set 以满足接口要求
         public bool WasCalled { get; private set; }
         private bool returnsHandled;
         private string name;
 
         public MockAbility(int priority, bool returnsHandled, string name, bool enabled = true)
         {
+            this.AbilityId = name; // 使用 name 作为 AbilityId
             this.Priority = priority;
             this.returnsHandled = returnsHandled;
             this.name = name;
@@ -578,16 +580,19 @@ public class CastleDbBridgeTests
     /// </summary>
     private class OrderTrackingAbility : IPlayerAbility
     {
+        public string AbilityId { get; private set; }
         public int Priority { get; private set; }
-        public bool Enabled => true;
+        public bool Enabled { get; set; } // Phase 5: 添加 setter 以满足接口要求
         private System.Collections.Generic.List<string> executionOrder;
         private string name;
 
         public OrderTrackingAbility(int priority, System.Collections.Generic.List<string> executionOrder, string name)
         {
+            this.AbilityId = name; // 使用 name 作为 AbilityId
             this.Priority = priority;
             this.executionOrder = executionOrder;
             this.name = name;
+            this.Enabled = true; // 默认启用
         }
 
         public bool OnMove(AbilityInput input) => RecordExecution();

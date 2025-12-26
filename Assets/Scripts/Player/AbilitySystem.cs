@@ -3,12 +3,16 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// 玩家能力调度系统（阶段 3B）
+/// 玩家能力调度系统
 ///
-/// 职责：
+/// 职责（阶段 3B）：
 /// - 管理已注册的能力实例
 /// - 按 Priority 排序并分发输入到能力
 /// - 执行 handled 中止传播语义
+///
+/// 职责（Phase 5）：
+/// - Enable/Disable 队列化机制（保序去重）
+/// - LateUpdate flush 统一应用状态变更
 /// </summary>
 public class AbilitySystem
 {
@@ -17,12 +21,37 @@ public class AbilitySystem
     /// </summary>
     private Dictionary<AbilityHookType, List<IPlayerAbility>> abilityMap;
 
+    // ===== Phase 5: Enable/Disable 队列化机制 =====
+    /// <summary>
+    /// 能力 ID 到能力实例的映射（用于快速查找）
+    /// </summary>
+    private Dictionary<string, IPlayerAbility> abilityById;
+
+    /// <summary>
+    /// 待处理队列（保留写入顺序）
+    /// </summary>
+    private List<(string abilityId, bool enabled)> pendingQueue;
+
+    /// <summary>
+    /// 同帧去重记录最后状态
+    /// </summary>
+    private Dictionary<string, bool> pendingLast;
+
+    /// <summary>
+    /// 一次性日志去重（abilityId 不存在）
+    /// </summary>
+    private HashSet<string> loggedErrors;
+
     /// <summary>
     /// 构造函数
     /// </summary>
     public AbilitySystem()
     {
         abilityMap = new Dictionary<AbilityHookType, List<IPlayerAbility>>();
+        abilityById = new Dictionary<string, IPlayerAbility>();
+        pendingQueue = new List<(string, bool)>();
+        pendingLast = new Dictionary<string, bool>();
+        loggedErrors = new HashSet<string>();
 
         // 初始化所有 HookType 的空列表
         foreach (AbilityHookType hookType in System.Enum.GetValues(typeof(AbilityHookType)))
@@ -56,7 +85,13 @@ public class AbilitySystem
             .OrderByDescending(a => a.Priority)
             .ToList();
 
-        Debug.Log($"[AbilitySystem] Registered ability to {hookType}, Priority={ability.Priority}");
+        // Phase 5: 添加到 abilityById 映射
+        if (!string.IsNullOrEmpty(ability.AbilityId))
+        {
+            abilityById[ability.AbilityId] = ability;
+        }
+
+        Debug.Log($"[AbilitySystem] Registered ability to {hookType}, Priority={ability.Priority}, AbilityId={ability.AbilityId}");
     }
 
     /// <summary>
@@ -86,7 +121,7 @@ public class AbilitySystem
         {
             if (!ability.Enabled)
             {
-                // 跳过禁用的能力（理论上不应出现，因为构建时已过滤）
+                // 跳过禁用的能力
                 continue;
             }
 
@@ -125,6 +160,107 @@ public class AbilitySystem
         return false;
     }
 
+    // ===== Phase 5: Enable/Disable API =====
+    /// <summary>
+    /// 设置能力启用/禁用状态（队列化，LateUpdate 统一应用）
+    /// </summary>
+    /// <param name="abilityId">能力 ID</param>
+    /// <param name="enabled">是否启用</param>
+    /// <returns>true=已入队；false=abilityId 不存在</returns>
+    public bool SetAbilityEnabled(string abilityId, bool enabled)
+    {
+        // 1) abilityId 不存在：Error（一次性）+ 返回 false（不入队）
+        if (!abilityById.ContainsKey(abilityId))
+        {
+            string key = $"SetAbilityEnabled_NotFound_{abilityId}";
+            if (!loggedErrors.Contains(key))
+            {
+                Debug.LogError($"[AbilitySystem] SetAbilityEnabled 失败：abilityId 不存在 '{abilityId}'");
+                loggedErrors.Add(key);
+            }
+            return false;
+        }
+
+        IPlayerAbility ability = abilityById[abilityId];
+
+        // 2) 状态未变化：不记录，不入队
+        if (ability.Enabled == enabled)
+        {
+            return true; // 视为成功（已是期望状态）
+        }
+
+        // 3) 状态变化：追加到 pendingQueue，并写入 pendingLast
+        pendingQueue.Add((abilityId, enabled));
+        pendingLast[abilityId] = enabled;
+
+        return true;
+    }
+
+    /// <summary>
+    /// 查询能力是否启用
+    /// </summary>
+    /// <param name="abilityId">能力 ID</param>
+    /// <returns>true=启用；false=禁用或不存在</returns>
+    public bool IsAbilityEnabled(string abilityId)
+    {
+        if (!abilityById.ContainsKey(abilityId))
+        {
+            // 默认不输出日志（避免噪音）
+            // 如需调试，可启用以下代码：
+            // string key = $"IsAbilityEnabled_NotFound_{abilityId}";
+            // if (!loggedErrors.Contains(key))
+            // {
+            //     Debug.Log($"[AbilitySystem] IsAbilityEnabled: abilityId 不存在 '{abilityId}'");
+            //     loggedErrors.Add(key);
+            // }
+            return false;
+        }
+
+        return abilityById[abilityId].Enabled;
+    }
+
+    /// <summary>
+    /// LateUpdate flush 机制（由外部调用，如 PlayerController.LateUpdate）
+    /// 按 pendingQueue 顺序遍历，仅应用最后一次写入
+    /// </summary>
+    public void FlushPendingChanges()
+    {
+        if (pendingQueue.Count == 0)
+        {
+            return; // 无待处理变更
+        }
+
+        int appliedCount = 0;
+
+        // 按 pendingQueue 顺序遍历
+        foreach (var (abilityId, enabled) in pendingQueue)
+        {
+            // 仅当该条目状态等于 pendingLast[abilityId] 时执行
+            // （同帧只应用最后一次写入，且保留最终写入间的相对顺序）
+            if (pendingLast[abilityId] == enabled)
+            {
+                IPlayerAbility ability = abilityById[abilityId];
+                ability.Enabled = enabled;
+                appliedCount++;
+
+                // 可选 Debug 日志（可由编译宏控制）
+                #if ABILITY_SYSTEM_DEBUG
+                Debug.Log($"[AbilitySystem] Applied Enable={enabled} for abilityId={abilityId}");
+                #endif
+            }
+        }
+
+        // flush 后清空两个容器
+        pendingQueue.Clear();
+        pendingLast.Clear();
+
+        // 可选统计日志
+        if (appliedCount > 0)
+        {
+            Debug.Log($"[AbilitySystem] FlushPendingChanges: 应用 {appliedCount} 个状态变更");
+        }
+    }
+
     /// <summary>
     /// 获取指定 Hook 的能力数量（用于调试/诊断）
     /// </summary>
@@ -146,5 +282,9 @@ public class AbilitySystem
         {
             list.Clear();
         }
+        abilityById.Clear();
+        pendingQueue.Clear();
+        pendingLast.Clear();
+        loggedErrors.Clear();
     }
 }

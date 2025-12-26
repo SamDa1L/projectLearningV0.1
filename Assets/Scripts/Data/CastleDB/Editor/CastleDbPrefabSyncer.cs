@@ -406,12 +406,10 @@ public class CastleDbPrefabSyncer : EditorWindow
 
                 // 获取或添加 DetectionZone 组件
                 var detectionZone = childTransform.GetComponent<DetectionZone>();
-                bool componentWasAdded = false;
                 if (detectionZone == null)
                 {
                     Debug.Log($"[CastleDbPrefabSyncer] {prefabPath}: 为 '{expectedChildId}' 添加 DetectionZone 组件");
                     detectionZone = childTransform.gameObject.AddComponent<DetectionZone>();
-                    componentWasAdded = true;
 
                     if (!childWasCreated)
                     {

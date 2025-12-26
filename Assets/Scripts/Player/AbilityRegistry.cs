@@ -72,18 +72,19 @@ public static class AbilityRegistry
         try
         {
             // 0.2 硬编码映射（后续可改为反射/配置驱动）
+            // Phase 5: 所有构造函数现在接收 abilityId 参数
             switch (id)
             {
                 case "BasicMove":
-                    return new DefaultMoveAbility(playerController, priority, enabled);
+                    return new DefaultMoveAbility(playerController, id, priority, enabled);
                 case "BasicRun":
-                    return new DefaultRunAbility(playerController, priority, enabled);
+                    return new DefaultRunAbility(playerController, id, priority, enabled);
                 case "BasicJump":
-                    return new DefaultJumpAbility(playerController, priority, enabled);
+                    return new DefaultJumpAbility(playerController, id, priority, enabled);
                 case "BasicAttack":
-                    return new DefaultAttackAbility(playerController, priority, enabled);
+                    return new DefaultAttackAbility(playerController, id, priority, enabled);
                 case "BasicRangedAttack":
-                    return new DefaultRangedAttackAbility(playerController, priority, enabled);
+                    return new DefaultRangedAttackAbility(playerController, id, priority, enabled);
                 default:
                     Debug.LogError($"[AbilityRegistry] CreateAbility failed: no factory for id '{id}'");
                     return null;

@@ -29,9 +29,10 @@ public class CastleDbWatchService
     private static bool isEnabled = false;
     private static bool autoChainEnabled = false;  // 是否自动执行 Import→Sync→Scene 完整链路
     private static bool isWatcherActive = false;
-    private static string lastKnownHash = "";
+    private static System.Collections.Generic.Dictionary<string, string> fileHashes = new System.Collections.Generic.Dictionary<string, string>(); // 文件路径 → 哈希值映射（用于去重）
     private static double lastChangeTime = 0;
     private static double changeDebounceTime = 2.0; // 2秒防抖
+    private static string lastChangedFilePath = ""; // 记录最后变化的文件路径（用于防抖后的哈希检查）
 
     // ===== 静态构造函数（自动启动） =====
 
@@ -205,8 +206,9 @@ public class CastleDbWatchService
             return;
         }
 
-        // 记录变化时间（用于防抖）
+        // 记录变化时间和文件路径（用于防抖）
         lastChangeTime = EditorApplication.timeSinceStartup;
+        lastChangedFilePath = e.FullPath;
 
         WriteLog($"检测到文件变化: {e.ChangeType}, {e.FullPath}");
     }
@@ -217,10 +219,37 @@ public class CastleDbWatchService
         if (lastChangeTime > 0 &&
             EditorApplication.timeSinceStartup - lastChangeTime >= changeDebounceTime)
         {
-            lastChangeTime = 0; // 重置
+            lastChangeTime = 0; // 重置时间戳
+
+            // 哈希去重：计算文件内容哈希，只有真正变化才触发导入
+            string currentFilePath = lastChangedFilePath;
+            lastChangedFilePath = ""; // 重置路径
+
+            if (string.IsNullOrEmpty(currentFilePath) || !File.Exists(currentFilePath))
+            {
+                WriteLog($"文件不存在或路径为空，跳过导入: {currentFilePath}");
+                return;
+            }
+
+            string newHash = ComputeFileHash(currentFilePath);
+            if (string.IsNullOrEmpty(newHash))
+            {
+                WriteLog($"无法计算文件哈希，跳过导入: {currentFilePath}");
+                return;
+            }
+
+            // 检查哈希是否变化
+            if (fileHashes.TryGetValue(currentFilePath, out string oldHash) && oldHash == newHash)
+            {
+                WriteLog($"文件内容未变化（哈希一致），跳过导入: {currentFilePath}");
+                return;
+            }
+
+            // 更新哈希记录
+            fileHashes[currentFilePath] = newHash;
 
             // 0.3 版本：检测到任何 .cdb 文件变化后触发 Import All
-            WriteLog($"文件变化稳定，提示用户导入");
+            WriteLog($"文件内容已变化（哈希: {newHash}），提示用户导入: {currentFilePath}");
 
             // 提示用户
             EditorApplication.delayCall += () =>

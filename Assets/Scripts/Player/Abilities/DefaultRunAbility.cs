@@ -11,12 +11,14 @@ public class DefaultRunAbility : IPlayerAbility
 {
     private PlayerController playerController;
 
+    public string AbilityId { get; private set; }
     public int Priority { get; private set; }
-    public bool Enabled { get; private set; }
+    public bool Enabled { get; set; }
 
-    public DefaultRunAbility(PlayerController playerController, int priority, bool enabled)
+    public DefaultRunAbility(PlayerController playerController, string abilityId, int priority, bool enabled)
     {
         this.playerController = playerController;
+        this.AbilityId = abilityId;
         this.Priority = priority;
         this.Enabled = enabled;
     }

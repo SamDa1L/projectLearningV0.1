@@ -555,34 +555,15 @@ public class PlayerController : MonoBehaviour
             Debug.LogError("[PlayerController] 未找到 PlayerContext 组件，无法注入 AbilitySystem");
         }
 
-        // ===== Phase 4 集成：初始化 PlayerInventory =====
-        PlayerInventory inventory = GetComponent<PlayerInventory>();
-        if (inventory != null)
-        {
-            // 加载 ItemCatalog
-            var itemCatalog = Resources.Load<CastleDB.Runtime.ItemCatalog>("Config/ItemCatalog");
-            if (itemCatalog == null)
-            {
-                Debug.LogError("[PlayerController] 未找到 ItemCatalog (Resources/Config/ItemCatalog.asset)，无法初始化 PlayerInventory");
-            }
-            else
-            {
-                // 创建 CastleDbService 实例
-                var castleDbService = new CastleDB.Runtime.CastleDbService();
-                castleDbService.SetItemCatalog(itemCatalog);
-
-                // 加载 GameplayConfig（可选）
-                var gameplayConfig = Resources.Load<GameplayConfig>("Config/GameplayConfig");
-
-                // 初始化 PlayerInventory
-                inventory.Initialize(castleDbService, gameplayConfig);
-                Debug.Log("[PlayerController] 已初始化 PlayerInventory");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[PlayerController] 未找到 PlayerInventory 组件");
-        }
+        // ===== Phase 4-6 集成说明 =====
+        // 注意：PlayerInventory/PlayerEquipmentController 的初始化现由 GameBootstrap 负责（契约 [C-Runtime-0]）
+        // PlayerController 仅负责创建 AbilitySystem 并注入到 PlayerContext
+        // GameBootstrap.Awake 将完成以下装配：
+        //   1. 加载 ItemCatalog 并创建 CastleDbService
+        //   2. player.Inventory.Initialize(items, cfg)
+        //   3. player.EquipmentController.Initialize(items, abilitySystem, inventory)
+        // GameBootstrap.Start 将执行：
+        //   - player.EquipmentController.SyncAllSlotsToAbilities()
     }
 
     /// <summary>
@@ -652,6 +633,23 @@ public class PlayerController : MonoBehaviour
         // 将当前Y轴速度同步到Animator
         // 用于控制下落/上升动画，以及到达最高点时的转换
         animator.SetFloat(AnimationStrings.yVelocity, rb.velocity.y);
+    }
+
+    /// <summary>
+    /// LateUpdate生命周期函数（Phase 5）
+    /// 每帧在所有 Update 完成后调用，用于刷新 AbilitySystem 的待处理状态变更
+    ///
+    /// 功能:
+    /// - 调用 AbilitySystem.FlushPendingChanges() 统一应用本帧累积的 Enable/Disable 操作
+    /// - 保证状态变更的保序去重语义（同帧多次操作只应用最后一次）
+    /// </summary>
+    private void LateUpdate()
+    {
+        // Phase 5: 刷新能力系统的待处理状态变更
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            abilitySystem.FlushPendingChanges();
+        }
     }
 
     /// <summary>

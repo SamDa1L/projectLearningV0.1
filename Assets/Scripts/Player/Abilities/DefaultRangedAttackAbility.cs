@@ -10,12 +10,14 @@ public class DefaultRangedAttackAbility : IPlayerAbility
 {
     private Animator animator;
 
+    public string AbilityId { get; private set; }
     public int Priority { get; private set; }
-    public bool Enabled { get; private set; }
+    public bool Enabled { get; set; }
 
-    public DefaultRangedAttackAbility(PlayerController playerController, int priority, bool enabled)
+    public DefaultRangedAttackAbility(PlayerController playerController, string abilityId, int priority, bool enabled)
     {
         this.animator = playerController.GetComponent<Animator>();
+        this.AbilityId = abilityId;
         this.Priority = priority;
         this.Enabled = enabled;
     }
