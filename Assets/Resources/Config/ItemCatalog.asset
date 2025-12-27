@@ -16,7 +16,7 @@ MonoBehaviour:
   - id: potion_red
     displayName: "\u7EA2\u8272\u836F\u6C34"
     itemType: 1
-    icon: UI/Items/Potion_Red
+    icon: Icons/Items/Food/Sprite/Food/DragonFruit
     abilityId: 
     maxStack: 99
     consumeEffect:
@@ -26,7 +26,7 @@ MonoBehaviour:
   - id: ability_dash
     displayName: "\u51B2\u523A\u80FD\u529B"
     itemType: 0
-    icon: UI/Items/Ability_Dash
+    icon: Icons/Items/Food/Sprite/Food/Beer
     abilityId: BasicRun
     maxStack: 1
     consumeEffect:
@@ -36,7 +36,7 @@ MonoBehaviour:
   - id: ability_walk
     displayName: "\u884C\u8D70\u80FD\u529B"
     itemType: 0
-    icon: 
+    icon: Icons/Items/Food/Sprite/Food/Bug
     abilityId: BasicMove
     maxStack: 1
     consumeEffect:

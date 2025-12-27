@@ -283,6 +283,15 @@ public class HudQuickConfigWindow : EditorWindow
     {
         Debug.Log($"{LOG_PREFIX} 开始 AutoBind...");
 
+        // 契约 [C-Tool-1]: AutoBind 必须保证 binding.hudPrefab != null
+        HudBindingAsset binding = AssetDatabase.LoadAssetAtPath<HudBindingAsset>(BINDING_PATH);
+        if (binding == null || binding.hudPrefab == null)
+        {
+            Debug.LogError($"{LOG_PREFIX} HudBinding.asset 或 hudPrefab 为空，请先 Create Template 或手动指定 hudPrefab");
+            EditorUtility.DisplayDialog("失败", "HudBinding.asset 或 hudPrefab 为空\n\n请先执行 Create Template 或手动指定 hudPrefab", "确定");
+            return;
+        }
+
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_PATH);
         if (prefab == null)
         {
@@ -366,26 +375,26 @@ public class HudQuickConfigWindow : EditorWindow
         // 校验 abilitySlotIcons
         if (hudRefs.abilitySlotIcons == null || hudRefs.abilitySlotIcons.Length != 4)
         {
-            Debug.LogError($"{LOG_PREFIX} Ability slot icon count must be 4, got {hudRefs.abilitySlotIcons?.Length ?? 0}");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Ability slot icon count must be 4, got {hudRefs.abilitySlotIcons?.Length ?? 0}");
             hasError = true;
         }
 
         // 校验必需字段
         if (hudRefs.potionCountText == null)
         {
-            Debug.LogError($"{LOG_PREFIX} Missing node: BottomLeft/PotionWidget/CountText");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Missing node: BottomLeft/PotionWidget/CountText");
             hasError = true;
         }
 
         if (hudRefs.healthFill == null)
         {
-            Debug.LogError($"{LOG_PREFIX} Missing node: BottomCenter/HealthBar/Fill");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Missing node: BottomCenter/HealthBar/Fill");
             hasError = true;
         }
 
         if (hudRefs.abilityReplacePanelRoot == null)
         {
-            Debug.LogError($"{LOG_PREFIX} Missing ReplacePanelRoot: Overlay/AbilityReplacePanel");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Missing ReplacePanelRoot: Overlay/AbilityReplacePanel");
             hasError = true;
         }
         else
@@ -464,7 +473,7 @@ public class HudQuickConfigWindow : EditorWindow
         Transform t = panelRoot.Find(relativePath);
         if (t == null)
         {
-            Debug.LogError($"{LOG_PREFIX} Missing ReplacePanel node: {relativePath}");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Missing ReplacePanel node: {relativePath}");
             hasError = true;
             return;
         }
@@ -477,7 +486,7 @@ public class HudQuickConfigWindow : EditorWindow
         T component = t.GetComponent<T>();
         if (component == null)
         {
-            Debug.LogError($"{LOG_PREFIX} Expected {typeof(T).Name} at {relativePath}, got {t.GetComponent<Component>()?.GetType().Name ?? "null"}");
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Expected {typeof(T).Name} at {relativePath}, got {t.GetComponent<Component>()?.GetType().Name ?? "null"}");
             hasError = true;
         }
     }
