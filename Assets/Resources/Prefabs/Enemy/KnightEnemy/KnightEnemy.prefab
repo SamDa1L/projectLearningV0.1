@@ -99,6 +99,9 @@ MonoBehaviour:
   NoColliderRemain:
     m_PersistentCalls:
       m_Calls: []
+  OnDetectedTargetsChanged:
+    m_PersistentCalls:
+      m_Calls: []
   detectedColliders: []
 --- !u!1 &1837726973340476881
 GameObject:
@@ -111,7 +114,7 @@ GameObject:
   - component: {fileID: 6285493566838238757}
   - component: {fileID: 5128712127198629848}
   - component: {fileID: 3722388447903535236}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: DZ_Attack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -127,7 +130,7 @@ Transform:
   m_GameObject: {fileID: 1837726973340476881}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 1.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -152,6 +155,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   NoColliderRemain:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDetectedTargetsChanged:
     m_PersistentCalls:
       m_Calls: []
   detectedColliders: []
@@ -187,7 +193,7 @@ BoxCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.5539563, y: -0.1719314}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -198,7 +204,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1.978672, y: 2.010749}
   m_EdgeRadius: 0
 --- !u!1 &2510826165512504763
 GameObject:
@@ -644,6 +650,9 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  OnDetectedTargetsChanged:
+    m_PersistentCalls:
+      m_Calls: []
   detectedColliders: []
 --- !u!61 &713662585672335128
 BoxCollider2D:
@@ -787,6 +796,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   NoColliderRemain:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDetectedTargetsChanged:
     m_PersistentCalls:
       m_Calls: []
   detectedColliders: []
