@@ -2,6 +2,7 @@ using NUnit.Framework;
 using System.IO;
 using UnityEngine;
 using CastleDB.Editor;
+using CastleDB.Runtime;
 using UnityEngine.TestTools;
 
 namespace CastleDB.Tests.EditMode
