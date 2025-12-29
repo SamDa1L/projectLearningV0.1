@@ -814,10 +814,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         int targetCount = binding.zone.detectedColliders.Count;
         string label = $"{binding.role}\n({targetCount})";
 
-        // 在编辑器中显示标签
-        #if UNITY_EDITOR
-        UnityEditor.Handles.Label(labelPos, label);
-        #endif
+        TryDrawEditorLabel(labelPos, label);
     }
 
     /// <summary>
@@ -846,6 +843,21 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         {
             Gizmos.DrawLine(points[i], points[i + 1]);
         }
+    }
+
+    private static void TryDrawEditorLabel(Vector3 labelPos, string label)
+    {
+#if UNITY_EDITOR
+        var handlesType = System.Type.GetType("UnityEditor.Handles, UnityEditor");
+        if (handlesType == null)
+            return;
+
+        var method = handlesType.GetMethod("Label", new[] { typeof(Vector3), typeof(string) });
+        if (method == null)
+            return;
+
+        method.Invoke(null, new object[] { labelPos, label });
+#endif
     }
 
     /// <summary>

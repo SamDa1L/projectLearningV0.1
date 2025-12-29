@@ -160,14 +160,8 @@ namespace CastleDB.Runtime
         {
             // 警告：此资产应由 Import All 生成，不应手动编辑
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.delayCall += () =>
-            {
-                if (this != null)
-                {
-                    Debug.LogWarning("[ItemCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。" +
-                        "如需修改 Item 配置，请在 CastleDB 中编辑 Item Sheet 并重新导入。", this);
-                }
-            };
+            Debug.LogWarning("[ItemCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。" +
+                "如需修改 Item 配置，请在 CastleDB 中编辑 Item Sheet 并重新导入。", this);
 #else
             Debug.LogWarning("[ItemCatalog] 此资产由 Tools/CastleDB/Import All 生成，请勿手动编辑。", this);
 #endif

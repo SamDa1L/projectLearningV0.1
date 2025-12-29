@@ -56,12 +56,12 @@
 					"uiTag": ""
 				},
 				{
-					"id": "ability_dash",
-					"displayName": "冲刺能力",
+					"id": "ability_arrow",
+					"displayName": "射箭能力",
 					"itemType": "Ability",
 					"icon": "Icons/Items/Food/Sprite/Food/Beer",
 					"maxStack": 1,
-					"abilityId": "BasicRun",
+					"abilityId": "BasicRangedAttack",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -72,6 +72,36 @@
 					"icon": "Icons/Items/Food/Sprite/Food/Bug",
 					"maxStack": 1,
 					"abilityId": "BasicMove",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_attack",
+					"displayName": "攻击能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicAttack",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_run",
+					"displayName": "跑步能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicRun",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_jump",
+					"displayName": "跳跃能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicJump",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				}

@@ -1487,6 +1487,43 @@ public class CastleDbImporter
         }
     }
 
+    /// <summary>
+    /// 打开 CastleDB 导入设置
+    /// Phase 12: 提供配置 CdbImportRoot 的入口
+    /// </summary>
+    [MenuItem("Tools/CastleDB/Settings")]
+    public static void OpenSettings()
+    {
+        const string SETTINGS_PATH = "Assets/Settings/CdbImportSettings.asset";
+        const string SETTINGS_DIR = "Assets/Settings";
+
+        // 尝试加载现有设置
+        var settings = AssetDatabase.LoadAssetAtPath<CdbImportSettings>(SETTINGS_PATH);
+
+        if (settings == null)
+        {
+            // 创建目录（如果不存在）
+            if (!Directory.Exists(SETTINGS_DIR))
+            {
+                Directory.CreateDirectory(SETTINGS_DIR);
+                AssetDatabase.Refresh();
+            }
+
+            // 创建默认设置
+            settings = ScriptableObject.CreateInstance<CdbImportSettings>();
+            settings.cdbImportRoot = "Assets/Resources";
+
+            AssetDatabase.CreateAsset(settings, SETTINGS_PATH);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[CastleDbImporter] 已创建 CdbImportSettings: {SETTINGS_PATH}");
+        }
+
+        // 选中并聚焦设置资产
+        Selection.activeObject = settings;
+        EditorGUIUtility.PingObject(settings);
+    }
+
     // ===== 2B: DetectionZone 聚合与校验支持 =====
 
     /// <summary>

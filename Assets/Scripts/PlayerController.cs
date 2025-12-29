@@ -29,6 +29,7 @@ using UnityEngine.InputSystem;
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections), typeof(Damageable))]
 
+[DefaultExecutionOrder(-100)]
 public class PlayerController : MonoBehaviour
 {
     /// <summary>

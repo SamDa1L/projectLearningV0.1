@@ -27,6 +27,13 @@ namespace CastleDB.Editor
     {
         private const string DEFAULT_SCAN_PATH = "Assets/Resources/Data";
         private const string LEGACY_EXCLUDE_PATH = "Assets/Resources/Data/CastleDbDemo";
+        private const string SETTINGS_PATH = "Assets/Settings/CdbImportSettings.asset";
+
+        /// <summary>
+        /// CDB 导入根目录（相对 ProjectRoot 或绝对路径）
+        /// Phase 12: Excel 导出以此为基准计算镜像路径，从 CdbImportSettings 加载
+        /// </summary>
+        private string cdbImportRoot = "Assets/Resources";
 
         private readonly CdbDataProviderRegistry _registry;
         private readonly List<string> _logMessages = new List<string>();
@@ -34,6 +41,22 @@ namespace CastleDB.Editor
         public CdbImportCoordinator(CdbDataProviderRegistry registry)
         {
             _registry = registry ?? CdbDataProviderRegistry.Instance;
+
+            // 加载 CdbImportSettings（若无则使用默认值）
+            LoadImportSettings();
+        }
+
+        /// <summary>
+        /// 加载导入设置
+        /// </summary>
+        private void LoadImportSettings()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<CdbImportSettings>(SETTINGS_PATH);
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.cdbImportRoot))
+            {
+                cdbImportRoot = settings.cdbImportRoot;
+            }
+            // 若无设置文件或字段为空，保持默认值 "Assets/Resources"
         }
 
         #region 模块发现
@@ -170,12 +193,24 @@ namespace CastleDB.Editor
             try
             {
                 // 0. 清理注册表（允许重复执行）
-                _logMessages.Add("\n【步骤 0/9】清理注册表");
+                _logMessages.Add("\n【步骤 0/10】清理注册表");
                 _registry.ClearDescriptors();
                 _logMessages.Add("✓ 注册表已清理，允许重复导入");
 
+                // 0.5. 校验 CdbImportRoot（Phase 12: 失败直接中止）
+                _logMessages.Add("\n【步骤 0.5/10】校验 CdbImportRoot");
+                string cdbImportRootFullPath = GetCdbImportRootFullPath();
+                if (cdbImportRootFullPath == null)
+                {
+                    _logMessages.Add($"✗ CdbImportRoot 校验失败，中止 Import All");
+                    _logMessages.Add($"   配置路径：{cdbImportRoot}");
+                    _logMessages.Add($"   请通过 Tools → CastleDB → Settings 修正配置");
+                    return CdbImportAllResult.Failure(_logMessages);
+                }
+                _logMessages.Add($"✓ CdbImportRoot 校验通过：{cdbImportRootFullPath}");
+
                 // 1. 发现所有模块
-                _logMessages.Add("\n【步骤 1/9】模块发现");
+                _logMessages.Add("\n【步骤 1/10】模块发现");
                 var descriptors = DiscoverModules();
                 if (descriptors.Count == 0)
                 {
@@ -466,6 +501,18 @@ namespace CastleDB.Editor
                 AssetDatabase.SaveAssets();
                 _logMessages.Add("  ✓ 所有变更已保存");
 
+                // 9.4 导出到 Excel（CSV 格式）
+                _logMessages.Add($"\n【步骤 10/10】导出 Excel");
+                var successIds = new HashSet<string>(
+                    importResults.Where(r => r.Success).Select(r => r.ProviderId)
+                );
+                var successModules = sortedIds
+                    .Where(id => successIds.Contains(id))
+                    .Select(id => _registry.GetDescriptor(id))
+                    .Where(desc => desc != null)
+                    .ToList();
+                ExportModulesToExcel(successModules);
+
                 var elapsed = DateTime.Now - startTime;
                 _logMessages.Add($"\n✓ Import All 完成，耗时：{elapsed.TotalSeconds:F2}s");
 
@@ -522,12 +569,24 @@ namespace CastleDB.Editor
             try
             {
                 // 0. 清理注册表（允许重复执行）
-                _logMessages.Add("\n【步骤 0/8】清理注册表");
+                _logMessages.Add("\n【步骤 0/11】清理注册表");
                 _registry.ClearDescriptors();
                 _logMessages.Add("✓ 注册表已清理，允许重复导入");
 
+                // 0.5. 校验 CdbImportRoot（Phase 12: 失败直接中止）
+                _logMessages.Add("\n【步骤 0.5/11】校验 CdbImportRoot");
+                string cdbImportRootFullPath = GetCdbImportRootFullPath();
+                if (cdbImportRootFullPath == null)
+                {
+                    _logMessages.Add($"✗ CdbImportRoot 校验失败，中止导入");
+                    _logMessages.Add($"   配置路径：{cdbImportRoot}");
+                    _logMessages.Add($"   请通过 Tools → CastleDB → Settings 修正配置");
+                    return CdbImportResult.FailedWithLogs(targetDescriptor.ProviderId, _logMessages);
+                }
+                _logMessages.Add($"✓ CdbImportRoot 校验通过：{cdbImportRootFullPath}");
+
                 // 1. 注册目标描述符
-                _logMessages.Add("\n【步骤 1/9】注册目标模块");
+                _logMessages.Add("\n【步骤 1/11】注册目标模块");
                 try
                 {
                     _registry.RegisterDescriptor(targetDescriptor);
@@ -952,6 +1011,10 @@ namespace CastleDB.Editor
                 AssetDatabase.SaveAssets();
                 _logMessages.Add("  ✓ 所有变更已保存");
 
+                // 9. 导出到 Excel（仅目标 .cdb）
+                _logMessages.Add($"\n【步骤 10/10】导出 Excel");
+                ExportModulesToExcel(new List<CdbModuleDescriptor> { targetDescriptor }, TriggerMode.ThisFile);
+
                 var elapsed = DateTime.Now - startTime;
                 _logMessages.Add($"\n✓ 单模块导入完成，耗时：{elapsed.TotalSeconds:F2}s");
 
@@ -1194,6 +1257,116 @@ namespace CastleDB.Editor
             AssetDatabase.Refresh();
 
             Debug.Log($"[CdbImportCoordinator] 回滚完成：恢复了 {restoredCount} 个文件");
+        }
+
+        #endregion
+
+        #region Excel 导出
+
+        /// <summary>
+        /// 获取 CdbImportRoot 完整路径（解析相对/绝对路径）
+        /// </summary>
+        /// <returns>完整路径，验证失败返回 null</returns>
+        private string GetCdbImportRootFullPath()
+        {
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
+
+            string path = Path.IsPathRooted(cdbImportRoot)
+                ? cdbImportRoot
+                : Path.Combine(projectRoot, cdbImportRoot);
+
+            if (!ValidateCdbImportRoot(path))
+            {
+                return null; // 中止导出
+            }
+
+            return path;
+        }
+
+        /// <summary>
+        /// 校验 CdbImportRoot 目录存在性与可访问性
+        /// </summary>
+        private bool ValidateCdbImportRoot(string fullRootPath)
+        {
+            if (!Directory.Exists(fullRootPath))
+            {
+                Debug.LogError($"[CdbImportCoordinator] CdbImportRoot 不存在：{fullRootPath}");
+                return false;
+            }
+
+            try
+            {
+                // 轻量访问性探测
+                Directory.EnumerateFileSystemEntries(fullRootPath).FirstOrDefault();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[CdbImportCoordinator] CdbImportRoot 不可访问：{fullRootPath} ({e.GetType().Name})");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 导出模块到 Excel（.xlsx 格式）
+        /// </summary>
+        /// <param name="modules">要导出的模块列表</param>
+        private void ExportModulesToExcel(List<CdbModuleDescriptor> modules, TriggerMode triggerMode = TriggerMode.All)
+        {
+            if (modules == null || modules.Count == 0)
+            {
+                _logMessages.Add("  无模块需要导出，跳过");
+                return;
+            }
+
+            // 获取并校验 CdbImportRoot
+            string cdbImportRootFullPath = GetCdbImportRootFullPath();
+            if (cdbImportRootFullPath == null)
+            {
+                _logMessages.Add("  ✗ CdbImportRoot 校验失败，跳过 Excel 导出");
+                return;
+            }
+
+            var exporter = new CdbExcelExporter();
+            int successCount = 0;
+            int failureCount = 0;
+
+            foreach (var module in modules)
+            {
+                try
+                {
+                    // 获取相对路径（相对于 ProjectRoot）
+                    string relativePath = module.AssetPath;
+                    if (Path.IsPathRooted(relativePath))
+                    {
+                        // 转换为相对路径
+                        string projectRoot = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, ".."));
+                        if (relativePath.StartsWith(projectRoot))
+                        {
+                            relativePath = relativePath.Substring(projectRoot.Length + 1).Replace("\\", "/");
+                        }
+                    }
+
+                    bool success = exporter.ExportToExcel(relativePath, cdbImportRootFullPath, triggerMode);
+                    if (success)
+                    {
+                        successCount++;
+                        _logMessages.Add($"  ✓ {module.ProviderId}");
+                    }
+                    else
+                    {
+                        failureCount++;
+                        _logMessages.Add($"  ✗ {module.ProviderId} 导出失败");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failureCount++;
+                    _logMessages.Add($"  ✗ {module.ProviderId} 异常：{ex.Message}");
+                }
+            }
+
+            _logMessages.Add($"  导出完成：成功 {successCount}，失败 {failureCount}");
         }
 
         #endregion

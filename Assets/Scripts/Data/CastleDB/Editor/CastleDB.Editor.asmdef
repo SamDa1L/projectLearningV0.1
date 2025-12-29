@@ -1,0 +1,26 @@
+{
+    "name": "CastleDB.Editor",
+    "rootNamespace": "CastleDB.Editor",
+    "references": [
+        "CastleDB.Runtime",
+        "Game.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "NPOI.dll",
+        "NPOI.OOXML.dll",
+        "NPOI.OpenXml4Net.dll",
+        "NPOI.OpenXmlFormats.dll",
+        "ICSharpCode.SharpZipLib.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

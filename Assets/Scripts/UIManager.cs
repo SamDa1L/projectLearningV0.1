@@ -78,7 +78,12 @@ public class UIManager : MonoBehaviour
                         Debug.Log(this.name + ":" + this.GetType() + ":" + System.Reflection.MethodBase.GetCurrentMethod().Name);
             #endif
             #if (UNITY_EDITOR)
-                        UnityEditor.EditorApplication.isPlaying = false;
+                        var editorAppType = System.Type.GetType("UnityEditor.EditorApplication, UnityEditor");
+                        var isPlayingProp = editorAppType?.GetProperty("isPlaying");
+                        if (isPlayingProp != null)
+                        {
+                            isPlayingProp.SetValue(null, false);
+                        }
             #elif (UNITY_STANDALONE)
                         Application.Quit();
             #elif (UNITY_WEBGL)
@@ -91,3 +96,4 @@ public class UIManager : MonoBehaviour
 
 
 }
+

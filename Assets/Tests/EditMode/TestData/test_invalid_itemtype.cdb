@@ -1,0 +1,33 @@
+{
+	"sheets": [
+		{
+			"name": "Item",
+			"columns": [
+				{"typeStr": "0", "name": "id"},
+				{"typeStr": "1", "name": "displayName"},
+				{"typeStr": "1", "name": "itemType"},
+				{"typeStr": "1", "name": "icon"},
+				{"typeStr": "3", "name": "maxStack"},
+				{"typeStr": "1", "name": "abilityId"},
+				{"typeStr": "1", "name": "consumeEffectJson"},
+				{"typeStr": "1", "name": "uiTag"}
+			],
+			"lines": [
+				{"id":"item_invalid","displayName":"非法类型","itemType":"InvalidType","icon":"","maxStack":1,"abilityId":"","consumeEffectJson":"","uiTag":""}
+			]
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{"typeStr": "1", "name": "key"},
+				{"typeStr": "1", "name": "value"}
+			],
+			"lines": [
+				{"key": "schemaVersion", "value": "0.4"},
+				{"key": "providerId", "value": "Item"},
+				{"key": "dependencies", "value": ""},
+				{"key": "resourcePath", "value": "Config/Item"}
+			]
+		}
+	]
+}

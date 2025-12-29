@@ -321,9 +321,9 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void ValidateSchemaVersions_AllMatch_ReturnsEmpty()
         {
-            // Arrange
-            _registry.RegisterDescriptor(CreateDescriptor("A", new string[] { }, "0.3"));
-            _registry.RegisterDescriptor(CreateDescriptor("B", new string[] { }, "0.3"));
+            // Arrange - 使用 ExpectedSchemaVersion（默认）
+            _registry.RegisterDescriptor(CreateDescriptor("A", new string[] { }));
+            _registry.RegisterDescriptor(CreateDescriptor("B", new string[] { }));
 
             // Act
             var mismatched = _registry.ValidateSchemaVersions();
@@ -335,8 +335,8 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void ValidateSchemaVersions_Mismatch_ReturnsMismatched()
         {
-            // Arrange
-            _registry.RegisterDescriptor(CreateDescriptor("A", new string[] { }, "0.3"));
+            // Arrange - A 使用期望版本，B 使用不同版本
+            _registry.RegisterDescriptor(CreateDescriptor("A", new string[] { }));
             _registry.RegisterDescriptor(CreateDescriptor("B", new string[] { }, "0.2"));
 
             // Act
@@ -414,8 +414,14 @@ namespace CastleDB.Tests.EditMode
 
         #region Helper Methods
 
-        private CdbModuleDescriptor CreateDescriptor(string providerId, string[] dependencies, string schemaVersion = "0.3")
+        private CdbModuleDescriptor CreateDescriptor(string providerId, string[] dependencies, string schemaVersion = null)
         {
+            // 默认使用 Registry 的期望版本
+            if (string.IsNullOrEmpty(schemaVersion))
+            {
+                schemaVersion = CdbDataProviderRegistry.ExpectedSchemaVersion;
+            }
+
             var metaEntries = new List<MetaEntry>
             {
                 new MetaEntry { key = "providerId", value = providerId },

@@ -200,7 +200,11 @@ public struct DamageableStats
         if(IsAlive && !isInvincible)
         {
             Health -= damage;
-            isInvincible = true;
+            if (invincibilityTime > 0f)
+            {
+                isInvincible = true;
+                timeSinceHit = 0f;
+            }
 
             EnsureAnimator();
             if (animator != null)

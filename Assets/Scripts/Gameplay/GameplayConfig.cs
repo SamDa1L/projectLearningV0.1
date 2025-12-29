@@ -200,10 +200,7 @@ public class GameplayConfig : ScriptableObject
         string json = JsonUtility.ToJson(this, true);
         System.IO.File.WriteAllText(snapshotPath, json);
 
-        #if UNITY_EDITOR
         Debug.Log($"[GameplayConfig] 快照已保存: {snapshotPath}");
-        UnityEditor.AssetDatabase.Refresh();
-        #endif
     }
 
     /// <summary>
@@ -236,8 +233,6 @@ public class GameplayConfig : ScriptableObject
     /// <summary>
     /// 编辑器菜单：验证配置是否正确加载
     /// </summary>
-#if UNITY_EDITOR
-    [UnityEditor.MenuItem("Tools/Gameplay/Verify GameplayConfig")]
     public static void VerifyConfig()
     {
         var config = Resources.Load<GameplayConfig>("Config/GameplayConfig");
@@ -251,5 +246,4 @@ public class GameplayConfig : ScriptableObject
             config.PrintAllValues();
         }
     }
-#endif
 }

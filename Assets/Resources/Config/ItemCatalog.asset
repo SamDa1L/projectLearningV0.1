@@ -23,11 +23,11 @@ MonoBehaviour:
       heal: 50
     consumeEffectRawJson: '{"heal":50}'
     uiTag: 
-  - id: ability_dash
-    displayName: "\u51B2\u523A\u80FD\u529B"
+  - id: ability_arrow
+    displayName: "\u5C04\u7BAD\u80FD\u529B"
     itemType: 0
     icon: Icons/Items/Food/Sprite/Food/Beer
-    abilityId: BasicRun
+    abilityId: BasicRangedAttack
     maxStack: 1
     consumeEffect:
       heal: 0
@@ -38,6 +38,36 @@ MonoBehaviour:
     itemType: 0
     icon: Icons/Items/Food/Sprite/Food/Bug
     abilityId: BasicMove
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_attack
+    displayName: "\u653B\u51FB\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicAttack
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_run
+    displayName: "\u8DD1\u6B65\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicRun
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_jump
+    displayName: "\u8DF3\u8DC3\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicJump
     maxStack: 1
     consumeEffect:
       heal: 0

@@ -243,7 +243,6 @@ public class EnemyTuningProfile : ScriptableObject
 
         #if UNITY_EDITOR
         Debug.Log($"[EnemyTuningProfile] 快照已保存: {snapshotPath}");
-        UnityEditor.AssetDatabase.Refresh();
         #endif
     }
 

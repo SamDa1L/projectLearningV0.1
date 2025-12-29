@@ -6,7 +6,8 @@ using UnityEngine;
 /// 提供 CastleDB DetectionZone.role (int) 与 Prefab DetectionZoneBinding.Role (enum) 之间的统一映射。
 ///
 /// 设计说明：
-/// - 此类放在 Editor 层，避免 CastleDB.Runtime 依赖 Game.Runtime（asmdef 循环依赖）
+/// - 此类放在 Runtime 层（Game.Runtime asmdef），可被 Game.Editor 和 CastleDB.Editor 共同引用
+/// - 避免 Editor 程序集之间的循环依赖
 /// - 所有需要 role 映射的地方（校验工具、同步工具等）应使用此类，避免多处 switch 漂移
 /// - CastleDB schema 增加 role 时只需更新此处
 ///

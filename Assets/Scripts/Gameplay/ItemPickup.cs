@@ -60,7 +60,6 @@ public class ItemPickup : MonoBehaviour
 
     // ===== 一次性日志去重 =====
     private static readonly HashSet<string> _loggedWarnings = new HashSet<string>();
-    private readonly HashSet<int> _validatedInstances = new HashSet<int>();
 
     // ===== 生命周期 =====
     private void Awake()
@@ -242,11 +241,6 @@ public class ItemPickup : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        // 防止多次执行（按实例去重）
-        int instanceId = GetInstanceID();
-        if (_validatedInstances.Contains(instanceId))
-            return;
-
         // 1) amount <= 0 自动改为 1
         if (amount <= 0)
         {
@@ -270,8 +264,6 @@ public class ItemPickup : MonoBehaviour
                 Debug.LogError($"[ItemPickup] itemType=Material 在 0.4 版本不支持拾取，请勿投放。itemId={itemId}", this);
             }
         }
-
-        _validatedInstances.Add(instanceId);
     }
 #endif
 }
