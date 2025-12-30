@@ -121,8 +121,15 @@ public class HudQuickConfigWindow : EditorWindow
             for (int i = 0; i < 4; i++)
             {
                 GameObject slot = CreateChild(abilityBar, $"Slot_{i}");
-                SetRectTransform(slot, new Vector2(i * 70, 0), new Vector2(0, 0), new Vector2(60, 60));
+                SetRectTransform(slot, new Vector2(i * 70, 0), new Vector2(0, 0), new Vector2(70, 70));
 
+                // 创建 Background（固定底板）
+                GameObject backgroundObj = CreateChild(slot, "Background");
+                Image backgroundImg = backgroundObj.AddComponent<Image>();
+                backgroundImg.color = new Color(0.3f, 0.3f, 0.3f, 0.8f); // 深灰色底板
+                SetRectTransform(backgroundObj, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(70, 70));
+
+                // 创建 Icon（运行时替换）
                 GameObject iconObj = CreateChild(slot, "Icon");
                 slotIcons[i] = iconObj.AddComponent<Image>();
                 slotIcons[i].enabled = false; // 默认禁用（空槽）
@@ -253,6 +260,13 @@ public class HudQuickConfigWindow : EditorWindow
             GameObject slot = CreateChild(slots, $"Slot_{i}");
             SetRectTransform(slot, new Vector2(-180 + i * 120, 0), new Vector2(0.5f, 0.5f), new Vector2(100, 100));
 
+            // 创建 Background（固定底板）
+            GameObject slotBg = CreateChild(slot, "Background");
+            Image slotBgImg = slotBg.AddComponent<Image>();
+            slotBgImg.color = new Color(0.3f, 0.3f, 0.3f, 0.8f); // 深灰色底板
+            SetRectTransform(slotBg, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(100, 100));
+
+            // 创建 Icon（运行时替换）
             GameObject slotIcon = CreateChild(slot, "Icon");
             Image slotIconImg = slotIcon.AddComponent<Image>();
             slotIconImg.enabled = false;
