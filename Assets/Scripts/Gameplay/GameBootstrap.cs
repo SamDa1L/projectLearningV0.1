@@ -21,7 +21,6 @@ using CastleDB.Runtime;
 /// - PlayerContext 通过序列化字段 player 持有（不使用 FindObjectOfType）
 /// - 缺失必需资源时 Error 并中止后续装配
 /// </summary>
-[DefaultExecutionOrder(100)]
 public class GameBootstrap : MonoBehaviour
 {
     // ===== 序列化字段（Inspector 配置）=====
