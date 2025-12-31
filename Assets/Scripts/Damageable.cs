@@ -195,7 +195,11 @@ public struct DamageableStats
 
 
 
-    public bool Hit(int damage, Vector2 knockback)
+    /// <summary>
+    /// 0.45 修正：添加 hitPoint 可选参数（契约 P0-2）
+    /// worldPos 来源：优先使用 hitPoint，否则使用 transform.position
+    /// </summary>
+    public bool Hit(int damage, Vector2 knockback, Vector2? hitPoint = null)
     {
         if(IsAlive && !isInvincible)
         {
@@ -215,7 +219,10 @@ public struct DamageableStats
             Vector2 scaledKnockback = knockback * knockbackMultiplier;
             damageableHit?.Invoke(damage, scaledKnockback);
 
-            CharacterEvents.characterDamaged?.Invoke(gameObject, damage);
+            // 0.45 修正：计算 worldPos（契约 P0-2）
+            // 优先使用 hitPoint，否则使用 transform.position（不使用 offset，简化版本）
+            Vector2 worldPos = hitPoint ?? (Vector2)transform.position;
+            CharacterEvents.characterDamaged?.Invoke(this, damage, worldPos);
 
             return true;
         }
@@ -225,7 +232,10 @@ public struct DamageableStats
     }
 
 
-    // 角色是否被恢复血
+    /// <summary>
+    /// 0.45 修正：角色治疗方法（契约 P0-2）
+    /// worldPos 来源：使用 transform.position
+    /// </summary>
     public bool Heal(int healthRestore)
     {
         if (IsAlive && Health < MaxHealth)
@@ -235,9 +245,13 @@ public struct DamageableStats
             float actualHeal = Mathf.Min(maxHeal, healthRestore);
             Health += actualHeal;
 
+            // 0.45 修正：计算 worldPos（契约 P0-2）
+            // 治疗使用 transform.position（不使用 offset，简化版本）
+            Vector2 worldPos = transform.position;
+
             // 事件仍使用 int，对实际治疗量四舍五入
             int actualHealInt = Mathf.RoundToInt(actualHeal);
-            CharacterEvents.characterHealed?.Invoke(gameObject, actualHealInt);
+            CharacterEvents.characterHealed?.Invoke(this, actualHealInt, worldPos);
             return true;
 
 

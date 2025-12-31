@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,16 +9,17 @@ using UnityEngine.Events;
 
 public class CharacterEvents
 {
-    //角色受到的伤害和数值
-    public static UnityAction<GameObject, int> characterDamaged;
+    /// <summary>
+    /// 0.45 修正：添加 Vector2 worldPos 参数（契约 P0-2）
+    /// 角色受到伤害事件
+    /// 参数：Damageable target, int amount, Vector2 worldPos
+    /// </summary>
+    public static UnityAction<Damageable, int, Vector2> characterDamaged;
 
-    //角色受到的治疗和数值
-    public static UnityAction<GameObject, int> characterHealed;
-
-
-
-
-
-
+    /// <summary>
+    /// 0.45 修正：添加 Vector2 worldPos 参数（契约 P0-2）
+    /// 角色受到治疗事件
+    /// 参数：Damageable target, int amount, Vector2 worldPos
+    /// </summary>
+    public static UnityAction<Damageable, int, Vector2> characterHealed;
 }
-

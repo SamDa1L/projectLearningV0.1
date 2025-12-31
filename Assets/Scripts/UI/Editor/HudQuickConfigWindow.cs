@@ -118,27 +118,39 @@ public class HudQuickConfigWindow : EditorWindow
             SetRectTransform(abilityBar, new Vector2(10, 10), new Vector2(0, 0), new Vector2(0, 0));
 
             Image[] slotIcons = new Image[4];
+            // 根据报告，每个槽位的 Icon/background AnchoredPosition
+            Vector2[] iconPositions = new Vector2[]
+            {
+                new Vector2(1155.0f, 116.0f), // Slot_0
+                new Vector2(1241.0f, 116.0f), // Slot_1
+                new Vector2(1330.0f, 116.0f), // Slot_2
+                new Vector2(1419.0f, 116.0f)  // Slot_3
+            };
+
             for (int i = 0; i < 4; i++)
             {
                 GameObject slot = CreateChild(abilityBar, $"Slot_{i}");
-                SetRectTransform(slot, new Vector2(i * 70, 0), new Vector2(0, 0), new Vector2(70, 70));
+                SetRectTransform(slot, new Vector2(i * 70, 0), new Vector2(0, 0), new Vector2(60, 60));
+                slot.transform.localScale = Vector3.one;
 
-                // 创建 Background（固定底板）
-                GameObject backgroundObj = CreateChild(slot, "Background");
+                // 创建 background（固定底板，小写命名匹配现有数据）
+                GameObject backgroundObj = CreateChild(slot, "background");
                 Image backgroundImg = backgroundObj.AddComponent<Image>();
                 backgroundImg.color = new Color(0.3f, 0.3f, 0.3f, 0.8f); // 深灰色底板
-                SetRectTransform(backgroundObj, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(70, 70));
+                SetRectTransform(backgroundObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(70, 70));
+                backgroundObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
 
                 // 创建 Icon（运行时替换）
                 GameObject iconObj = CreateChild(slot, "Icon");
                 slotIcons[i] = iconObj.AddComponent<Image>();
                 slotIcons[i].enabled = false; // 默认禁用（空槽）
-                SetRectTransform(iconObj, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(50, 50));
+                SetRectTransform(iconObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(50, 50));
+                iconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
             }
 
             // 创建 PotionWidget
             GameObject potionWidget = CreateChild(bottomLeft, "PotionWidget");
-            SetRectTransform(potionWidget, new Vector2(10, 80), new Vector2(0, 0), new Vector2(80, 60));
+            SetRectTransform(potionWidget, new Vector2(191, 185), new Vector2(0, 0), new Vector2(80, 60));
 
             GameObject countTextObj = CreateChild(potionWidget, "CountText");
             TMP_Text potionCountText = countTextObj.AddComponent<TextMeshProUGUI>();
@@ -149,7 +161,13 @@ public class HudQuickConfigWindow : EditorWindow
 
             // 创建 HealthBar
             GameObject healthBar = CreateChild(bottomCenter, "HealthBar");
-            SetRectTransform(healthBar, new Vector2(0, 10), new Vector2(0.5f, 0), new Vector2(200, 30));
+            RectTransform healthBarRt = healthBar.GetComponent<RectTransform>();
+            healthBarRt.anchorMin = new Vector2(0, 0);
+            healthBarRt.anchorMax = new Vector2(0, 0);
+            healthBarRt.pivot = new Vector2(0, 0); // 根据报告设置为 (0, 0)
+            healthBarRt.anchoredPosition = new Vector2(55, 45);
+            healthBarRt.sizeDelta = new Vector2(200, 30);
+            healthBar.transform.localScale = new Vector3(5.0f, 5.0f, 5.0f);
 
             GameObject healthBg = CreateChild(healthBar, "Background");
             Image healthBgImg = healthBg.AddComponent<Image>();
@@ -162,7 +180,7 @@ public class HudQuickConfigWindow : EditorWindow
             healthFill.type = Image.Type.Filled;
             healthFill.fillMethod = Image.FillMethod.Horizontal;
             healthFill.fillAmount = 1f;
-            SetRectTransform(healthFillObj, Vector2.zero, new Vector2(0, 0.5f), new Vector2(200, 30));
+            SetRectTransform(healthFillObj, new Vector2(99.7f, 0), new Vector2(0, 0.5f), new Vector2(200, 30));
 
             // 创建 EnergyBar（默认隐藏）
             GameObject energyBar = CreateChild(bottomCenter, "EnergyBar");

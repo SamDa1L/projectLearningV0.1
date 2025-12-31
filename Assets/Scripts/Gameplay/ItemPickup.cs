@@ -144,6 +144,9 @@ public class ItemPickup : MonoBehaviour
         switch (result)
         {
             case PickupResult.Success:
+                // 0.45: 拾取 Consumable 后立即回血
+                TryUsePotionAfterPickup(playerCtx);
+
                 // 成功：销毁自身（可选播放特效/音效）
                 Destroy(gameObject);
                 break;
@@ -210,6 +213,21 @@ public class ItemPickup : MonoBehaviour
         }
 
         _loggedWarnings.Add(key);
+    }
+
+    // ===== 药水使用 (0.45) =====
+    /// <summary>
+    /// 拾取成功后尝试使用（仅 Consumable 会生效）
+    /// 0.45 修正：UsePotion 内部会检查 itemType，非 Consumable 静默返回
+    /// </summary>
+    private void TryUsePotionAfterPickup(PlayerContext playerCtx)
+    {
+        // 检查依赖
+        if (playerCtx.Inventory == null || playerCtx.Damageable == null)
+            return;
+
+        // 调用 UsePotion（内部会检查 itemType，非 Consumable 时静默返回 false）
+        playerCtx.Inventory.UsePotion(itemId, playerCtx.Damageable);
     }
 
     // ===== 锁定机制 =====
