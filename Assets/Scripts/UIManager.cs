@@ -17,6 +17,10 @@ public class UIManager : MonoBehaviour
     [Tooltip("统一的浮动文字 prefab（Assets/UI/Text/FloatingText.prefab）")]
     public GameObject floatingTextPrefab;
 
+    [Header("Floating Text Style (0.46)")]
+    [Tooltip("0.46: FloatingTextStyleCatalog (ScriptableObject). If null, use fallback (0.45).")]
+    public FloatingTextStyleCatalog floatingTextStyleCatalog;
+
     /// <summary>
     /// 0.45 修正：浮动文字容器（FloatingTextCanvas 或 FloatingTextRoot）
     /// 必须是 RectTransform（UI 对象）
@@ -91,6 +95,11 @@ public class UIManager : MonoBehaviour
     /// <param name="worldPos">世界坐标（来自 Damageable.Hit）</param>
     public void CharacterTookDamage(Damageable target, int amount, Vector2 worldPos)
     {
+        if (floatingTextStyleCatalog != null)
+        {
+            ShowFloatingText(FloatingTextKind.Damage, amount, worldPos);
+            return;
+        }
         // 前置校验
         if (gameCanvas == null)
         {
@@ -174,6 +183,11 @@ public class UIManager : MonoBehaviour
     /// <param name="worldPos">世界坐标（来自 Damageable.Heal）</param>
     public void CharacterHealed(Damageable target, int amount, Vector2 worldPos)
     {
+        if (floatingTextStyleCatalog != null)
+        {
+            ShowFloatingText(FloatingTextKind.Heal, amount, worldPos);
+            return;
+        }
         // 前置校验
         if (gameCanvas == null)
         {
@@ -246,6 +260,138 @@ public class UIManager : MonoBehaviour
         else
         {
             Debug.LogWarning("[UIManager] floatingTextPrefab 缺少 TMP_Text 组件");
+        }
+    }
+
+    private void ShowFloatingText(FloatingTextKind kind, int amount, Vector2 worldPos)
+    {
+        if (gameCanvas == null)
+        {
+            Debug.LogWarning("[UIManager] gameCanvas is null, cannot spawn floating text.");
+            return;
+        }
+
+        if (floatingTextPrefab == null)
+        {
+            Debug.LogWarning("[UIManager] floatingTextPrefab is null, cannot spawn floating text.");
+            return;
+        }
+
+        Transform parent = floatingTextRoot != null ? floatingTextRoot : gameCanvas.transform;
+        RectTransform parentRect = parent as RectTransform;
+        if (parentRect == null)
+        {
+            Debug.LogError("[UIManager] FloatingText parent must be a RectTransform.");
+            return;
+        }
+
+        Camera cam = worldCamera != null ? worldCamera : Camera.main;
+        if (cam == null)
+        {
+            Debug.LogError("[UIManager] No camera for WorldToScreenPoint (worldCamera and Camera.main are null).");
+            return;
+        }
+
+        Vector2 screenPoint = cam.WorldToScreenPoint(worldPos);
+
+        Camera uiCam = null;
+        if (gameCanvas.renderMode == RenderMode.ScreenSpaceCamera)
+        {
+            uiCam = gameCanvas.worldCamera;
+        }
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            parentRect, screenPoint, uiCam, out Vector2 localPos))
+        {
+            Debug.LogWarning("[UIManager] ScreenPointToLocalPointInRectangle failed.");
+            return;
+        }
+
+        bool hasCatalog = floatingTextStyleCatalog != null;
+        FloatingTextStyleCatalog.Entry style = default;
+        if (hasCatalog)
+        {
+            style = floatingTextStyleCatalog.GetStyleOrDefault(kind);
+
+            localPos += style.motionStyle.localOffset;
+
+            Vector2 randomOffset = style.motionStyle.randomLocalOffset;
+            if (randomOffset != Vector2.zero)
+            {
+                localPos += new Vector2(
+                    UnityEngine.Random.Range(-randomOffset.x, randomOffset.x),
+                    UnityEngine.Random.Range(-randomOffset.y, randomOffset.y));
+            }
+        }
+
+        GameObject go = Instantiate(floatingTextPrefab, parentRect);
+        RectTransform goRect = go.transform as RectTransform;
+        if (goRect == null)
+        {
+            Debug.LogError("[UIManager] floatingTextPrefab root must contain RectTransform.");
+            Destroy(go);
+            return;
+        }
+
+        goRect.anchoredPosition = localPos;
+
+        TMP_Text tmpText = go.GetComponent<TMP_Text>();
+        if (tmpText == null)
+        {
+            Debug.LogWarning("[UIManager] floatingTextPrefab missing TMP_Text component.");
+            Destroy(go);
+            return;
+        }
+
+        int displayAmount = Mathf.Abs(amount); // Never show +/- sign.
+        if (!hasCatalog)
+        {
+            tmpText.text = displayAmount.ToString();
+            tmpText.color = kind == FloatingTextKind.Heal ? Color.green : Color.red;
+            return;
+        }
+
+        var textStyle = style.textStyle;
+
+        if (textStyle.fontAsset != null)
+        {
+            tmpText.font = textStyle.fontAsset;
+        }
+
+        if (textStyle.fontMaterialPreset != null)
+        {
+            tmpText.fontSharedMaterial = textStyle.fontMaterialPreset;
+        }
+
+        tmpText.fontStyle = textStyle.fontStyle;
+        tmpText.color = textStyle.color;
+
+        if (textStyle.enableAutoSize)
+        {
+            tmpText.enableAutoSizing = true;
+            if (textStyle.fontSizeMin > 0)
+                tmpText.fontSizeMin = textStyle.fontSizeMin;
+            if (textStyle.fontSizeMax > 0)
+                tmpText.fontSizeMax = textStyle.fontSizeMax;
+            if (textStyle.fontSize > 0)
+                tmpText.fontSize = textStyle.fontSize;
+        }
+        else
+        {
+            tmpText.enableAutoSizing = false;
+            if (textStyle.fontSize > 0)
+                tmpText.fontSize = textStyle.fontSize;
+        }
+
+        string prefix = string.IsNullOrEmpty(textStyle.prefix) ? string.Empty : textStyle.prefix;
+        string suffix = string.IsNullOrEmpty(textStyle.suffix) ? string.Empty : textStyle.suffix;
+        tmpText.text = $"{prefix}{displayAmount}{suffix}";
+
+        HealthText healthText = go.GetComponent<HealthText>();
+        if (healthText != null)
+        {
+            healthText.moveSpeed = style.motionStyle.moveSpeed;
+            healthText.timeToFade = style.motionStyle.timeToFade;
         }
     }
 

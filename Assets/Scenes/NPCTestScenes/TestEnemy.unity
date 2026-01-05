@@ -11783,6 +11783,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: UIManager
       objectReference: {fileID: 0}
+    - target: {fileID: 1283773472523707487, guid: deec0e5a3d130754aa3607403e2a0e7d, type: 3}
+      propertyPath: gameCanvas
+      value: 
+      objectReference: {fileID: 239083459}
+    - target: {fileID: 1283773472523707487, guid: deec0e5a3d130754aa3607403e2a0e7d, type: 3}
+      propertyPath: floatingTextRoot
+      value: 
+      objectReference: {fileID: 483703753}
     - target: {fileID: 8070423901722813123, guid: deec0e5a3d130754aa3607403e2a0e7d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

@@ -21,7 +21,6 @@ public class HealthText : MonoBehaviour
     {
         textTransform = GetComponent<RectTransform>();
         textMeshPro = GetComponent<TextMeshProUGUI>();
-        startColor = textMeshPro.color;
     }
 
 
@@ -29,7 +28,10 @@ public class HealthText : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+        if (textMeshPro != null)
+        {
+            startColor = textMeshPro.color;
+        }
     }
 
     // Update is called once per frame

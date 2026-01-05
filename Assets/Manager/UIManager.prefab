@@ -45,9 +45,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f2b9b54128431e041af5d58ca1a38626, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damageTextPrefab: {fileID: 2976370341320732881, guid: 83d344a28296ad54a89d0454f7a313ab, type: 3}
-  healthTextPrefab: {fileID: 2976370341320732881, guid: 1f9181fd18b2a43439f5dd260f543208, type: 3}
+  floatingTextPrefab: {fileID: 8052075192362265396, guid: a4534c8dd0883b344914ea2d04f83734, type: 3}
+  floatingTextStyleCatalog: {fileID: 11400000, guid: 9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d, type: 2}
   gameCanvas: {fileID: 0}
+  floatingTextRoot: {fileID: 0}
+  worldCamera: {fileID: 0}
 --- !u!114 &7714660895063997335
 MonoBehaviour:
   m_ObjectHideFlags: 0
