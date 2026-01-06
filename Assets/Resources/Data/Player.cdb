@@ -44,11 +44,11 @@
 				{
 					"id": "player",
 					"maxHealth": 200,
-					"invincibilityTime": 2,
+					"invincibilityTime": 0.25,
 					"walkSpeed": 5,
 					"runSpeed": 10,
 					"airWalkSpeed": 5,
-					"jumpImpulse": 5,
+					"jumpImpulse": 10,
 					"climbSpeed": 5,
 					"baseAttackDamage": 10
 				}

@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0, type: 3}
+  m_Script: {fileID: 11500000, guid: a76991fd248739d4a8329b556788345b, type: 3}
   m_Name: CdbImportSettings
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   cdbImportRoot: Assets/Resources

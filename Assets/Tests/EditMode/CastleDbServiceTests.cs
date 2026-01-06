@@ -8,8 +8,8 @@ using UnityEngine.TestTools;
 namespace CastleDB.Tests.EditMode
 {
     /// <summary>
-    /// CastleDbService ��Ԫ����
-    /// ���� DTO �������汾��顢���ݲ�ѯ�ȹ���
+        /// CastleDbService 单元测试
+        /// 覆盖 DTO 解析、版本校验、数据查询等功能
     /// </summary>
     public class CastleDbServiceTests
     {
@@ -31,7 +31,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ��ɹ�������Ч�� CastleDB ����
+        /// 测试：成功初始化有效的 CastleDB 数据
         /// </summary>
         [Test]
         public void TestInitializeWithValidData()
@@ -49,7 +49,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ��汾��ƥ��ʱ�ܾ�����
+        /// 测试：版本不匹配时拒绝初始化
         /// </summary>
         [Test]
         public void TestInitializeWithVersionMismatch()
@@ -68,7 +68,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ��� ID ��ѯ NPC
+        /// 测试：通过 ID 查询 NPC
         /// </summary>
         [Test]
         public void TestGetNpcById()
@@ -88,7 +88,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ���ѯ�����ڵ� NPC ���� null
+        /// 测试：查询不存在的 NPC 返回 null
         /// </summary>
         [Test]
         public void TestGetNpcByIdNotFound()
@@ -105,7 +105,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ���ȡ���� NPC
+        /// 测试：获取所有 NPC
         /// </summary>
         [Test]
         public void TestGetAllNpcs()
@@ -124,7 +124,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ��� NPC ID ��ȡ�����
+        /// 测试：通过 NPC ID 获取检测区
         /// </summary>
         [Test]
         public void TestGetDetectionZonesByNpcId()
@@ -144,7 +144,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ���ȡ���м����
+        /// 测试：获取所有检测区
         /// </summary>
         [Test]
         public void TestGetAllDetectionZones()
@@ -161,7 +161,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ��汾��Ϣ��ȷ����
+        /// 测试：版本信息解析正确
         /// </summary>
         [Test]
         public void TestVersionInfoParsing()
@@ -179,7 +179,7 @@ namespace CastleDB.Tests.EditMode
         }
 
         /// <summary>
-        /// ���ԣ�NPC ����������
+        /// 测试：NPC 数据完整性断言
         /// </summary>
         [Test]
         public void TestNpcDataIntegrity()
