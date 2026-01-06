@@ -222,12 +222,6 @@
 					"childId": "DZ_Attack"
 				},
 				{
-					"id": "M_Knight_DZ_SecondZone",
-					"npcId": "M_Knight",
-					"role": 1,
-					"childId": "DZ_NewAttack"
-				},
-				{
 					"id": "M_Ghost_DZ",
 					"npcId": "M_Ghost",
 					"role": 0,

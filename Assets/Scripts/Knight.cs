@@ -141,4 +141,16 @@ public class Knight : EnemyAgentBase
             FlipDirection();
         }
     }
+
+    public void OnWallDetected()
+    {
+        if (!touchingDirections.IsGrounded)
+        {
+            return;
+        }
+
+        FlipDirection();
+
+        rb2d.velocity = new Vector2(0f, rb2d.velocity.y);
+    }
 }
