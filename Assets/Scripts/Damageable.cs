@@ -71,6 +71,8 @@ public struct DamageableStats
     /// </summary>
     public int CurrentHealth => Mathf.RoundToInt(_health);
 
+    public bool CanReceiveHeal => IsAlive && Health < MaxHealth;
+
     [SerializeField]
     private float _health = 100;
 
@@ -234,31 +236,32 @@ public struct DamageableStats
 
     /// <summary>
     /// 0.45 修正：角色治疗方法（契约 P0-2）
-    /// worldPos 来源：使用 transform.position
+    /// worldPos 来源：优先使用参数，否则 transform.position
+    /// 返回值：实际治疗量（int）
     /// </summary>
+    public int TryHeal(int healthRestore, Vector2? worldPos = null)
+    {
+        if (!IsAlive || healthRestore <= 0 || Health >= MaxHealth)
+            return 0;
+
+        // 阶段 3A: maxHealth 已迁移为 float，使用 float 运算并 clamp
+        float maxHeal = Mathf.Max(MaxHealth - Health, 0);
+        float actualHeal = Mathf.Min(maxHeal, healthRestore);
+        Health += actualHeal;
+
+        // 0.45 修正：计算 worldPos（契约 P0-2）
+        // 治疗默认使用 transform.position（不使用 offset，简化版本）
+        Vector2 actualWorldPos = worldPos ?? (Vector2)transform.position;
+
+        // 事件仍使用 int，对实际治疗量四舍五入
+        int actualHealInt = Mathf.RoundToInt(actualHeal);
+        CharacterEvents.characterHealed?.Invoke(this, actualHealInt, actualWorldPos);
+        return actualHealInt;
+    }
+
     public bool Heal(int healthRestore)
     {
-        if (IsAlive && Health < MaxHealth)
-        {
-            // 阶段 3A: maxHealth 已迁移为 float，使用 float 运算并 clamp
-            float maxHeal = Mathf.Max(MaxHealth - Health, 0);
-            float actualHeal = Mathf.Min(maxHeal, healthRestore);
-            Health += actualHeal;
-
-            // 0.45 修正：计算 worldPos（契约 P0-2）
-            // 治疗使用 transform.position（不使用 offset，简化版本）
-            Vector2 worldPos = transform.position;
-
-            // 事件仍使用 int，对实际治疗量四舍五入
-            int actualHealInt = Mathf.RoundToInt(actualHeal);
-            CharacterEvents.characterHealed?.Invoke(this, actualHealInt, worldPos);
-            return true;
-
-
-        }
-        return false;
-
-
+        return TryHeal(healthRestore) > 0;
     }
 
 

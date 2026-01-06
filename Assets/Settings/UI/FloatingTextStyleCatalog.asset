@@ -33,11 +33,11 @@ MonoBehaviour:
   entries:
   - kind: 0
     textStyle:
-      fontAsset: {fileID: 0}
+      fontAsset: {fileID: 11400000, guid: e38c4769ce7ed0942a9b1f5a061fdcd2, type: 2}
       fontMaterialPreset: {fileID: 0}
       fontStyle: 1
       color: {r: 1, g: 0, b: 0, a: 1}
-      fontSize: 28
+      fontSize: 40
       enableAutoSize: 0
       fontSizeMin: 18
       fontSizeMax: 72
@@ -46,15 +46,15 @@ MonoBehaviour:
     motionStyle:
       moveSpeed: {x: 0, y: 75, z: 0}
       timeToFade: 1
-      localOffset: {x: 0, y: 0}
+      localOffset: {x: 0, y: 100}
       randomLocalOffset: {x: 0, y: 0}
   - kind: 1
     textStyle:
-      fontAsset: {fileID: 0}
+      fontAsset: {fileID: 11400000, guid: e38c4769ce7ed0942a9b1f5a061fdcd2, type: 2}
       fontMaterialPreset: {fileID: 0}
       fontStyle: 0
       color: {r: 0, g: 1, b: 0, a: 1}
-      fontSize: 24
+      fontSize: 40
       enableAutoSize: 0
       fontSizeMin: 18
       fontSizeMax: 72
@@ -63,5 +63,5 @@ MonoBehaviour:
     motionStyle:
       moveSpeed: {x: 0, y: 75, z: 0}
       timeToFade: 1
-      localOffset: {x: 0, y: 0}
+      localOffset: {x: 0, y: 100}
       randomLocalOffset: {x: 0, y: 0}

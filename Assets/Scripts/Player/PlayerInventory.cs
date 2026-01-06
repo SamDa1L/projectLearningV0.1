@@ -429,15 +429,38 @@ public class PlayerInventory : MonoBehaviour
     }
 
     // ===== 药水使用 (0.45) =====
+    public bool TryGetConsumableHealAmount(string itemId, out int healAmount)
+    {
+        healAmount = 0;
+
+        if (!_initialized)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(itemId))
+            return false;
+
+        if (!_items.TryGetItem(itemId, out ItemDefinition def))
+            return false;
+
+        if (def.itemType != ItemType.Consumable)
+            return false;
+
+        healAmount = def.consumeEffect.heal;
+        return true;
+    }
+
     /// <summary>
     /// 使用药水（拾取 Consumable 后自动触发回血）
     /// 0.45 版本：拾取药水时立即回血，不消耗计数
     /// </summary>
     /// <param name="itemId">药水 itemId</param>
     /// <param name="damageable">目标 Damageable 组件</param>
+    /// <param name="actualHeal">实际回血量</param>
     /// <returns>true=成功回血；false=失败（itemId 非法/非 Consumable/目标无效）</returns>
-    public bool UsePotion(string itemId, Damageable damageable)
+    public bool UsePotion(string itemId, Damageable damageable, out int actualHeal)
     {
+        actualHeal = 0;
+
         if (!_initialized)
         {
             Debug.LogError($"[PlayerInventory] 未初始化，禁止调用 UsePotion");
@@ -470,25 +493,7 @@ public class PlayerInventory : MonoBehaviour
             return false; // 静默返回，不输出日志
         }
 
-        // 解析 consumeEffectJson（heal 字段）
-        if (string.IsNullOrWhiteSpace(def.consumeEffectRawJson))
-        {
-            Debug.LogWarning($"[PlayerInventory] UsePotion itemId={itemId} 的 consumeEffectJson 为空");
-            return false;
-        }
-
-        int healAmount = 0;
-        try
-        {
-            // 简单 JSON 解析（假设格式为 {"heal":50}）
-            var effect = JsonUtility.FromJson<ItemConsumeEffect>(def.consumeEffectRawJson);
-            healAmount = effect.heal;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[PlayerInventory] UsePotion itemId={itemId} consumeEffectJson 解析失败: {ex.Message}");
-            return false;
-        }
+        int healAmount = def.consumeEffect.heal;
 
         if (healAmount <= 0)
         {
@@ -496,13 +501,19 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
-        // 调用 Damageable.Heal()
-        bool healed = damageable.Heal(healAmount);
-        if (healed)
+        // 调用 Damageable.TryHeal()，以实际回血量为准
+        actualHeal = damageable.TryHeal(healAmount);
+        if (actualHeal > 0)
         {
-            Debug.Log($"[PlayerInventory] 使用药水 {itemId} 成功，回血 {healAmount}");
+            Debug.Log($"[PlayerInventory] 使用药水 {itemId} 成功，回血 {actualHeal}");
+            return true;
         }
 
-        return healed;
+        return false;
+    }
+
+    public bool UsePotion(string itemId, Damageable damageable)
+    {
+        return UsePotion(itemId, damageable, out _);
     }
 }

@@ -113,6 +113,15 @@ public class CastleDbBridgeTests
 
         Assert.Greater(knightEntry.attackDamage, 0, "CastleDB attackDamage should be > 0");
         Assert.AreEqual(Mathf.RoundToInt(knightEntry.attackDamage), profile.attackDamage, "Profile attackDamage should match CastleDB");
+
+        // 运行时伤害结算以 Attack.attackDamage 为准：必须确保 Profile 的数值已正确下发到 Prefab 子物体的 Attack 组件
+        var attacks = knightGameObject.GetComponentsInChildren<Attack>(true);
+        Assert.Greater(attacks.Length, 0, "Knight should have at least one Attack component");
+        foreach (var attack in attacks)
+        {
+            Assert.AreEqual(profile.attackDamage, attack.attackDamage,
+                $"Attack '{attack.gameObject.name}' attackDamage should match Profile");
+        }
     }
 
     /// <summary>

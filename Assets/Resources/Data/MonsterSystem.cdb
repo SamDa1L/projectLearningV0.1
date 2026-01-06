@@ -119,7 +119,7 @@
 					"prefabName": "KnightEnemy",
 					"animationTrigger": "Attack",
 					"maxHealth": 800,
-					"attackDamage": 40,
+					"attackDamage": 60,
 					"moveSpeed": 3,
 					"attackRange": 10,
 					"attackCooldown": 0.25,

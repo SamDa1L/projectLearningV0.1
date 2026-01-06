@@ -126,6 +126,16 @@ public class ItemPickup : MonoBehaviour
         if (playerCtx.ReplaceController != null && playerCtx.ReplaceController.IsSelecting)
             return;
 
+        // 满血时不拾取回血药水（仅对 heal>0 的 Consumable 生效）
+        if (playerCtx.Inventory != null &&
+            playerCtx.Damageable != null &&
+            playerCtx.Inventory.TryGetConsumableHealAmount(itemId, out int healAmount) &&
+            healAmount > 0 &&
+            !playerCtx.Damageable.CanReceiveHeal)
+        {
+            return;
+        }
+
         // 构造 PickupRequest
         PickupRequest req = new PickupRequest(itemId, amount, this);
 
@@ -144,12 +154,24 @@ public class ItemPickup : MonoBehaviour
         switch (result)
         {
             case PickupResult.Success:
-                // 0.45: 拾取 Consumable 后立即回血
-                TryUsePotionAfterPickup(playerCtx);
+            {
+                int actualHeal = TryUsePotionAfterPickup(playerCtx);
 
-                // 成功：销毁自身（可选播放特效/音效）
-                Destroy(gameObject);
+                bool isHealingConsumable = false;
+                if (playerCtx.Inventory != null &&
+                    playerCtx.Inventory.TryGetConsumableHealAmount(itemId, out int healAmount))
+                {
+                    isHealingConsumable = healAmount > 0;
+                }
+
+                // 成功：销毁自身（回血药水必须实际回血才销毁）
+                if (!isHealingConsumable || actualHeal > 0)
+                {
+                    Destroy(gameObject);
+                }
+
                 break;
+            }
 
             case PickupResult.RequireReplace:
                 // 需要替换：锁定自身，调用 ReplaceController.BeginReplace
@@ -220,14 +242,15 @@ public class ItemPickup : MonoBehaviour
     /// 拾取成功后尝试使用（仅 Consumable 会生效）
     /// 0.45 修正：UsePotion 内部会检查 itemType，非 Consumable 静默返回
     /// </summary>
-    private void TryUsePotionAfterPickup(PlayerContext playerCtx)
+    private int TryUsePotionAfterPickup(PlayerContext playerCtx)
     {
         // 检查依赖
         if (playerCtx.Inventory == null || playerCtx.Damageable == null)
-            return;
+            return 0;
 
         // 调用 UsePotion（内部会检查 itemType，非 Consumable 时静默返回 false）
-        playerCtx.Inventory.UsePotion(itemId, playerCtx.Damageable);
+        playerCtx.Inventory.UsePotion(itemId, playerCtx.Damageable, out int actualHeal);
+        return actualHeal;
     }
 
     // ===== 锁定机制 =====

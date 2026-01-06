@@ -430,12 +430,13 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     }
 
     /// <summary>
-    /// 将 knockbackToPlayer 缩放系数应用到本敌人层级下所有 Attack 组件
+    /// 将 Profile 下发到本敌人层级下所有 Attack 组件
     ///
     /// 实现说明：
     /// - 遍历敌人及其所有子物体上的 Attack 组件
     /// - 缓存每个 Attack 的原始 knockback（Prefab 基础值），避免重复缩放
     /// - 应用缩放：attack.knockback = baseKnockback * knockbackToPlayer
+    /// - 下发伤害：attack.attackDamage = Profile.attackDamage
     ///
     /// 关键点：
     /// - Attack 脚本同时被玩家与敌人复用，因此不在 Attack 里做"向上找 Profile"
@@ -471,6 +472,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
             // 应用缩放
             attack.knockback = baseKnockback * _knockbackToPlayer;
+
+            // 下发伤害（命中结算以 Attack.attackDamage 为准）
+            attack.attackDamage = _attackDamage;
             appliedCount++;
 
             if (debugStateOverlay)

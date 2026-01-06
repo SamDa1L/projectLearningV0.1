@@ -18,7 +18,7 @@ MonoBehaviour:
   moveSpeed: 3
   perceptionRadius: 5
   attackRange: 10
-  attackDamage: 40
+  attackDamage: 60
   attackCooldown: 0.25
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
