@@ -120,12 +120,12 @@ namespace CastleDB.Editor
                 var descriptor = CdbModuleDescriptor.FromMetaEntries(metaEntries, assetPath);
 
                 // 5. 检查 providerId
-                if (descriptor.IsLegacy || string.IsNullOrEmpty(descriptor.ProviderId))
+                if (descriptor == null || string.IsNullOrEmpty(descriptor.ProviderId))
                 {
-                    Debug.LogError($"[CdbContextMenu] 文件无 providerId，无法使用 Provider 流程：{assetPath}");
+                    Debug.LogError($"[CdbContextMenu] 文件缺少 providerId，无法导入：{assetPath}");
                     EditorUtility.DisplayDialog(
                         "导入失败",
-                        "文件 Meta Sheet 中缺少 providerId。\n这是 0.2 Legacy 格式，请使用 'Tools/CastleDB/Import All' 导入。",
+                        "文件 Meta Sheet 中缺少 providerId。\n请先在 CastleDB 的 Meta Sheet 中补齐 providerId/schemaVersion/resourcePath 后再导入。",
                         "确定");
                     return;
                 }

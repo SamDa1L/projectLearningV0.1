@@ -47,11 +47,6 @@ namespace CastleDB.Runtime
         public const string DefaultScanPath = "Assets/Resources/Data";
 
         /// <summary>
-        /// Legacy 文件排除路径
-        /// </summary>
-        public const string LegacyExcludePath = "Assets/Resources/Data/CastleDbDemo";
-
-        /// <summary>
         /// 注册 Provider
         /// </summary>
         /// <param name="provider">Provider 实例</param>
@@ -282,7 +277,7 @@ namespace CastleDB.Runtime
 
             foreach (var kvp in _descriptors)
             {
-                if (!kvp.Value.IsLegacy && kvp.Value.SchemaVersion != ExpectedSchemaVersion)
+                if (kvp.Value.SchemaVersion != ExpectedSchemaVersion)
                 {
                     mismatched[kvp.Key] = kvp.Value.SchemaVersion;
                 }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CastleDB.Runtime;
+using CastleDB.Editor;
 
 /// <summary>
 /// CastleDB Prefab 同步工具（P0-3.1 + P0-3.2）
@@ -669,25 +670,11 @@ public class CastleDbPrefabSyncer : EditorWindow
 
         try
         {
-            // 0.3 版本：优先尝试新路径，回退到 Legacy 路径
-            var asset = Resources.Load<TextAsset>("Data/MonsterSystem");
-            if (asset == null)
+            if (!CdbEditorModuleLoader.TryCreateServiceByProviderId("Monster", out var service, out var error))
             {
-                asset = Resources.Load<TextAsset>("Data/CastleDbDemo/MonsterSystem");
-                if (asset != null)
-                {
-                    Debug.LogWarning("[CastleDbPrefabSyncer] 使用 Legacy 路径加载数据: Data/CastleDbDemo/MonsterSystem");
-                }
-            }
-
-            if (asset == null)
-            {
+                Debug.LogWarning($"[CastleDbPrefabSyncer] 加载 NPC 数据失败: {error}");
                 return result;
             }
-
-            var source = new CastleDbJsonSource(asset);
-            var service = new CastleDbService();
-            service.Initialize(source);
 
             var npcs = service.GetAllNpcs();
             foreach (var npc in npcs)

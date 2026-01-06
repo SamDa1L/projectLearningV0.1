@@ -26,7 +26,6 @@ namespace CastleDB.Editor
     public class CdbImportCoordinator
     {
         private const string DEFAULT_SCAN_PATH = "Assets/Resources/Data";
-        private const string LEGACY_EXCLUDE_PATH = "Assets/Resources/Data/CastleDbDemo";
         private const string SETTINGS_PATH = "Assets/Settings/CdbImportSettings.asset";
 
         /// <summary>
@@ -74,7 +73,7 @@ namespace CastleDB.Editor
             _logMessages.Clear();
             _logMessages.Add($"[DiscoverModules] 开始扫描：{scanPath}");
 
-            excludePaths = excludePaths ?? new[] { LEGACY_EXCLUDE_PATH };
+            excludePaths = excludePaths ?? Array.Empty<string>();
 
             // 递归查找所有 .cdb 文件
             var cdbFiles = Directory.GetFiles(scanPath, "*.cdb", SearchOption.AllDirectories)
@@ -92,12 +91,6 @@ namespace CastleDB.Editor
                     var descriptor = LoadModuleDescriptor(filePath);
                     if (descriptor != null)
                     {
-                        if (descriptor.IsLegacy)
-                        {
-                            _logMessages.Add($"  跳过 Legacy 文件：{Path.GetFileName(filePath)}");
-                            continue;
-                        }
-
                         descriptors.Add(descriptor);
                         _registry.RegisterDescriptor(descriptor);
                         _logMessages.Add($"  ✓ {descriptor.ProviderId}: {filePath}");
@@ -155,7 +148,7 @@ namespace CastleDB.Editor
             var metaSheet = root.sheets.Find(s => s.name == "Meta");
             if (metaSheet == null || metaSheet.lines == null)
             {
-                Debug.Log($"[CdbImportCoordinator] 文件无 Meta Sheet（Legacy 格式）：{resourcePath}");
+                Debug.LogWarning($"[CdbImportCoordinator] 文件缺少 Meta Sheet：{resourcePath}");
                 return null;
             }
 
@@ -1042,7 +1035,6 @@ namespace CastleDB.Editor
         {
             // 扫描 Assets/Resources/Data/**/*.cdb
             var cdbFiles = Directory.GetFiles(DEFAULT_SCAN_PATH, "*.cdb", SearchOption.AllDirectories)
-                .Where(f => !f.Replace("\\", "/").Contains(LEGACY_EXCLUDE_PATH.Replace("\\", "/")))
                 .ToList();
 
             foreach (var filePath in cdbFiles)

@@ -44,7 +44,7 @@ namespace CastleDB.Tests.EditMode
 
             // Assert
             Assert.IsNotNull(_service.GetVersionInfo());
-            Assert.AreEqual("0.2", _service.GetVersionInfo().schemaVersion);
+            Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, _service.GetVersionInfo().schemaVersion);
             Assert.Greater(_service.GetAllNpcs().Count, 0);
         }
 
@@ -174,7 +174,7 @@ namespace CastleDB.Tests.EditMode
             var versionInfo = _service.GetVersionInfo();
 
             // Assert
-            Assert.AreEqual("0.2", versionInfo.schemaVersion);
+            Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, versionInfo.schemaVersion);
             Assert.AreEqual("UseNewDamageable=true", versionInfo.featureFlags);
         }
 

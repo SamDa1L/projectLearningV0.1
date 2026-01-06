@@ -18,7 +18,7 @@ using System.IO;
 public class CastleDbWatchService
 {
     // ===== 配置 =====
-    // 0.3 版本：监听整个 Data 目录（排除 CastleDbDemo）
+    // 监听 Assets/Resources/Data 下的 .cdb 变化
     private const string CASTLEDB_WATCH_DIR = "Assets/Resources/Data";
     private const string WATCH_ENABLED_KEY = "CastleDbWatchService_Enabled";
     private const string AUTO_CHAIN_KEY = "CastleDbWatchService_AutoChain";  // 自动执行完整链路
@@ -140,7 +140,7 @@ public class CastleDbWatchService
 
         try
         {
-            // 0.3 版本：监听整个 Data 目录（排除 CastleDbDemo）
+            // 监听整个 Data 目录
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string fullPath = Path.Combine(projectRoot, CASTLEDB_WATCH_DIR);
 
@@ -159,7 +159,7 @@ public class CastleDbWatchService
             watcher.EnableRaisingEvents = true;
 
             isWatcherActive = true;
-            Debug.Log($"[CastleDbWatchService] 开始监听: {CASTLEDB_WATCH_DIR}/**/*.cdb (排除 CastleDbDemo)");
+            Debug.Log($"[CastleDbWatchService] 开始监听: {CASTLEDB_WATCH_DIR}/**/*.cdb");
             WriteLog($"开始监听: {CASTLEDB_WATCH_DIR}/**/*.cdb");
         }
         catch (System.Exception ex)
@@ -198,14 +198,6 @@ public class CastleDbWatchService
 
     private static void OnFileChanged(object sender, FileSystemEventArgs e)
     {
-        // 0.3 版本：过滤 CastleDbDemo 目录
-        string normalizedPath = e.FullPath.Replace("\\", "/");
-        if (normalizedPath.Contains("/CastleDbDemo/"))
-        {
-            WriteLog($"忽略 Legacy 文件变化: {e.FullPath}");
-            return;
-        }
-
         // 记录变化时间和文件路径（用于防抖）
         lastChangeTime = EditorApplication.timeSinceStartup;
         lastChangedFilePath = e.FullPath;

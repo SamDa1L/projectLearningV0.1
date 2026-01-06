@@ -102,7 +102,7 @@ namespace CastleDB.Tests.EditMode.TestHelpers
                 new Dictionary<string, object>
                 {
                     { "key", "schemaVersion" },
-                    { "value", "0.2" }
+                    { "value", CdbDataProviderRegistry.ExpectedSchemaVersion }
                 },
                 new Dictionary<string, object>
                 {

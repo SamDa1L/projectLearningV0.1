@@ -72,11 +72,6 @@ namespace CastleDB.Runtime
         public string AssetPath { get; }
 
         /// <summary>
-        /// 是否为 Legacy 模式（无 providerId 的旧格式文件）
-        /// </summary>
-        public bool IsLegacy { get; }
-
-        /// <summary>
         /// 私有构造函数，使用 Builder 或静态方法创建
         /// </summary>
         private CdbModuleDescriptor(
@@ -88,8 +83,7 @@ namespace CastleDB.Runtime
             string defaultSheet,
             string author,
             string lastModified,
-            string assetPath,
-            bool isLegacy)
+            string assetPath)
         {
             ProviderId = providerId;
             DisplayName = displayName;
@@ -100,7 +94,6 @@ namespace CastleDB.Runtime
             Author = author;
             LastModified = lastModified;
             AssetPath = assetPath;
-            IsLegacy = isLegacy;
         }
 
         /// <summary>
@@ -108,7 +101,7 @@ namespace CastleDB.Runtime
         /// </summary>
         /// <param name="metaEntries">Meta Sheet 的条目列表</param>
         /// <param name="assetPath">.cdb 文件的资产路径</param>
-        /// <returns>模块描述符，若缺少 providerId 则 IsLegacy=true</returns>
+        /// <returns>模块描述符，若缺少 providerId 则返回 null</returns>
         public static CdbModuleDescriptor FromMetaEntries(List<MetaEntry> metaEntries, string assetPath)
         {
             var metaDict = new Dictionary<string, string>();
@@ -124,41 +117,24 @@ namespace CastleDB.Runtime
             }
 
             string providerId = GetMetaValue(metaDict, "providerId", "");
-            bool isLegacy = string.IsNullOrEmpty(providerId);
+            if (string.IsNullOrEmpty(providerId))
+            {
+                return null;
+            }
 
             // 解析 dependencies（逗号分隔，Trim，去重）
             var dependencies = ParseDependencies(GetMetaValue(metaDict, "dependencies", ""));
 
             return new CdbModuleDescriptor(
                 providerId: providerId,
-                displayName: GetMetaValue(metaDict, "displayName", isLegacy ? "Legacy Module" : providerId),
+                displayName: GetMetaValue(metaDict, "displayName", providerId),
                 resourcePath: GetMetaValue(metaDict, "resourcePath", ""),
                 schemaVersion: GetMetaValue(metaDict, "schemaVersion", "unknown"),
                 dependencies: dependencies,
                 defaultSheet: GetMetaValue(metaDict, "defaultSheet", ""),
                 author: GetMetaValue(metaDict, "author", ""),
                 lastModified: GetMetaValue(metaDict, "lastModified", ""),
-                assetPath: assetPath,
-                isLegacy: isLegacy
-            );
-        }
-
-        /// <summary>
-        /// 创建 Legacy 模式描述符（用于兼容 0.2 版本的单文件）
-        /// </summary>
-        public static CdbModuleDescriptor CreateLegacy(string assetPath, string schemaVersion = "0.2")
-        {
-            return new CdbModuleDescriptor(
-                providerId: "",
-                displayName: "Legacy Module",
-                resourcePath: ExtractResourcePath(assetPath),
-                schemaVersion: schemaVersion,
-                dependencies: Array.Empty<string>(),
-                defaultSheet: "",
-                author: "",
-                lastModified: "",
-                assetPath: assetPath,
-                isLegacy: true
+                assetPath: assetPath
             );
         }
 
@@ -231,12 +207,6 @@ namespace CastleDB.Runtime
         {
             var errors = new List<string>();
 
-            if (IsLegacy)
-            {
-                // Legacy 模式跳过大部分校验
-                return errors;
-            }
-
             if (string.IsNullOrEmpty(ProviderId))
             {
                 errors.Add("Meta.providerId 不能为空");
@@ -266,7 +236,7 @@ namespace CastleDB.Runtime
         /// <returns>错误消息，若一致返回 null</returns>
         public string ValidateResourcePath()
         {
-            if (IsLegacy || string.IsNullOrEmpty(ResourcePath))
+            if (string.IsNullOrEmpty(ResourcePath))
             {
                 return null;
             }
@@ -282,10 +252,6 @@ namespace CastleDB.Runtime
 
         public override string ToString()
         {
-            if (IsLegacy)
-            {
-                return $"CdbModuleDescriptor[Legacy, path={AssetPath}]";
-            }
             return $"CdbModuleDescriptor[{ProviderId}, version={SchemaVersion}, deps=[{string.Join(",", Dependencies)}]]";
         }
     }
