@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CastleDB.Runtime;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,7 +13,7 @@ using UnityEngine.InputSystem;
 /// - 必需依赖：Inventory、Damageable、AbilitySystem（缺失则 Error 并设置 InteractionEnabled=false）
 /// - 建议依赖：ReplaceController（缺失则 Error 一次性，仅禁用 Replace 功能）
 /// - 可选依赖：EquipmentController、PlayerInput
-/// - HudRefs/HudPresenter 由 GameBootstrap 装配，不在此处完成
+/// - HudRefs/HudPresenter 由 GameBootstrap 负责加载/实例化，并通过 InitializeModules 注入
 /// </summary>
 public class PlayerContext : MonoBehaviour
 {
@@ -56,6 +57,9 @@ public class PlayerContext : MonoBehaviour
     /// </summary>
     public bool InteractionEnabled { get; private set; } = true;
 
+    // ===== Runtime 装配状态（Phase 3）=====
+    private bool _runtimeModulesInitialized = false;
+
     // ===== 一次性日志去重 =====
     private static readonly HashSet<string> _loggedWarnings = new HashSet<string>();
 
@@ -71,23 +75,45 @@ public class PlayerContext : MonoBehaviour
     private void CacheDependencies()
     {
         // 必需依赖
-        Inventory = GetComponent<PlayerInventory>();
-        Damageable = GetComponent<Damageable>();
+        Inventory = FindSingleInHierarchy<PlayerInventory>();
+        Damageable = FindSingleInHierarchy<Damageable>();
 
-        // AbilitySystem 不是 MonoBehaviour，需要特殊处理
-        // 假设它通过某个管理类持有，这里先标记为 null（需要外部注入或通过 AbilityRegistry 获取）
-        // 根据项目架构，可能需要调整获取方式
-        // AbilitySystem = GetComponent<AbilitySystemHolder>()?.System;
+        // AbilitySystem 由 PlayerController 构建，并通过 SetAbilitySystem 注入到此处
 
         // 建议依赖
-        ReplaceController = GetComponent<ReplaceController>();
+        ReplaceController = FindSingleInHierarchy<ReplaceController>();
 
         // 可选依赖
-        EquipmentController = GetComponent<PlayerEquipmentController>();
-        PlayerInput = GetComponent<PlayerInput>();
+        EquipmentController = FindSingleInHierarchy<PlayerEquipmentController>();
+        PlayerInput = FindSingleInHierarchy<PlayerInput>();
 
         // 校验必需依赖
         ValidateDependencies();
+    }
+
+    private T FindSingleInHierarchy<T>() where T : Component
+    {
+        // 向后兼容：优先使用挂在当前 GameObject 上的组件
+        T onSelf = GetComponent<T>();
+
+        // 包含 inactive 子节点，支持按 Prefab 层级分区放置模块
+        T[] all = GetComponentsInChildren<T>(true);
+        if (all == null || all.Length == 0)
+        {
+            return onSelf;
+        }
+
+        if (all.Length > 1)
+        {
+            string key = $"PlayerContext_Multiple_{typeof(T).Name}";
+            if (!_loggedWarnings.Contains(key))
+            {
+                Debug.LogError($"[PlayerContext] 发现多个 {typeof(T).Name} 组件，期望唯一（count={all.Length}）", this);
+                _loggedWarnings.Add(key);
+            }
+        }
+
+        return onSelf != null ? onSelf : all[0];
     }
 
     /// <summary>
@@ -186,5 +212,97 @@ public class PlayerContext : MonoBehaviour
                 Debug.LogWarning($"[PlayerContext] AbilitySystem 已注入，但其他必需依赖仍缺失，交互功能保持禁用");
             }
         }
+    }
+
+    /// <summary>
+    /// 统一初始化玩家 Runtime 模块（Phase 3）
+    /// 由 GameBootstrap 在完成全局资源装配后调用，用于收拢 Inventory/HUD/Replace/Equipment 的初始化入口。
+    ///
+    /// 装配顺序（硬契约 [C-Runtime-0]）：
+    /// 1) Inventory.Initialize(items, cfg)
+    /// 2) hudPresenter.Initialize(items, hudRefs, inv, dmg)
+    /// 3) ReplaceController.Initialize(items, hudRefs, ctx, hudPresenter)（可选）
+    /// 4) EquipmentController.Initialize(items, abilitySystem, inv)（可选）
+    /// </summary>
+    public bool InitializeModules(ICastleDbService items, GameplayConfig cfg, HudPresenter hudPresenter, HudRefs hudRefs)
+    {
+        if (_runtimeModulesInitialized)
+        {
+            const string key = "PlayerContext_InitializeModules_AlreadyInitialized";
+            if (!_loggedWarnings.Contains(key))
+            {
+                Debug.LogWarning("[PlayerContext] InitializeModules 已执行，忽略重复调用", this);
+                _loggedWarnings.Add(key);
+            }
+            return true;
+        }
+
+        // 兜底：不假设 PlayerContext.Awake 已先执行，初始化前再次缓存依赖
+        CacheDependencies();
+
+        if (items == null)
+        {
+            Debug.LogError("[PlayerContext] InitializeModules 失败：items 为空", this);
+            return false;
+        }
+
+        if (Inventory == null || Damageable == null)
+        {
+            Debug.LogError("[PlayerContext] InitializeModules 失败：必需组件缺失（Inventory/Damageable）", this);
+            return false;
+        }
+
+        if (AbilitySystem == null)
+        {
+            Debug.LogError("[PlayerContext] InitializeModules 失败：AbilitySystem 未注入（请检查 PlayerController.BuildAbilitySystem）", this);
+            return false;
+        }
+
+        if (hudPresenter == null || hudRefs == null)
+        {
+            Debug.LogError("[PlayerContext] InitializeModules 失败：HUD 引用为空（HudPresenter/HudRefs）", this);
+            return false;
+        }
+
+        // 1) Inventory
+        Inventory.Initialize(items, cfg);
+
+        // 2) HUD
+        hudPresenter.Initialize(items, hudRefs, Inventory, Damageable);
+
+        // 3) Replace（建议依赖）
+        if (ReplaceController != null)
+        {
+            ReplaceController.Initialize(items, hudRefs, this, hudPresenter);
+        }
+
+        // 4) Equipment（可选）
+        if (EquipmentController != null)
+        {
+            EquipmentController.Initialize(items, AbilitySystem, Inventory);
+        }
+
+        _runtimeModulesInitialized = true;
+        return true;
+    }
+
+    /// <summary>
+    /// 初次同步能力槽位到 AbilitySystem（契约 [C-Runtime-0]）
+    /// 建议在 GameBootstrap.Start 调用，确保所有 Awake 完成后再执行。
+    /// </summary>
+    public bool SyncInitialAbilities()
+    {
+        if (!_runtimeModulesInitialized)
+        {
+            return false;
+        }
+
+        if (EquipmentController == null)
+        {
+            return false;
+        }
+
+        EquipmentController.SyncAllSlotsToAbilities();
+        return true;
     }
 }

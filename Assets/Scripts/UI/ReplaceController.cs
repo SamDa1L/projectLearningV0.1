@@ -21,7 +21,6 @@ using CastleDB.Runtime;
 /// - PlayerContext：访问 Inventory/PlayerInput
 /// - HudPresenter：复用 Sprite 缓存（GetSprite）
 /// </summary>
-[RequireComponent(typeof(PlayerInput))]
 public class ReplaceController : MonoBehaviour
 {
     // ===== 状态 =====
@@ -135,7 +134,8 @@ public class ReplaceController : MonoBehaviour
         _ctx = ctx;
         _hud = hud;
         _panelRoot = refs.abilityReplacePanelRoot;
-        _playerInput = GetComponent<PlayerInput>();
+        // 阶段2：ReplaceController 可能被放在 Player/UI 子节点，PlayerInput 位于 Player 根对象
+        _playerInput = GetComponentInParent<PlayerInput>();
 
         // 校验 panel 存在
         if (_panelRoot == null)
@@ -284,8 +284,13 @@ public class ReplaceController : MonoBehaviour
     {
         if (_playerInput == null)
         {
-            Debug.LogError($"[ReplaceController] PlayerInput 组件缺失，无法切换输入");
-            return false;
+            string key = "ReplaceController_MissingPlayerInput";
+            if (!_loggedWarnings.Contains(key))
+            {
+                Debug.LogWarning($"[ReplaceController] 缺少 PlayerInput，无法切换输入映射，将使用键盘监听替换选择/取消。", this);
+                _loggedWarnings.Add(key);
+            }
+            return true;
         }
 
         // 记录当前 ActionMap

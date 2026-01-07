@@ -52,10 +52,11 @@ public class ReplaceFlowIntegrationTests
         }
 
         // 获取组件
-        _inventory = _playerObj.GetComponent<PlayerInventory>();
-        _playerContext = _playerObj.GetComponent<PlayerContext>();
-        _replaceController = _playerObj.GetComponent<ReplaceController>();
-        _equipmentController = _playerObj.GetComponent<PlayerEquipmentController>();
+        // 阶段2：Player 模块可能被拆到子节点（Systems/UI），这里统一用 GetComponentInChildren 查找
+        _inventory = _playerObj.GetComponentInChildren<PlayerInventory>(true);
+        _playerContext = _playerObj.GetComponentInChildren<PlayerContext>(true);
+        _replaceController = _playerObj.GetComponentInChildren<ReplaceController>(true);
+        _equipmentController = _playerObj.GetComponentInChildren<PlayerEquipmentController>(true);
 
         // 查找 HudPresenter（通过类型查找，避免 HUDCanvas(Clone) 命名差异）
         _hudPresenter = Object.FindObjectOfType<HudPresenter>(true);

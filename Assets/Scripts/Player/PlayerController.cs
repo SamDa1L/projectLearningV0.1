@@ -557,14 +557,14 @@ public class PlayerController : MonoBehaviour
         }
 
         // ===== Phase 4-6 集成说明 =====
-        // 注意：PlayerInventory/PlayerEquipmentController 的初始化现由 GameBootstrap 负责（契约 [C-Runtime-0]）
+        // 注意：玩家各模块初始化由 GameBootstrap 触发，但入口已收拢到 PlayerContext.InitializeModules（Phase 3，契约 [C-Runtime-0]）
         // PlayerController 仅负责创建 AbilitySystem 并注入到 PlayerContext
         // GameBootstrap.Awake 将完成以下装配：
         //   1. 加载 ItemCatalog 并创建 CastleDbService
-        //   2. player.Inventory.Initialize(items, cfg)
-        //   3. player.EquipmentController.Initialize(items, abilitySystem, inventory)
+        //   2. 加载 HudBinding 并实例化/定位 HUD
+        //   3. player.InitializeModules(items, cfg, hudPresenter, hudRefs)
         // GameBootstrap.Start 将执行：
-        //   - player.EquipmentController.SyncAllSlotsToAbilities()
+        //   - player.SyncInitialAbilities()
     }
 
     /// <summary>
@@ -583,13 +583,13 @@ public class PlayerController : MonoBehaviour
         Debug.LogWarning("[PlayerController] ApplyProjectileDamageOverride 已废弃，使用 prefab 级赋值");
     }
 
-    // Start is called before the first frame update
+    // Start：Unity 生命周期回调（当前未使用）
     void Start()
     {
 
     }
 
-    // Update is called once per frame
+    // Update：Unity 生命周期回调（当前未使用）
     void Update()
     {
 
