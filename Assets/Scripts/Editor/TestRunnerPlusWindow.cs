@@ -290,6 +290,17 @@ public sealed class TestRunnerPlusWindow : EditorWindow, ICallbacks
                     EditorGUILayout.SelectableLabel(resultInfo.Message, EditorStyles.textArea, GUILayout.MinHeight(36));
                 }
 
+                var failureHint = TryExtractFailureHint(resultInfo);
+                if (failureHint != null)
+                {
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.LabelField("Failure Hint", EditorStyles.boldLabel);
+
+                    DrawFailureHintSection("原因", failureHint.Reason);
+                    DrawFailureHintSection("修复", failureHint.Fix);
+                    DrawFailureHintSection("上下文", failureHint.Context);
+                }
+
                 if (!string.IsNullOrWhiteSpace(resultInfo.StackTrace))
                 {
                     EditorGUILayout.Space(4);
@@ -413,6 +424,102 @@ public sealed class TestRunnerPlusWindow : EditorWindow, ICallbacks
     {
         var key = GetLookupKey(test);
         return !string.IsNullOrWhiteSpace(key) && _resultsByKey.TryGetValue(key, out var info) ? info : null;
+    }
+
+    private sealed class FailureHint
+    {
+        public string Reason;
+        public string Fix;
+        public string Context;
+    }
+
+    private static FailureHint TryExtractFailureHint(TestResultInfo resultInfo)
+    {
+        if (resultInfo == null || resultInfo.TestStatus != TestStatus.Failed)
+        {
+            return null;
+        }
+
+        var combined = string.Join("\n", new[] { resultInfo.Message, resultInfo.Output }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+        if (string.IsNullOrWhiteSpace(combined))
+        {
+            return null;
+        }
+
+        var reason = ExtractHintSection(combined, "【原因】");
+        var fix = ExtractHintSection(combined, "【修复】");
+        var context = ExtractHintSection(combined, "【上下文】");
+
+        if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(fix) && string.IsNullOrWhiteSpace(context))
+        {
+            return null;
+        }
+
+        return new FailureHint
+        {
+            Reason = reason,
+            Fix = fix,
+            Context = context,
+        };
+    }
+
+    private static void DrawFailureHintSection(string title, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        EditorGUILayout.Space(2);
+        EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+        EditorGUILayout.SelectableLabel(value, EditorStyles.textArea, GUILayout.MinHeight(36));
+    }
+
+    private static string ExtractHintSection(string text, string marker)
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(marker))
+        {
+            return null;
+        }
+
+        var start = text.IndexOf(marker, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return null;
+        }
+
+        start += marker.Length;
+        var end = FindNextHintMarkerIndex(text, start);
+        if (end < 0)
+        {
+            end = text.Length;
+        }
+
+        if (end < start)
+        {
+            end = text.Length;
+        }
+
+        return text.Substring(start, end - start).Trim();
+    }
+
+    private static int FindNextHintMarkerIndex(string text, int startIndex)
+    {
+        var markers = new[] { "【原因】", "【修复】", "【上下文】" };
+
+        int next = -1;
+        foreach (var marker in markers)
+        {
+            var idx = text.IndexOf(marker, startIndex, StringComparison.Ordinal);
+            if (idx >= 0 && (next < 0 || idx < next))
+            {
+                next = idx;
+            }
+        }
+
+        return next;
     }
 
     private static string GetLookupKey(ITestAdaptor test)

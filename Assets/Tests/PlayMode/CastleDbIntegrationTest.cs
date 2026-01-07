@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.Collections;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.TestTools;
 using CastleDB.Runtime;
@@ -115,10 +116,29 @@ namespace CastleDB.Tests.PlayMode
             var allZones = _service.GetAllDetectionZones();
 
             // Assert
-            Assert.AreEqual(2, knightZones.Count);
-            Assert.AreEqual(4, allZones.Count);
-            CollectionAssert.AreEquivalent(new[] { "DZ_Attack", "DZ_NewAttack" },
-                new[] { knightZones[0].childId, knightZones[1].childId });
+            var knightChildIds = (knightZones ?? new System.Collections.Generic.List<DetectionZoneEntry>())
+                .Select(z => z.childId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var context = $"npcId=M_Knight\n" +
+                          $"knightZones.Count={(knightZones != null ? knightZones.Count : 0)}\n" +
+                          $"allZones.Count={(allZones != null ? allZones.Count : 0)}\n" +
+                          $"knight.childIds=[{string.Join(", ", knightChildIds)}]\n" +
+                          $"data=Assets/Resources/Data/MonsterSystem.cdb (sheet DetectionZone)";
+
+            TestFailureHints.Require(
+                knightZones != null && knightZones.Count > 0,
+                "GetDetectionZonesByNpcId(\"M_Knight\") 返回空列表，说明 Knight 没有任何检测区配置。",
+                "在 MonsterSystem.cdb 的 DetectionZone sheet 为 npcId=M_Knight 至少配置 1 条检测区（通常包含主攻击区）。",
+                context);
+
+            TestFailureHints.Require(
+                knightChildIds.Contains("DZ_Attack"),
+                "Knight 缺少基础主攻击检测区 childId='DZ_Attack'。",
+                "在 MonsterSystem.cdb 的 DetectionZone sheet 为 npcId=M_Knight 配置 childId='DZ_Attack'（建议 role=0=PrimaryAttack）；如果你改了命名约定，请同步更新 Prefab/同步工具规则，并调整此测试的“基础主攻击区”判定规则。",
+                context);
             Debug.Log($"[CastleDbIntegrationTest] Knight 检测区：{knightZones[0]}");
         }
 

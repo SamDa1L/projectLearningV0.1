@@ -5,6 +5,7 @@ using UnityEditor;
 using CastleDB.Runtime;
 using CastleDB.Editor;
 using CastleDB.Editor.Providers;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +31,52 @@ public class ItemDataProviderTests
     private const string TEST_CDB_DIR = "Assets/Tests/EditMode/TestData";
     private const string ITEM_CATALOG_PATH = "Assets/Resources/Config/ItemCatalog.asset";
 
+    private string _backupDirAbsolutePath;
+    private string _itemCatalogAbsolutePath;
+    private string _itemCatalogMetaAbsolutePath;
+    private string _backupItemCatalogAbsolutePath;
+    private string _backupItemCatalogMetaAbsolutePath;
+    private bool _hadOriginalItemCatalog;
+
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
+    {
+        var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        _backupDirAbsolutePath = Path.Combine(projectRoot, "Temp", "ItemDataProviderTestsBackup");
+        Directory.CreateDirectory(_backupDirAbsolutePath);
+
+        _itemCatalogAbsolutePath = Path.Combine(Application.dataPath, "Resources", "Config", "ItemCatalog.asset");
+        _itemCatalogMetaAbsolutePath = _itemCatalogAbsolutePath + ".meta";
+        _backupItemCatalogAbsolutePath = Path.Combine(_backupDirAbsolutePath, "ItemCatalog.asset");
+        _backupItemCatalogMetaAbsolutePath = Path.Combine(_backupDirAbsolutePath, "ItemCatalog.asset.meta");
+
+        _hadOriginalItemCatalog = File.Exists(_itemCatalogAbsolutePath);
+        if (_hadOriginalItemCatalog)
+        {
+            File.Copy(_itemCatalogAbsolutePath, _backupItemCatalogAbsolutePath, true);
+            if (File.Exists(_itemCatalogMetaAbsolutePath))
+            {
+                File.Copy(_itemCatalogMetaAbsolutePath, _backupItemCatalogMetaAbsolutePath, true);
+            }
+        }
+    }
+
+    [OneTimeTearDown]
+    public void OneTimeTearDown()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_backupDirAbsolutePath) && Directory.Exists(_backupDirAbsolutePath))
+            {
+                Directory.Delete(_backupDirAbsolutePath, true);
+            }
+        }
+        catch
+        {
+            // Best effort.
+        }
+    }
+
     [SetUp]
     public void Setup()
     {
@@ -39,16 +86,28 @@ public class ItemDataProviderTests
             Directory.CreateDirectory(TEST_CDB_DIR);
         }
 
+        CdbDataProviderRegistry.Instance.GetProvider("PlayerAbility")?.Reset();
+
         AssetDatabase.Refresh();
     }
 
     [TearDown]
     public void TearDown()
     {
-        // 清理测试产物（ItemCatalog）
-        if (File.Exists(ITEM_CATALOG_PATH))
+        // 清理本次测试产生的 ItemCatalog，并恢复项目原始产物（避免污染后续 PlayMode 测试）。
+        if (AssetDatabase.LoadMainAssetAtPath(ITEM_CATALOG_PATH) != null)
         {
             AssetDatabase.DeleteAsset(ITEM_CATALOG_PATH);
+        }
+
+        if (_hadOriginalItemCatalog && File.Exists(_backupItemCatalogAbsolutePath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_itemCatalogAbsolutePath));
+            File.Copy(_backupItemCatalogAbsolutePath, _itemCatalogAbsolutePath, true);
+            if (File.Exists(_backupItemCatalogMetaAbsolutePath))
+            {
+                File.Copy(_backupItemCatalogMetaAbsolutePath, _itemCatalogMetaAbsolutePath, true);
+            }
         }
 
         AssetDatabase.Refresh();
