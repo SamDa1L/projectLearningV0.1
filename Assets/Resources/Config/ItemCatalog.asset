@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 765868b32c1d2eb4883aa96a61b229a2, type: 3}
+  m_Name: ItemCatalog
+  m_EditorClassIdentifier: 
+  items:
+  - id: potion_red
+    displayName: "\u7EA2\u8272\u836F\u6C34"
+    itemType: 1
+    icon: Icons/Items/Food/Sprite/Food/DragonFruit
+    abilityId: 
+    maxStack: 99
+    consumeEffect:
+      heal: 50
+    consumeEffectRawJson: '{"heal":50}'
+    uiTag: 
+  - id: ability_arrow
+    displayName: "\u5C04\u7BAD\u80FD\u529B"
+    itemType: 0
+    icon: Icons/Items/Food/Sprite/Food/Beer
+    abilityId: BasicRangedAttack
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_walk
+    displayName: "\u884C\u8D70\u80FD\u529B"
+    itemType: 0
+    icon: Icons/Items/Food/Sprite/Food/Bug
+    abilityId: BasicMove
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_attack
+    displayName: "\u653B\u51FB\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicAttack
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_run
+    displayName: "\u8DD1\u6B65\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicRun
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
+  - id: ability_jump
+    displayName: "\u8DF3\u8DC3\u80FD\u529B"
+    itemType: 0
+    icon: 
+    abilityId: BasicJump
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
