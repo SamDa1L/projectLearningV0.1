@@ -21,7 +21,7 @@ public class AbilityCatalogEntry
     /// <summary>是否启用</summary>
     public bool enabled;
 
-    /// <summary>参数 JSON（0.2 运行时不消费，但必须是合法 JSON）</summary>
+    /// <summary>参数 JSON（Phase 1-2：运行时会消费 kind 等配置；Import 阶段负责校验）</summary>
     public string paramsJson;
 
     public override string ToString()

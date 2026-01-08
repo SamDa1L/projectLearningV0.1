@@ -14,7 +14,7 @@ namespace CastleDB.Editor.Providers
     ///
     /// 职责：
     /// - 解析 Ability Sheet 数据
-    /// - 校验 Ability 数据完整性（含 paramsJson 格式、priority、Registry 注册）
+    /// - 校验 Ability 数据完整性（含 id 唯一性、paramsJson.kind、priority 等）
     /// - 导入时生成 AbilityCatalog 资产
     ///
     /// 依赖：
@@ -109,26 +109,43 @@ namespace CastleDB.Editor.Providers
         {
             var errors = new List<string>();
 
-            // ===== 1. Registry 校验：所有 ability.id 必须在 AbilityRegistry 中注册 =====
+            // ===== 1. id 基本校验：不能为空 + 唯一 =====
+            var idSet = new HashSet<string>();
             foreach (var ability in _abilities)
             {
-                if (!AbilityRegistry.IsRegistered(ability.id))
+                if (string.IsNullOrWhiteSpace(ability.id))
                 {
-                    errors.Add($"Ability '{ability.id}' 未在 AbilityRegistry 中注册");
+                    errors.Add("Ability 存在空 id（id 不能为空）");
+                    continue;
+                }
+
+                if (!idSet.Add(ability.id))
+                {
+                    errors.Add($"Ability id 重复: '{ability.id}'");
                 }
             }
 
-            // ===== 2. paramsJson 格式校验（如果非空，必须是 JSON 对象） =====
+            // ===== 2. paramsJson.kind 校验（Phase 1-2：配置驱动） =====
+            // 规则：
+            // - paramsJson 为空：兼容旧数据，视为 BuiltinDefault
+            // - paramsJson 非空：必须是 JSON 对象，且必须包含非空 kind 字段
             foreach (var ability in _abilities)
             {
-                if (!string.IsNullOrWhiteSpace(ability.paramsJson))
+                if (string.IsNullOrWhiteSpace(ability.paramsJson))
                 {
-                    // 使用 CastleDbJsonUtil 公开 API 校验格式
-                    var parsed = CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson);
-                    if (parsed == null)
-                    {
-                        errors.Add($"Ability '{ability.id}' 的 paramsJson 必须是 JSON 对象 ({{...}})，不能是基本类型或数组");
-                    }
+                    // 兼容旧数据：不强制要求 kind
+                    continue;
+                }
+
+                if (!AbilityRegistry.TryGetKindFromParamsJson(ability.paramsJson, out string kind, out string kindError))
+                {
+                    errors.Add($"Ability '{ability.id}' 的 paramsJson 无效: {kindError}");
+                    continue;
+                }
+
+                if (!AbilityRegistry.IsKindRegistered(kind))
+                {
+                    errors.Add($"Ability '{ability.id}' 的 kind '{kind}' 未在 AbilityRegistry 中注册");
                 }
             }
 

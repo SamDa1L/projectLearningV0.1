@@ -469,7 +469,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// 构建能力系统（阶段 3B）
     /// - 从 Resources 加载 AbilityCatalog
-    /// - 根据 catalog 构建 AbilitySystem 并注册能力
+    /// - 根据 catalog 构建 AbilitySystem 并注册所有能力（包含 disabled 条目）
     /// - 如果某个 hookType 没有任何启用的能力，输出警告（但允许运行）
     /// - 如果 usePlayerConfigFromCastleDb=true 但 AbilityCatalog 缺失，抛出异常（硬失败）
     /// </summary>
@@ -491,58 +491,74 @@ public class PlayerController : MonoBehaviour
         // 创建 AbilitySystem 实例
         abilitySystem = new AbilitySystem();
 
-        // 统计每个 hookType 的注册数量（用于验证覆盖率）
-        Dictionary<AbilityHookType, int> hookTypeCount = new Dictionary<AbilityHookType, int>();
+        // 统计每个 hookType 的能力数量（用于验证覆盖率）
+        Dictionary<AbilityHookType, int> hookTypeTotalCount = new Dictionary<AbilityHookType, int>();
+        Dictionary<AbilityHookType, int> hookTypeEnabledCount = new Dictionary<AbilityHookType, int>();
         foreach (AbilityHookType hookType in System.Enum.GetValues(typeof(AbilityHookType)))
         {
-            hookTypeCount[hookType] = 0;
+            hookTypeTotalCount[hookType] = 0;
+            hookTypeEnabledCount[hookType] = 0;
         }
 
-        // 遍历 catalog，为每个启用的能力创建实例并注册
-        int registeredCount = 0;
-        int skippedCount = 0;
+        // 遍历 catalog，为每个能力创建实例并注册（disabled 也注册，仅初始 Enabled=false）
+        int registeredTotalCount = 0;
+        int registeredEnabledCount = 0;
+        int registeredDisabledCount = 0;
         foreach (var entry in catalog.entries)
         {
-            // 跳过禁用的能力
-            if (!entry.enabled)
-            {
-                Debug.Log($"[PlayerController] 跳过禁用的能力: {entry.id}");
-                skippedCount++;
-                continue;
-            }
-
-            // 使用 AbilityRegistry 创建能力实例
-            IPlayerAbility ability = AbilityRegistry.CreateAbility(
-                entry.id,
-                this,
-                entry.priority,
-                entry.enabled
-            );
+            // 使用 AbilityRegistry 创建能力实例（Phase 1-2：配置驱动）
+            IPlayerAbility ability = AbilityRegistry.CreateAbility(entry, this);
 
             if (ability == null)
             {
-                Debug.LogError($"[PlayerController] 能力创建失败: {entry.id}，跳过注册");
-                continue;
+                // 能力系统语义要求：AbilityCatalog 中的条目必须都能创建实例（包含 disabled）
+                // 否则后续 SetAbilityEnabled(abilityId, ...) 将无法生效，属于配置/导入错误。
+                string errorMsg = $"[PlayerController] 能力创建失败: {entry.id} (hookType={entry.hookType})";
+                Debug.LogError(errorMsg, this);
+                throw new System.InvalidOperationException(errorMsg);
             }
 
             // 注册到 AbilitySystem
             abilitySystem.RegisterAbility(entry.hookType, ability);
-            hookTypeCount[entry.hookType]++;
-            registeredCount++;
 
-            Debug.Log($"[PlayerController] 已注册能力: {entry.id}, hookType={entry.hookType}, priority={entry.priority}");
+            // 统计
+            hookTypeTotalCount[entry.hookType]++;
+            registeredTotalCount++;
+            if (entry.enabled)
+            {
+                hookTypeEnabledCount[entry.hookType]++;
+                registeredEnabledCount++;
+            }
+            else
+            {
+                registeredDisabledCount++;
+            }
+
+            Debug.Log($"[PlayerController] 已注册能力: {entry.id}, hookType={entry.hookType}, priority={entry.priority}, enabled={entry.enabled}");
         }
 
-        // 验证覆盖率：检查每个 hookType 是否至少有一个启用的能力
-        foreach (var kvp in hookTypeCount)
+        // 验证覆盖率：
+        // 1) 若 hookType 没有任何能力条目（总数=0）→ 输入永远无效
+        // 2) 若 hookType 当前没有启用能力（启用数=0）→ 当前输入无效，但后续可通过拾取/装备启用
+        foreach (var kvp in hookTypeTotalCount)
         {
-            if (kvp.Value == 0)
+            AbilityHookType hookType = kvp.Key;
+            int totalCount = kvp.Value;
+            int enabledCount = hookTypeEnabledCount[hookType];
+
+            if (totalCount == 0)
             {
-                Debug.LogWarning($"[PlayerController] hookType {kvp.Key} 没有任何启用的能力，输入将无效");
+                Debug.LogWarning($"[PlayerController] hookType {hookType} 在 AbilityCatalog 中没有任何能力条目，输入将永远无效");
+                continue;
+            }
+
+            if (enabledCount == 0)
+            {
+                Debug.LogWarning($"[PlayerController] hookType {hookType} 当前没有任何启用的能力（已注册 {totalCount} 个，但均为 disabled），输入当前无效，可通过拾取/装备启用");
             }
         }
 
-        Debug.Log($"[PlayerController] 能力系统构建完成: 注册 {registeredCount} 个，跳过 {skippedCount} 个");
+        Debug.Log($"[PlayerController] 能力系统构建完成: 注册 {registeredTotalCount} 个（enabled {registeredEnabledCount} / disabled {registeredDisabledCount}）");
 
         // ===== Phase 4 集成：注入 AbilitySystem 到 PlayerContext =====
         PlayerContext playerContext = GetComponent<PlayerContext>();
