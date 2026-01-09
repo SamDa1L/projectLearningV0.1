@@ -158,6 +158,23 @@ namespace CastleDB.Runtime
         [SerializeField]
         public string paramsJson; // Optional JSON parameters (0.2 不消费，但必须是合法 JSON)
 
+        // ===== 0.5 扩展字段（与 PlayerAbility.cdb 对齐）=====
+
+        [SerializeField]
+        public int kind; // 0=BuiltinDefault, 1=Projectile, 2=StatModifier, 3=Buff
+
+        [SerializeField]
+        public string projectileId;
+
+        [SerializeField]
+        public string buffId;
+
+        [SerializeField]
+        public float cooldown;
+
+        [SerializeField]
+        public string onHitSequenceId;
+
         public override string ToString()
         {
             return $"Ability[id={id}, hookType={hookType}, priority={priority}, enabled={enabled}]";

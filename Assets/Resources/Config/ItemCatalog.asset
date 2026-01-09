@@ -73,3 +73,13 @@ MonoBehaviour:
       heal: 0
     consumeEffectRawJson: 
     uiTag: 
+  - id: spellbook_fireball
+    displayName: "\u706B\u7403\u672F"
+    itemType: 0
+    icon: 
+    abilityId: Fireball_Player
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 

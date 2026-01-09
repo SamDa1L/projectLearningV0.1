@@ -104,6 +104,16 @@
 					"abilityId": "BasicJump",
 					"consumeEffectJson": "",
 					"uiTag": ""
+				},
+				{
+					"id": "spellbook_fireball",
+					"displayName": "火球术",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "Fireball_Player",
+					"consumeEffectJson": "",
+					"uiTag": ""
 				}
 			],
 			"separators": [],

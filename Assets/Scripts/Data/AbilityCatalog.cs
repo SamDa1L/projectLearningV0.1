@@ -3,6 +3,89 @@ using UnityEngine;
 using CastleDB.Runtime;
 
 /// <summary>
+/// 能力类型（0.5）
+/// 与 PlayerAbility.cdb/Ability.kind 枚举顺序保持一致。
+/// </summary>
+public enum AbilityKind
+{
+    BuiltinDefault = 0,
+    Projectile = 1,
+    StatModifier = 2,
+    Buff = 3
+}
+
+/// <summary>
+/// 投射物定义（0.5）
+/// 对应 PlayerAbility.cdb/AbilityProjectile。
+/// </summary>
+[System.Serializable]
+public class AbilityProjectileDefinition
+{
+    public string id;
+    public string prefabPath;
+    public float speed;
+    public float lifetime;
+    public int baseDamage;
+    public string hitMask;
+    public string onHitVfxPath;
+    public string onExpireVfxPath;
+    public string tags;
+}
+
+public enum AbilityOnHitNodeType
+{
+    ApplyStatus = 0,
+    PlayVfx = 1,
+    TriggerAOE = 2,
+    TriggerSummon = 3,
+    SpawnProjectile = 4
+}
+
+/// <summary>
+/// 命中序列节点（0.5）
+/// 对应 PlayerAbility.cdb/AbilityOnHitSequence 的一行。
+/// </summary>
+[System.Serializable]
+public class AbilityOnHitNode
+{
+    public int order;
+    public AbilityOnHitNodeType nodeType;
+
+    public string statusId;
+    public string aoeId;
+    public string summonId;
+    public string waitMode;
+
+    public string paramsJson;
+}
+
+/// <summary>
+/// 命中序列（0.5）
+/// 以 sequenceId 分组并按 order 排序。
+/// </summary>
+[System.Serializable]
+public class AbilityOnHitSequenceDefinition
+{
+    public string sequenceId;
+    public List<AbilityOnHitNode> nodes = new List<AbilityOnHitNode>();
+}
+
+/// <summary>
+/// 被动/BUFF 定义（0.5 预留）
+/// 对应 PlayerAbility.cdb/AbilityBuff。
+/// </summary>
+[System.Serializable]
+public class AbilityBuffDefinition
+{
+    public string id;
+    public float duration;
+    public StatusStackRule stackRule;
+    public int maxStacks = 1;
+    public string uniqueKey;
+    public string modifiersJson;
+}
+
+/// <summary>
 /// 能力目录条目（阶段 3B）
 /// 运行时可执行的能力配置
 /// </summary>
@@ -21,12 +104,27 @@ public class AbilityCatalogEntry
     /// <summary>是否启用</summary>
     public bool enabled;
 
-    /// <summary>参数 JSON（Phase 1-2：运行时会消费 kind 等配置；Import 阶段负责校验）</summary>
+    /// <summary>能力类型（0.5：从 paramsJson.kind 升级为结构化字段）</summary>
+    public AbilityKind kind;
+
+    /// <summary>投射物定义 ID（kind=Projectile 时使用）</summary>
+    public string projectileId;
+
+    /// <summary>Buff 定义 ID（kind=Buff/StatModifier 时使用）</summary>
+    public string buffId;
+
+    /// <summary>入口冷却（秒）。只属于 Ability（不属于子表）</summary>
+    public float cooldown;
+
+    /// <summary>命中序列 ID（可空）</summary>
+    public string onHitSequenceId;
+
+    /// <summary>参数 JSON（0.5：收敛为 cast/targeting 等可变配置；不再放 kind/基础数值）</summary>
     public string paramsJson;
 
     public override string ToString()
     {
-        return $"AbilityCatalogEntry[id={id}, hookType={hookType}, priority={priority}, enabled={enabled}]";
+        return $"AbilityCatalogEntry[id={id}, hookType={hookType}, priority={priority}, enabled={enabled}, kind={kind}]";
     }
 }
 
@@ -49,11 +147,95 @@ public class AbilityCatalog : ScriptableObject
     [SerializeField]
     public List<AbilityCatalogEntry> entries = new List<AbilityCatalogEntry>();
 
+    [Header("0.5 扩展：子表定义（导入产物，禁止手改）")]
+    [SerializeField]
+    public List<AbilityProjectileDefinition> projectiles = new List<AbilityProjectileDefinition>();
+
+    [SerializeField]
+    public List<AbilityOnHitSequenceDefinition> onHitSequences = new List<AbilityOnHitSequenceDefinition>();
+
+    [SerializeField]
+    public List<AbilityBuffDefinition> buffs = new List<AbilityBuffDefinition>();
+
+    [System.NonSerialized]
+    private Dictionary<string, AbilityProjectileDefinition> _projectilesById;
+
+    [System.NonSerialized]
+    private Dictionary<string, AbilityOnHitSequenceDefinition> _onHitSequencesById;
+
+    [System.NonSerialized]
+    private Dictionary<string, AbilityBuffDefinition> _buffsById;
+
+    [System.NonSerialized]
+    private bool _isValid;
+
+    public bool IsValid => _isValid;
+
+    private void OnEnable()
+    {
+        RebuildCaches();
+    }
+
+    public bool TryGetProjectile(string projectileId, out AbilityProjectileDefinition def)
+    {
+        def = null;
+
+        if (_projectilesById == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectileId))
+        {
+            return false;
+        }
+
+        return _projectilesById.TryGetValue(projectileId, out def);
+    }
+
+    public bool TryGetOnHitSequence(string sequenceId, out AbilityOnHitSequenceDefinition seq)
+    {
+        seq = null;
+
+        if (_onHitSequencesById == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(sequenceId))
+        {
+            return false;
+        }
+
+        return _onHitSequencesById.TryGetValue(sequenceId, out seq);
+    }
+
+    public bool TryGetBuff(string buffId, out AbilityBuffDefinition def)
+    {
+        def = null;
+
+        if (_buffsById == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(buffId))
+        {
+            return false;
+        }
+
+        return _buffsById.TryGetValue(buffId, out def);
+    }
+
     /// <summary>
     /// 从 CastleDB DTO 应用数据（Import 阶段调用）
     /// </summary>
     /// <param name="abilityEntries">CastleDB Ability Sheet 的所有条目</param>
-    public void ApplyFromCastleDb(List<AbilityEntry> abilityEntries)
+    public void ApplyFromCastleDb(
+        List<AbilityEntry> abilityEntries,
+        List<AbilityProjectileDefinition> projectileDefinitions,
+        List<AbilityOnHitSequenceDefinition> onHitSequenceDefinitions,
+        List<AbilityBuffDefinition> buffDefinitions)
     {
         if (abilityEntries == null)
         {
@@ -67,19 +249,153 @@ public class AbilityCatalog : ScriptableObject
         // 转换 DTO 到运行时格式
         foreach (var dto in abilityEntries)
         {
+            AbilityKind kind = AbilityKind.BuiltinDefault;
+            if (dto.kind >= 0 && dto.kind <= (int)AbilityKind.Buff)
+            {
+                kind = (AbilityKind)dto.kind;
+            }
+
             var entry = new AbilityCatalogEntry
             {
                 id = dto.id,
                 hookType = (AbilityHookType)dto.hookType,
                 priority = dto.priority,
                 enabled = dto.enabled,
+                kind = kind,
+                projectileId = dto.projectileId ?? "",
+                buffId = dto.buffId ?? "",
+                cooldown = dto.cooldown,
+                onHitSequenceId = dto.onHitSequenceId ?? "",
                 paramsJson = dto.paramsJson ?? ""
             };
 
             entries.Add(entry);
         }
 
+        projectiles = projectileDefinitions ?? new List<AbilityProjectileDefinition>();
+        onHitSequences = onHitSequenceDefinitions ?? new List<AbilityOnHitSequenceDefinition>();
+        buffs = buffDefinitions ?? new List<AbilityBuffDefinition>();
+
+        RebuildCaches();
+
         Debug.Log($"[AbilityCatalog] Applied {entries.Count} ability entries from CastleDB");
+    }
+
+    private void RebuildCaches()
+    {
+        _isValid = false;
+
+        _projectilesById = new Dictionary<string, AbilityProjectileDefinition>();
+        _onHitSequencesById = new Dictionary<string, AbilityOnHitSequenceDefinition>();
+        _buffsById = new Dictionary<string, AbilityBuffDefinition>();
+
+        if (projectiles != null)
+        {
+            foreach (var proj in projectiles)
+            {
+                if (proj == null)
+                {
+                    Debug.LogError("[AbilityCatalog] Found null projectile definition, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(proj.id))
+                {
+                    Debug.LogError("[AbilityCatalog] Found projectile with empty id, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (_projectilesById.ContainsKey(proj.id))
+                {
+                    Debug.LogError($"[AbilityCatalog] Duplicate projectile id detected: '{proj.id}', resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                _projectilesById[proj.id] = proj;
+            }
+        }
+
+        if (onHitSequences != null)
+        {
+            foreach (var seq in onHitSequences)
+            {
+                if (seq == null)
+                {
+                    Debug.LogError("[AbilityCatalog] Found null onHitSequence, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(seq.sequenceId))
+                {
+                    Debug.LogError("[AbilityCatalog] Found onHitSequence with empty sequenceId, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (_onHitSequencesById.ContainsKey(seq.sequenceId))
+                {
+                    Debug.LogError($"[AbilityCatalog] Duplicate onHitSequence id detected: '{seq.sequenceId}', resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                _onHitSequencesById[seq.sequenceId] = seq;
+            }
+        }
+
+        if (buffs != null)
+        {
+            foreach (var buff in buffs)
+            {
+                if (buff == null)
+                {
+                    Debug.LogError("[AbilityCatalog] Found null buff definition, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(buff.id))
+                {
+                    Debug.LogError("[AbilityCatalog] Found buff with empty id, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (_buffsById.ContainsKey(buff.id))
+                {
+                    Debug.LogError($"[AbilityCatalog] Duplicate buff id detected: '{buff.id}', resource is corrupted!", this);
+                    _projectilesById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                buff.maxStacks = Mathf.Max(1, buff.maxStacks);
+                _buffsById[buff.id] = buff;
+            }
+        }
+
+        _isValid = true;
     }
 
     private void OnValidate()

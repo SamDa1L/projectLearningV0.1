@@ -457,7 +457,14 @@ namespace CastleDB.Runtime
                         hookType = GetIntValue(dict, "hookType"),
                         priority = GetIntValue(dict, "priority"),
                         enabled = GetBoolValue(dict, "enabled"),
-                        paramsJson = GetStringValue(dict, "paramsJson") // Optional, 可能为空
+                        paramsJson = GetStringValue(dict, "paramsJson"), // Optional, 可能为空
+
+                        // 0.5: 结构化字段（若不存在则保持默认值）
+                        kind = GetIntValue(dict, "kind"),
+                        projectileId = GetStringValue(dict, "projectileId"),
+                        buffId = GetStringValue(dict, "buffId"),
+                        cooldown = GetFloatValue(dict, "cooldown"),
+                        onHitSequenceId = GetStringValue(dict, "onHitSequenceId")
                     });
                 }
             }

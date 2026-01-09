@@ -23,6 +23,31 @@
 					"display": null
 				},
 				{
+					"typeStr": "5:BuiltinDefault,Projectile,StatModifier,Buff",
+					"name": "kind",
+					"display": null
+				},
+				{
+					"typeStr": "6:AbilityProjectile",
+					"name": "projectileId",
+					"display": null
+				},
+				{
+					"typeStr": "6:AbilityBuff",
+					"name": "buffId",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "cooldown",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitSequenceId",
+					"display": null
+				},
+				{
 					"typeStr": "1",
 					"name": "paramsJson",
 					"display": null
@@ -34,37 +59,236 @@
 					"hookType": 0,
 					"priority": 0,
 					"enabled": true,
-					"paramsJson": ""
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
 				},
 				{
 					"id": "BasicRun",
 					"hookType": 1,
 					"priority": 0,
 					"enabled": true,
-					"paramsJson": ""
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
 				},
 				{
 					"id": "BasicJump",
 					"hookType": 2,
 					"priority": 0,
 					"enabled": true,
-					"paramsJson": ""
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
 				},
 				{
 					"id": "BasicAttack",
 					"hookType": 3,
 					"priority": 0,
 					"enabled": true,
-					"paramsJson": ""
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
 				},
 				{
 					"id": "BasicRangedAttack",
 					"hookType": 4,
 					"priority": 0,
 					"enabled": true,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Fireball_Player",
+					"hookType": 4,
+					"priority": 1,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 1,
+					"projectileId": "FireBall_player",
+					"buffId": "",
+					"cooldown": 1,
+					"onHitSequenceId": "Fireball_Player_OnHit"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityProjectile",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "speed",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "lifetime",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "baseDamage",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "hitMask",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "tags",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "FireBall_player",
+					"prefabPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile",
+					"speed": 5,
+					"lifetime": 3,
+					"baseDamage": 10,
+					"hitMask": "",
+					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
+					"onExpireVfxPath": "",
+					"tags": "fire"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityOnHitSequence",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "sequenceId",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "order",
+					"display": null
+				},
+				{
+					"typeStr": "5:ApplyStatus,PlayVfx,TriggerAOE,TriggerSummon,SpawnProjectile",
+					"name": "nodeType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "statusId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "aoeId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "summonId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "waitMode",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"sequenceId": "Fireball_Player_OnHit",
+					"order": 1,
+					"nodeType": 0,
+					"statusId": "Freeze",
+					"aoeId": "",
+					"summonId": "",
+					"waitMode": "",
 					"paramsJson": ""
 				}
 			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityBuff",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "duration",
+					"display": null
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uniqueKey",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson",
+					"display": null
+				}
+			],
+			"lines": [],
 			"separators": [],
 			"props": {}
 		},
@@ -100,7 +324,7 @@
 				},
 				{
 					"key": "dependencies",
-					"value": "Player"
+					"value": "Player,Status"
 				},
 				{
 					"key": "defaultSheet",

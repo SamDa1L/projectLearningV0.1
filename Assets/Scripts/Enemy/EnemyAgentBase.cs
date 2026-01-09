@@ -72,6 +72,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected Rigidbody2D rb2d;
     protected Animator animator;
     protected Damageable damageable;
+    protected StatModifierLayer statLayer;
     protected DetectionZone detectionZone;
     protected Transform cacheTransform;
 
@@ -122,7 +123,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected bool IsKnockbackProtected => _knockbackProtectionTimer > 0f;
 
     // 提供只读访问器供子类使用（推荐方式）
-    protected float MoveSpeed => _moveSpeed;
+    protected float MoveSpeed => _moveSpeed * (statLayer != null ? statLayer.MoveSpeedMultiplier : 1f);
     protected int AttackDamage => _attackDamage;
     protected float AttackRange => _attackRange;
     protected float AttackCooldown => _attackCooldown;
@@ -227,6 +228,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         rb2d = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         damageable = GetComponent<Damageable>();
+        statLayer = GetComponent<StatModifierLayer>();
         detectionZone = GetComponent<DetectionZone>();
         cacheTransform = transform;
 

@@ -17,24 +17,80 @@ MonoBehaviour:
     hookType: 0
     priority: 0
     enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
     paramsJson: 
   - id: BasicRun
     hookType: 1
     priority: 0
     enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
     paramsJson: 
   - id: BasicJump
     hookType: 2
     priority: 0
     enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
     paramsJson: 
   - id: BasicAttack
     hookType: 3
     priority: 0
     enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
     paramsJson: 
   - id: BasicRangedAttack
     hookType: 4
     priority: 0
     enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
     paramsJson: 
+  - id: Fireball_Player
+    hookType: 4
+    priority: 1
+    enabled: 0
+    kind: 1
+    projectileId: FireBall_player
+    buffId: 
+    cooldown: 1
+    onHitSequenceId: Fireball_Player_OnHit
+    paramsJson: 
+  projectiles:
+  - id: FireBall_player
+    prefabPath: Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile
+    speed: 5
+    lifetime: 3
+    baseDamage: 10
+    hitMask: 
+    onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
+    onExpireVfxPath: 
+    tags: fire
+  onHitSequences:
+  - sequenceId: Fireball_Player_OnHit
+    nodes:
+    - order: 1
+      nodeType: 0
+      statusId: Freeze
+      aoeId: 
+      summonId: 
+      waitMode: 
+      paramsJson: 
+  buffs: []

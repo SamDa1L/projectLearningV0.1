@@ -119,6 +119,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>碰撞检测组件的引用</summary>
     TouchingDirections touchingDirections;
     Damageable damageable;
+    StatModifierLayer statLayer;
 
 
     /// <summary>
@@ -139,6 +140,8 @@ public class PlayerController : MonoBehaviour
     {
         get
         {
+            float speedMultiplier = statLayer != null ? statLayer.MoveSpeedMultiplier : 1f;
+
             if (CanMove)
             {
                 // 检查是否在移动且没有接触墙壁
@@ -150,17 +153,17 @@ public class PlayerController : MonoBehaviour
                         // 在地面上 - 区分奔跑和行走
                         if (IsRunning)
                         {
-                            return runSpeed;
+                            return runSpeed * speedMultiplier;
                         }
                         else
                         {
-                            return walkSpeed;
+                            return walkSpeed * speedMultiplier;
                         }
                     }
                     else
                     {
                         // 在空中 - 返回降低的移动速度
-                        return airWalkSpeed;
+                        return airWalkSpeed * speedMultiplier;
                     }
                 }
                 else
@@ -352,6 +355,7 @@ public class PlayerController : MonoBehaviour
         // 获取当前GameObject上的TouchingDirections组件(碰撞检测)
         touchingDirections = GetComponent<TouchingDirections>();
         damageable = GetComponent<Damageable>();
+        statLayer = GetComponent<StatModifierLayer>();
 
         // 阶段 3A: 从 PlayerConfig 加载配置
         LoadConfigFromPlayerConfig();
@@ -507,7 +511,7 @@ public class PlayerController : MonoBehaviour
         foreach (var entry in catalog.entries)
         {
             // 使用 AbilityRegistry 创建能力实例（Phase 1-2：配置驱动）
-            IPlayerAbility ability = AbilityRegistry.CreateAbility(entry, this);
+            IPlayerAbility ability = AbilityRegistry.CreateAbility(entry, this, catalog);
 
             if (ability == null)
             {

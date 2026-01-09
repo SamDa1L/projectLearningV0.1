@@ -7,66 +7,59 @@ using CastleDB.Runtime;
 /// 能力注册表和工厂（阶段 3B）
 ///
 /// 职责：
-/// - 基于 AbilityCatalogEntry + paramsJson.kind 创建能力实例（Factory）
+/// - 基于 AbilityCatalogEntry.kind 创建能力实例（Factory）
 /// - 提供"已注册能力 kind"的权威列表（Import/Runtime 共用）
 ///
-/// 设计约束（0.2）：
-/// - Import 期 kind 校验与 Runtime Factory 必须共用同一份列表
-/// - 新增“能力条目”（Ability.id）应尽量只通过数据扩展；新增“能力类型”（kind）才需要扩展工厂
+/// 兼容：
+/// - 若 AbilityCatalogEntry.kind 为 BuiltinDefault，但 paramsJson 中包含 legacy kind，则以 legacy kind 为准（兼容旧产物）
+/// - Projectile 支持两条路径：
+///   1) 结构化：projectileId → AbilityCatalog.projectiles → AbilityProjectileController
+///   2) legacy：paramsJson.projectile.prefabPath → 仅实例化 prefab（由 prefab 自身 Projectile 脚本结算）
 /// </summary>
 public static class AbilityRegistry
 {
-    /// <summary>
-    /// paramsJson 中的能力类型字段名
-    /// </summary>
     private const string KindKey = "kind";
 
-    /// <summary>
-    /// 内建默认能力类型（兼容 0.4：paramsJson 为空时使用）
-    ///
-    /// 语义：根据 hookType 创建对应的 Default*Ability（Move/Run/Jump/Attack/RangedAttack）
-    /// </summary>
-    public const string KindBuiltinDefault = "BuiltinDefault";
+    private const string ProjectileKey = "projectile";
+    private const string ProjectilePrefabPathKey = "prefabPath";
 
-    /// <summary>
-    /// ability kind → factory 映射（权威来源，Import/Runtime 共用）
-    /// </summary>
-    private static readonly Dictionary<string, Func<AbilityCatalogEntry, PlayerController, Dictionary<string, object>, IPlayerAbility>> _factories
-        = new Dictionary<string, Func<AbilityCatalogEntry, PlayerController, Dictionary<string, object>, IPlayerAbility>>(StringComparer.OrdinalIgnoreCase)
+    public const string KindBuiltinDefault = "BuiltinDefault";
+    public const string KindProjectile = "Projectile";
+
+    private static readonly Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>> Factories
+        = new Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>>(StringComparer.OrdinalIgnoreCase)
         {
-            { KindBuiltinDefault, CreateBuiltinDefaultAbility }
+            { KindBuiltinDefault, CreateBuiltinDefaultAbility },
+            { KindProjectile, CreateProjectileAbility }
         };
 
-    /// <summary>
-    /// 检查 kind 是否已注册（用于 Import 校验）
-    /// 说明：null/空白视为内建默认 kind（兼容旧数据）。
-    /// </summary>
     public static bool IsKindRegistered(string kind)
     {
         string normalized = NormalizeKind(kind);
-        return _factories.ContainsKey(normalized);
+        return Factories.ContainsKey(normalized);
     }
 
-    /// <summary>
-    /// 获取所有已注册的 kind（用于 Import 校验日志）
-    /// </summary>
+    public static bool IsKindRegistered(AbilityKind kind)
+    {
+        return IsKindRegistered(kind.ToString());
+    }
+
     public static IEnumerable<string> GetAllRegisteredKinds()
     {
-        return _factories.Keys;
+        return Factories.Keys;
     }
 
     /// <summary>
-    /// 从 paramsJson 解析 kind（用于 Import 校验与 Runtime Factory 共用）
+    /// Legacy：从 paramsJson 解析 kind（用于兼容旧产物）
     /// 规则：
-    /// - paramsJson 为空：返回 BuiltinDefault（兼容 0.4 旧数据）
-    /// - paramsJson 非空：必须是 JSON 对象，且必须包含非空 kind 字段
+    /// - paramsJson 为空：返回 BuiltinDefault
+    /// - paramsJson 非空：必须是 JSON 对象且包含非空 kind 字段
     /// </summary>
     public static bool TryGetKindFromParamsJson(string paramsJson, out string kind, out string error)
     {
         kind = null;
         error = null;
 
-        // 兼容旧数据：空 paramsJson 视为内建默认能力
         if (string.IsNullOrWhiteSpace(paramsJson))
         {
             kind = KindBuiltinDefault;
@@ -97,14 +90,7 @@ public static class AbilityRegistry
         return true;
     }
 
-    /// <summary>
-    /// 根据 AbilityCatalogEntry 创建能力实例（Factory）
-    ///
-    /// 规则：
-    /// - id 仍是唯一键（AbilitySystem 以 AbilityId 作为控制入口）
-    /// - 未识别的 kind：Import 阶段应报错；Runtime 侧也会输出 Error 并返回 null
-    /// </summary>
-    public static IPlayerAbility CreateAbility(AbilityCatalogEntry entry, PlayerController playerController)
+    public static IPlayerAbility CreateAbility(AbilityCatalogEntry entry, PlayerController playerController, AbilityCatalog catalog)
     {
         if (entry == null)
         {
@@ -124,32 +110,36 @@ public static class AbilityRegistry
             return null;
         }
 
-        // 解析 kind（空 paramsJson 走内建默认能力）
-        string kind;
-        string parseError;
-        if (!TryGetKindFromParamsJson(entry.paramsJson, out kind, out parseError))
+        Dictionary<string, object> paramsObj = null;
+        if (!string.IsNullOrWhiteSpace(entry.paramsJson))
         {
-            Debug.LogError($"[AbilityRegistry] CreateAbility failed: id='{entry.id}', paramsJson 解析失败: {parseError}");
-            return null;
+            paramsObj = CastleDbJsonUtil.TryParseJsonObject(entry.paramsJson);
         }
 
-        // 如果 paramsJson 非空，但 kind 未注册：直接失败（不允许静默降级）
+        // 0.5：优先使用结构化 kind（兼容旧产物：如果 kind=BuiltinDefault 但 paramsJson 内含 kind，则以 paramsJson 为准）
+        string kind = NormalizeKind(entry.kind.ToString());
+        if (string.Equals(kind, KindBuiltinDefault, StringComparison.OrdinalIgnoreCase)
+            && paramsObj != null
+            && paramsObj.TryGetValue(KindKey, out object legacyKindObj)
+            && legacyKindObj != null)
+        {
+            string legacyKind = legacyKindObj.ToString()?.Trim();
+            if (!string.IsNullOrWhiteSpace(legacyKind))
+            {
+                kind = NormalizeKind(legacyKind);
+            }
+        }
+
         if (!IsKindRegistered(kind))
         {
-            Debug.LogError($"[AbilityRegistry] CreateAbility failed: id='{entry.id}', kind='{kind}' 未注册。已注册 kinds: {string.Join(", ", _factories.Keys)}");
-            return null;
+            Debug.LogError($"[AbilityRegistry] CreateAbility failed: kind '{kind}' not registered for id='{entry.id}'. " +
+                $"Registered kinds=[{string.Join(", ", GetAllRegisteredKinds())}]");
+            kind = KindBuiltinDefault; // 兜底：避免整个 AbilitySystem 构建硬失败
         }
 
         try
         {
-            // 只有当 paramsJson 非空时，才传入对象（避免重复解析/避免为旧数据制造空对象）
-            Dictionary<string, object> paramsObj = null;
-            if (!string.IsNullOrWhiteSpace(entry.paramsJson))
-            {
-                paramsObj = CastleDbJsonUtil.TryParseJsonObject(entry.paramsJson);
-            }
-
-            return _factories[kind].Invoke(entry, playerController, paramsObj);
+            return Factories[kind].Invoke(entry, playerController, catalog, paramsObj);
         }
         catch (Exception ex)
         {
@@ -168,9 +158,12 @@ public static class AbilityRegistry
         return kind.Trim();
     }
 
-    private static IPlayerAbility CreateBuiltinDefaultAbility(AbilityCatalogEntry entry, PlayerController playerController, Dictionary<string, object> _)
+    private static IPlayerAbility CreateBuiltinDefaultAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog _,
+        Dictionary<string, object> __)
     {
-        // 兼容旧能力：按 hookType 创建 Default*Ability
         switch (entry.hookType)
         {
             case AbilityHookType.Move:
@@ -188,4 +181,76 @@ public static class AbilityRegistry
                 return null;
         }
     }
+
+    private static IPlayerAbility CreateProjectileAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog catalog,
+        Dictionary<string, object> paramsObj)
+    {
+        if (entry.hookType != AbilityHookType.RangedAttack)
+        {
+            Debug.LogWarning($"[AbilityRegistry] Projectile kind used with hookType={entry.hookType} (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        // 0.5 结构化路径：projectileId → AbilityProjectileDefinition
+        if (entry.kind == AbilityKind.Projectile && catalog != null && !string.IsNullOrWhiteSpace(entry.projectileId))
+        {
+            if (catalog.TryGetProjectile(entry.projectileId, out var def) && def != null)
+            {
+                AbilityOnHitSequenceDefinition onHitSeq = null;
+                if (!string.IsNullOrWhiteSpace(entry.onHitSequenceId))
+                {
+                    catalog.TryGetOnHitSequence(entry.onHitSequenceId, out onHitSeq);
+                }
+
+                return new ProjectileRangedAttackAbility(
+                    playerController,
+                    entry.id,
+                    entry.priority,
+                    entry.enabled,
+                    def,
+                    entry.cooldown,
+                    onHitSeq);
+            }
+
+            Debug.LogError($"[AbilityRegistry] Projectile kind missing projectile definition for projectileId='{entry.projectileId}' (abilityId='{entry.id}'), fallback to legacy paramsJson or BuiltinDefault");
+        }
+
+        // legacy：paramsJson.projectile.prefabPath
+        if (paramsObj == null)
+        {
+            Debug.LogError($"[AbilityRegistry] Projectile kind requires paramsJson object (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        if (!paramsObj.TryGetValue(ProjectileKey, out object projectileObj) || projectileObj == null)
+        {
+            Debug.LogError($"[AbilityRegistry] Projectile kind missing '{ProjectileKey}' object (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        if (!(projectileObj is Dictionary<string, object> projectileDict))
+        {
+            Debug.LogError($"[AbilityRegistry] Projectile kind '{ProjectileKey}' must be a JSON object (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        if (!projectileDict.TryGetValue(ProjectilePrefabPathKey, out object prefabPathObj) || prefabPathObj == null)
+        {
+            Debug.LogError($"[AbilityRegistry] Projectile kind missing '{ProjectilePrefabPathKey}' (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        string prefabPath = prefabPathObj.ToString()?.Trim();
+        if (string.IsNullOrWhiteSpace(prefabPath))
+        {
+            Debug.LogError($"[AbilityRegistry] Projectile kind '{ProjectilePrefabPathKey}' is empty (id='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+        }
+
+        return new ProjectileRangedAttackAbility(playerController, entry.id, entry.priority, entry.enabled, prefabPath);
+    }
 }
+
