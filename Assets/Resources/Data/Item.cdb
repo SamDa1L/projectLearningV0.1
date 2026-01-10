@@ -109,7 +109,7 @@
 					"id": "spellbook_fireball",
 					"displayName": "火球术",
 					"itemType": "Ability",
-					"icon": "Icons/Items/Skills/Kyrise's 16x16 RPG Icon Pack - V1.3/icons/16x16/book_03b",
+					"icon": "Icons/Items/Effects/FireBall",
 					"maxStack": 1,
 					"abilityId": "Fireball_Player",
 					"consumeEffectJson": "",
