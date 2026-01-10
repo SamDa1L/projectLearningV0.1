@@ -76,7 +76,7 @@ MonoBehaviour:
   - id: spellbook_fireball
     displayName: "\u706B\u7403\u672F"
     itemType: 0
-    icon: 
+    icon: Icons/Items/Skills/Kyrise's 16x16 RPG Icon Pack - V1.3/icons/16x16/book_03b
     abilityId: Fireball_Player
     maxStack: 1
     consumeEffect:
