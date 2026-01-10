@@ -15,7 +15,7 @@ MonoBehaviour:
   statuses:
   - id: Freeze
     displayName: "\u51B0\u51BB"
-    defaultDuration: 2
+    defaultDuration: 5
     stackRule: 2
     maxStacks: 1
     modifiers:

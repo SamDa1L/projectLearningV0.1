@@ -32,7 +32,7 @@
 				{
 					"id": "Freeze",
 					"displayName": "冰冻",
-					"defaultDuration": 2,
+					"defaultDuration": 5,
 					"stackRule": 2,
 					"maxStacks": 1,
 					"modifiersJson": "{\"moveSpeedMultiplier\":0.1}"
