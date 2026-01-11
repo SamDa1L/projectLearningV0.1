@@ -28,6 +28,7 @@ public class AbilityProjectileDefinition
     public int baseDamage;
     public string hitMask;
     public string onHitVfxPath;
+    public float onHitVfxDuration;
     public string onExpireVfxPath;
     public string tags;
 }

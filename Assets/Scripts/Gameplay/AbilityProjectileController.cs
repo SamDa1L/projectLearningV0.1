@@ -122,9 +122,13 @@ public class AbilityProjectileController : MonoBehaviour
             return;
         }
 
-        if (_owner != null && collision.transform != null && collision.transform.root == _owner.transform.root)
+        if (_owner != null && collision.transform != null)
         {
-            return; // 过滤自伤
+            Transform ownerTransform = _owner.transform;
+            if (collision.transform == ownerTransform || collision.transform.IsChildOf(ownerTransform))
+            {
+                return; // 过滤自伤
+            }
         }
 
         if (_hasHitMask && (_hitLayerMask & (1 << collision.gameObject.layer)) == 0)
@@ -158,7 +162,7 @@ public class AbilityProjectileController : MonoBehaviour
         }
 
         ExecuteOnHitSequence(damageable.gameObject);
-        SpawnVfx(_def.onHitVfxPath, hitPoint);
+        SpawnVfx(_def.onHitVfxPath, hitPoint, _def.onHitVfxDuration);
 
         _finished = true;
         Destroy(gameObject);
@@ -289,7 +293,7 @@ public class AbilityProjectileController : MonoBehaviour
         return _def.onHitVfxPath;
     }
 
-    private void SpawnVfx(string vfxPath, Vector3 position)
+    private void SpawnVfx(string vfxPath, Vector3 position, float destroyAfterSeconds = 0f)
     {
         if (string.IsNullOrWhiteSpace(vfxPath))
         {
@@ -307,6 +311,10 @@ public class AbilityProjectileController : MonoBehaviour
             return;
         }
 
-        Instantiate(prefab, position, prefab.transform.rotation);
+        GameObject instance = Instantiate(prefab, position, prefab.transform.rotation);
+        if (destroyAfterSeconds > 0f)
+        {
+            Destroy(instance, destroyAfterSeconds);
+        }
     }
 }

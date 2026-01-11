@@ -20,6 +20,8 @@ MonoBehaviour:
   attackRange: 10
   attackDamage: 60
   attackCooldown: 0.25
+  attackZonePriority: 0
+  abilityZonePriority: 0
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
@@ -29,4 +31,16 @@ MonoBehaviour:
   enableDeathAnimation: 1
   deathDelay: 1
   animationTrigger: Attack
+  castTrigger: AttackAlt
   useLegacyLogicFallback: 1
+  npcAbilities:
+  - id: M_Knight_Fireball
+    npcId: M_Knight
+    abilityId: Fireball_Enemy
+    enabled: 1
+    priority: 100
+    cooldownOverride: 2
+    triggerRole: 1
+    minRange: 0
+    maxRange: 0
+    paramsJson: 

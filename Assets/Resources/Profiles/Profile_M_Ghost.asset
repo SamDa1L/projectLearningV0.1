@@ -20,6 +20,8 @@ MonoBehaviour:
   attackRange: 10
   attackDamage: 100
   attackCooldown: 2
+  attackZonePriority: 0
+  abilityZonePriority: 0
   knockbackForce: {x: 5, y: 3}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
@@ -29,4 +31,6 @@ MonoBehaviour:
   enableDeathAnimation: 1
   deathDelay: 1
   animationTrigger: Attack
+  castTrigger: Attack
   useLegacyLogicFallback: 1
+  npcAbilities: []

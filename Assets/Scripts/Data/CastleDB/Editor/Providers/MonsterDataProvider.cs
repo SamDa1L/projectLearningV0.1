@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEditor;
@@ -33,6 +34,13 @@ namespace CastleDB.Editor.Providers
         // ===== 缓存数据 =====
         private List<NpcEntry> _npcs = new List<NpcEntry>();
         private List<DetectionZoneEntry> _detectionZones = new List<DetectionZoneEntry>();
+        private List<NpcAbilityEntry> _npcAbilities = new List<NpcAbilityEntry>();
+        private List<AbilityEntry> _enemyAbilities = new List<AbilityEntry>();
+        private List<AbilityProjectileDefinition> _enemyProjectiles = new List<AbilityProjectileDefinition>();
+        private List<AbilityOnHitSequenceDefinition> _enemyOnHitSequences = new List<AbilityOnHitSequenceDefinition>();
+        private List<AbilityBuffDefinition> _enemyBuffs = new List<AbilityBuffDefinition>();
+
+        private const string ENEMY_ABILITY_CATALOG_PATH = "Assets/Resources/Config/EnemyAbilityCatalog.asset";
 
         #region 初始化
 
@@ -44,6 +52,11 @@ namespace CastleDB.Editor.Providers
         {
             _npcs.Clear();
             _detectionZones.Clear();
+            _npcAbilities.Clear();
+            _enemyAbilities.Clear();
+            _enemyProjectiles.Clear();
+            _enemyOnHitSequences.Clear();
+            _enemyBuffs.Clear();
 
             foreach (var sheet in root.sheets)
             {
@@ -57,6 +70,31 @@ namespace CastleDB.Editor.Providers
                     case "DetectionZone":
                         _detectionZones = ConvertLinesToDetectionZoneEntries(sheet.lines);
                         Debug.Log($"[MonsterDataProvider] 解析 DetectionZone Sheet：{_detectionZones.Count} 条");
+                        break;
+
+                    case "NpcAbility":
+                        _npcAbilities = ConvertLinesToNpcAbilityEntries(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed NpcAbility Sheet: {_npcAbilities.Count} lines");
+                        break;
+
+                    case "EnemyAbility":
+                        _enemyAbilities = ConvertLinesToAbilityEntries(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed EnemyAbility Sheet: {_enemyAbilities.Count} lines");
+                        break;
+
+                    case "EnemyAbilityProjectile":
+                        _enemyProjectiles = ConvertLinesToProjectileDefinitions(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed EnemyAbilityProjectile Sheet: {_enemyProjectiles.Count} lines");
+                        break;
+
+                    case "EnemyAbilityOnHitSequence":
+                        _enemyOnHitSequences = ConvertLinesToOnHitSequenceDefinitions(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed EnemyAbilityOnHitSequence Sheet: {_enemyOnHitSequences.Count} sequences");
+                        break;
+
+                    case "EnemyAbilityBuff":
+                        _enemyBuffs = ConvertLinesToBuffDefinitions(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed EnemyAbilityBuff Sheet: {_enemyBuffs.Count} lines");
                         break;
 
                     case "Meta":
@@ -107,6 +145,7 @@ namespace CastleDB.Editor.Providers
                 displayName = GetStringValue(dict, "displayName"),
                 prefabName = GetStringValue(dict, "prefabName"),
                 animationTrigger = GetStringValue(dict, "animationTrigger"),
+                castTrigger = GetStringValue(dict, "castTrigger"),
                 maxHealth = GetFloatValue(dict, "maxHealth"),
                 attackDamage = GetFloatValue(dict, "attackDamage"),
                 moveSpeed = GetFloatValue(dict, "moveSpeed"),
@@ -117,6 +156,8 @@ namespace CastleDB.Editor.Providers
                 enableDeathAnimation = GetBoolValue(dict, "enableDeathAnimation"),
                 useLegacyLogicFallback = GetBoolValue(dict, "useLegacyLogicFallback"),
                 perceptionRadius = GetFloatValue(dict, "perceptionRadius"),
+                attackZonePriority = GetIntValue(dict, "attackZonePriority"),
+                abilityZonePriority = GetIntValue(dict, "abilityZonePriority"),
                 // 怪物命中玩家时的击退缩放系数，默认值为 1（保持 Prefab 原始击退）
                 knockbackToPlayer = GetFloatValueWithDefault(dict, "knockbackToPlayer", 1f)
             };
@@ -159,6 +200,187 @@ namespace CastleDB.Editor.Providers
         /// 校验 NPC 和 DetectionZone 数据完整性
         /// 迁移自 CastleDbImporter.cs:168-204
         /// </summary>
+        private List<NpcAbilityEntry> ConvertLinesToNpcAbilityEntries(List<object> lines)
+        {
+            var result = new List<NpcAbilityEntry>();
+            if (lines == null) return result;
+
+            foreach (var line in lines)
+            {
+                if (line is Dictionary<string, object> dict)
+                {
+                    result.Add(ConvertDictToNpcAbilityEntry(dict));
+                }
+            }
+
+            return result;
+        }
+
+        private NpcAbilityEntry ConvertDictToNpcAbilityEntry(Dictionary<string, object> dict)
+        {
+            return new NpcAbilityEntry
+            {
+                id = GetStringValue(dict, "id"),
+                npcId = GetStringValue(dict, "npcId"),
+                abilityId = GetStringValue(dict, "abilityId"),
+                enabled = GetBoolValue(dict, "enabled"),
+                priority = GetIntValue(dict, "priority"),
+                cooldownOverride = GetFloatValue(dict, "cooldownOverride"),
+                triggerRole = GetIntValue(dict, "triggerRole"),
+                minRange = GetFloatValue(dict, "minRange"),
+                maxRange = GetFloatValue(dict, "maxRange"),
+                paramsJson = GetStringValue(dict, "paramsJson")
+            };
+        }
+
+        private List<AbilityEntry> ConvertLinesToAbilityEntries(List<object> lines)
+        {
+            var result = new List<AbilityEntry>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                result.Add(new AbilityEntry
+                {
+                    id = GetStringValue(dict, "id"),
+                    hookType = GetIntValue(dict, "hookType"),
+                    priority = GetIntValue(dict, "priority"),
+                    enabled = GetBoolValue(dict, "enabled"),
+                    kind = GetIntValue(dict, "kind"),
+                    projectileId = GetStringValue(dict, "projectileId"),
+                    buffId = GetStringValue(dict, "buffId"),
+                    cooldown = GetFloatValue(dict, "cooldown"),
+                    onHitSequenceId = GetStringValue(dict, "onHitSequenceId"),
+                    paramsJson = GetStringValue(dict, "paramsJson")
+                });
+            }
+
+            return result;
+        }
+
+        private List<AbilityProjectileDefinition> ConvertLinesToProjectileDefinitions(List<object> lines)
+        {
+            var result = new List<AbilityProjectileDefinition>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                result.Add(new AbilityProjectileDefinition
+                {
+                    id = GetStringValue(dict, "id"),
+                    prefabPath = GetStringValue(dict, "prefabPath"),
+                    speed = GetFloatValue(dict, "speed"),
+                    lifetime = GetFloatValue(dict, "lifetime"),
+                    baseDamage = GetIntValue(dict, "baseDamage"),
+                    hitMask = GetStringValue(dict, "hitMask"),
+                    onHitVfxPath = GetStringValue(dict, "onHitVfxPath"),
+                    onHitVfxDuration = GetFloatValue(dict, "onHitVfxDuration"),
+                    onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
+                    tags = GetStringValue(dict, "tags")
+                });
+            }
+
+            return result;
+        }
+
+        private List<AbilityBuffDefinition> ConvertLinesToBuffDefinitions(List<object> lines)
+        {
+            var result = new List<AbilityBuffDefinition>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                result.Add(new AbilityBuffDefinition
+                {
+                    id = GetStringValue(dict, "id"),
+                    duration = GetFloatValue(dict, "duration"),
+                    stackRule = (StatusStackRule)GetIntValue(dict, "stackRule"),
+                    maxStacks = Mathf.Max(1, GetIntValue(dict, "maxStacks")),
+                    uniqueKey = GetStringValue(dict, "uniqueKey"),
+                    modifiersJson = GetStringValue(dict, "modifiersJson")
+                });
+            }
+
+            return result;
+        }
+
+        private List<AbilityOnHitSequenceDefinition> ConvertLinesToOnHitSequenceDefinitions(List<object> lines)
+        {
+            var result = new List<AbilityOnHitSequenceDefinition>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            var group = new Dictionary<string, List<AbilityOnHitNode>>();
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                string seqId = GetStringValue(dict, "sequenceId");
+                if (string.IsNullOrWhiteSpace(seqId))
+                {
+                    continue;
+                }
+
+                if (!group.TryGetValue(seqId, out var nodes))
+                {
+                    nodes = new List<AbilityOnHitNode>();
+                    group[seqId] = nodes;
+                }
+
+                nodes.Add(new AbilityOnHitNode
+                {
+                    order = GetIntValue(dict, "order"),
+                    nodeType = (AbilityOnHitNodeType)GetIntValue(dict, "nodeType"),
+                    statusId = GetStringValue(dict, "statusId"),
+                    aoeId = GetStringValue(dict, "aoeId"),
+                    summonId = GetStringValue(dict, "summonId"),
+                    waitMode = GetStringValue(dict, "waitMode"),
+                    paramsJson = GetStringValue(dict, "paramsJson")
+                });
+            }
+
+            foreach (var kvp in group)
+            {
+                var seq = new AbilityOnHitSequenceDefinition
+                {
+                    sequenceId = kvp.Key,
+                    nodes = kvp.Value?.OrderBy(n => n.order).ToList()
+                };
+                result.Add(seq);
+            }
+
+            return result;
+        }
+
         protected override List<string> OnValidate(CdbModuleDescriptor descriptor)
         {
             var errors = new List<string>();
@@ -195,6 +417,16 @@ namespace CastleDB.Editor.Providers
                     errors.Add($"NPC '{npc.id}' 的 animationTrigger '{npc.animationTrigger}' 包含非法字符");
                 }
 
+                // 校验 castTrigger (0.5 Phase 3)
+                if (string.IsNullOrWhiteSpace(npc.castTrigger))
+                {
+                    errors.Add($"NPC '{npc.id}' 的 castTrigger 为空");
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(npc.castTrigger, @"^[a-zA-Z0-9_]+$"))
+                {
+                    errors.Add($"NPC '{npc.id}' 的 castTrigger '{npc.castTrigger}' 包含非法字符");
+                }
+
                 // 校验 attackCooldown
                 if (npc.attackCooldown < 0)
                 {
@@ -205,6 +437,16 @@ namespace CastleDB.Editor.Providers
                 if (npc.attackDamage < 0)
                 {
                     errors.Add($"NPC '{npc.id}' 的 attackDamage < 0 ({npc.attackDamage})");
+                }
+
+                if (npc.attackZonePriority < 0)
+                {
+                    errors.Add($"NPC '{npc.id}' 的 attackZonePriority < 0 ({npc.attackZonePriority})");
+                }
+
+                if (npc.abilityZonePriority < 0)
+                {
+                    errors.Add($"NPC '{npc.id}' 的 abilityZonePriority < 0 ({npc.abilityZonePriority})");
                 }
             }
 
@@ -248,6 +490,308 @@ namespace CastleDB.Editor.Providers
                 }
             }
 
+            // ===== EnemyAbility validation (0.5 Phase 3) =====
+            var enemyAbilityIdSet = new HashSet<string>();
+            foreach (var ability in _enemyAbilities)
+            {
+                if (ability == null)
+                {
+                    errors.Add("MonsterSystem/EnemyAbility contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(ability.id))
+                {
+                    errors.Add("MonsterSystem/EnemyAbility id is empty");
+                    continue;
+                }
+
+                if (!enemyAbilityIdSet.Add(ability.id))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbility id duplicated: '{ability.id}'");
+                }
+
+                if (!string.IsNullOrWhiteSpace(ability.paramsJson)
+                    && CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson) == null)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' paramsJson must be a JSON object");
+                }
+
+                if (ability.kind < 0 || ability.kind > (int)AbilityKind.Buff)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind out of range (0-{(int)AbilityKind.Buff}): {ability.kind}");
+                }
+                else
+                {
+                    string kindName = ((AbilityKind)ability.kind).ToString();
+                    if (!AbilityRegistry.IsKindRegistered(kindName))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind '{kindName}' not registered in AbilityRegistry");
+                    }
+                }
+            }
+
+            var projectileIdSet = new HashSet<string>();
+            foreach (var proj in _enemyProjectiles)
+            {
+                if (proj == null)
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityProjectile contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(proj.id))
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityProjectile id is empty");
+                    continue;
+                }
+
+                if (!projectileIdSet.Add(proj.id))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile id duplicated: '{proj.id}'");
+                }
+
+                if (string.IsNullOrWhiteSpace(proj.prefabPath))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' prefabPath is empty");
+                }
+
+                if (proj.speed <= 0f)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' speed must be > 0 (current={proj.speed})");
+                }
+
+                if (proj.lifetime < 0f)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' lifetime must be >= 0 (current={proj.lifetime})");
+                }
+
+                if (proj.baseDamage < 0)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' baseDamage must be >= 0 (current={proj.baseDamage})");
+                }
+
+                if (proj.onHitVfxDuration < 0f)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' onHitVfxDuration must be >= 0 (current={proj.onHitVfxDuration})");
+                }
+            }
+
+            var buffIdSet = new HashSet<string>();
+            foreach (var buff in _enemyBuffs)
+            {
+                if (buff == null)
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityBuff contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(buff.id))
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityBuff id is empty");
+                    continue;
+                }
+
+                if (!buffIdSet.Add(buff.id))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityBuff id duplicated: '{buff.id}'");
+                }
+
+                if (!string.IsNullOrWhiteSpace(buff.modifiersJson)
+                    && CastleDbJsonUtil.TryParseJsonObject(buff.modifiersJson) == null)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityBuff '{buff.id}' modifiersJson must be a JSON object");
+                }
+            }
+
+            var onHitSequenceIdSet = new HashSet<string>();
+            var statusCatalog = AssetDatabase.LoadAssetAtPath<StatusCatalog>("Assets/Resources/Config/StatusCatalog.asset");
+            foreach (var seq in _enemyOnHitSequences)
+            {
+                if (seq == null)
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityOnHitSequence contains null sequence");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(seq.sequenceId))
+                {
+                    errors.Add("MonsterSystem/EnemyAbilityOnHitSequence sequenceId is empty");
+                    continue;
+                }
+
+                if (!onHitSequenceIdSet.Add(seq.sequenceId))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence sequenceId duplicated: '{seq.sequenceId}'");
+                }
+
+                if (seq.nodes == null || seq.nodes.Count == 0)
+                {
+                    continue;
+                }
+
+                var orderSet = new HashSet<int>();
+                foreach (var node in seq.nodes)
+                {
+                    if (node == null)
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' contains null node");
+                        continue;
+                    }
+
+                    if (node.order <= 0)
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' contains invalid order={node.order}");
+                        continue;
+                    }
+
+                    if (!orderSet.Add(node.order))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' contains duplicated order={node.order}");
+                    }
+
+                    if (node.nodeType < AbilityOnHitNodeType.ApplyStatus || node.nodeType > AbilityOnHitNodeType.SpawnProjectile)
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' contains unsupported nodeType={node.nodeType}");
+                        continue;
+                    }
+
+                    if (node.nodeType == AbilityOnHitNodeType.ApplyStatus)
+                    {
+                        if (string.IsNullOrWhiteSpace(node.statusId))
+                        {
+                            errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' ApplyStatus node statusId is empty (order={node.order})");
+                        }
+                        else if (statusCatalog == null || !statusCatalog.IsValid)
+                        {
+                            errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' references statusId='{node.statusId}', but StatusCatalog missing/invalid. Import Status.cdb first.");
+                        }
+                        else if (!statusCatalog.TryGetStatus(node.statusId, out _))
+                        {
+                            errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' references missing statusId='{node.statusId}' (order={node.order})");
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(node.paramsJson)
+                        && CastleDbJsonUtil.TryParseJsonObject(node.paramsJson) == null)
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbilityOnHitSequence '{seq.sequenceId}' node.paramsJson must be a JSON object (order={node.order})");
+                    }
+                }
+            }
+
+            foreach (var ability in _enemyAbilities)
+            {
+                if (ability == null)
+                {
+                    continue;
+                }
+
+                AbilityKind kind = ability.kind >= 0 && ability.kind <= (int)AbilityKind.Buff
+                    ? (AbilityKind)ability.kind
+                    : AbilityKind.BuiltinDefault;
+
+                if (kind == AbilityKind.Projectile)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.projectileId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind=Projectile but projectileId is empty");
+                    }
+                    else if (!projectileIdSet.Contains(ability.projectileId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing projectileId='{ability.projectileId}'");
+                    }
+                }
+
+                if ((kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
+                    && !string.IsNullOrWhiteSpace(ability.buffId)
+                    && !buffIdSet.Contains(ability.buffId))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing buffId='{ability.buffId}'");
+                }
+
+                if (!string.IsNullOrWhiteSpace(ability.onHitSequenceId)
+                    && !onHitSequenceIdSet.Contains(ability.onHitSequenceId))
+                {
+                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing onHitSequenceId='{ability.onHitSequenceId}'");
+                }
+            }
+
+            // ===== NpcAbility validation (0.5 Phase 3) =====
+            var npcAbilityIdSet = new HashSet<string>();
+            foreach (var binding in _npcAbilities)
+            {
+                if (binding == null)
+                {
+                    errors.Add("NpcAbility contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(binding.id))
+                {
+                    errors.Add("NpcAbility id is empty");
+                    continue;
+                }
+
+                if (!npcAbilityIdSet.Add(binding.id))
+                {
+                    errors.Add($"NpcAbility id '{binding.id}' duplicated");
+                }
+
+                if (string.IsNullOrWhiteSpace(binding.npcId))
+                {
+                    errors.Add($"NpcAbility '{binding.id}' npcId is empty");
+                }
+                else if (!npcIdSet.Contains(binding.npcId))
+                {
+                    errors.Add($"NpcAbility '{binding.id}' npcId '{binding.npcId}' not found in NPC sheet");
+                }
+
+                if (string.IsNullOrWhiteSpace(binding.abilityId))
+                {
+                    errors.Add($"NpcAbility '{binding.id}' abilityId is empty");
+                }
+                else if (!enemyAbilityIdSet.Contains(binding.abilityId))
+                {
+                    errors.Add($"NpcAbility '{binding.id}' abilityId '{binding.abilityId}' not found in MonsterSystem/EnemyAbility");
+                }
+
+                if (binding.triggerRole < 0 || binding.triggerRole > 2)
+                {
+                    errors.Add($"NpcAbility '{binding.id}' triggerRole {binding.triggerRole} out of range (0-2)");
+                }
+
+                if (binding.minRange < 0f)
+                {
+                    errors.Add($"NpcAbility '{binding.id}' minRange < 0 ({binding.minRange})");
+                }
+
+                if (binding.maxRange < 0f)
+                {
+                    errors.Add($"NpcAbility '{binding.id}' maxRange < 0 ({binding.maxRange})");
+                }
+
+                if (binding.minRange > 0f && binding.maxRange > 0f && binding.minRange > binding.maxRange)
+                {
+                    errors.Add($"NpcAbility '{binding.id}' minRange > maxRange ({binding.minRange} > {binding.maxRange})");
+                }
+
+                if (!string.IsNullOrWhiteSpace(binding.paramsJson)
+                    && CastleDbJsonUtil.TryParseJsonObject(binding.paramsJson) == null)
+                {
+                    errors.Add($"NpcAbility '{binding.id}' paramsJson must be a JSON object");
+                }
+
+                if (binding.enabled && binding.triggerRole == 1)
+                {
+                    bool hasSecondaryZone = _detectionZones.Any(z => z != null && z.npcId == binding.npcId && z.role == 1);
+                    if (!hasSecondaryZone)
+                    {
+                        errors.Add($"NpcAbility '{binding.id}' uses triggerRole=SecondaryAttack, but DetectionZone missing role=SecondaryAttack for npcId='{binding.npcId}' (suggest childId='DZ_Ability')");
+                    }
+                }
+            }
+
             return errors;
         }
 
@@ -284,6 +828,7 @@ namespace CastleDB.Editor.Providers
 
                     // 记录旧的 animationTrigger（用于变更日志）
                     string oldTrigger = profile != null ? profile.animationTrigger : null;
+                    string oldCastTrigger = profile != null ? profile.castTrigger : null;
 
                     bool isNew = profile == null;
                     if (isNew)
@@ -300,12 +845,24 @@ namespace CastleDB.Editor.Providers
                     }
 
                     // 应用 CastleDB 数据
-                    profile.ApplyFromCastleDb(npc);
+                    var npcAbilities = _npcAbilities
+                        .Where(binding => binding != null && binding.npcId == npc.id)
+                        .OrderByDescending(binding => binding.priority)
+                        .ThenBy(binding => binding.id)
+                        .ToList();
+
+                    profile.ApplyFromCastleDb(npc, npcAbilities);
 
                     // animationTrigger 变更记录
                     if (!string.IsNullOrEmpty(oldTrigger) && oldTrigger != npc.animationTrigger)
                     {
                         builder.AddWarning($"AnimationTrigger 变更 - NPC '{npc.id}': '{oldTrigger}' → '{npc.animationTrigger}'");
+                    }
+
+                    // castTrigger 变更记录
+                    if (!string.IsNullOrEmpty(oldCastTrigger) && oldCastTrigger != npc.castTrigger)
+                    {
+                        builder.AddWarning($"CastTrigger 变更 - NPC '{npc.id}': '{oldCastTrigger}' → '{npc.castTrigger}'");
                     }
 
                     // 标记为 dirty（由 ImportCoordinator 统一保存）
@@ -321,6 +878,41 @@ namespace CastleDB.Editor.Providers
             if (_detectionZones.Count > 0)
             {
                 builder.AddInfo($"DetectionZone 数据：{_detectionZones.Count} 条（将在 Sync NPC Prefabs 时应用）");
+            }
+
+            try
+            {
+                string catalogDir = Path.GetDirectoryName(ENEMY_ABILITY_CATALOG_PATH);
+                if (!string.IsNullOrEmpty(catalogDir) && !Directory.Exists(catalogDir))
+                {
+                    Directory.CreateDirectory(catalogDir);
+                    builder.AddInfo($"Created dir: {catalogDir}");
+                }
+
+                AbilityCatalog catalog = AssetDatabase.LoadAssetAtPath<AbilityCatalog>(ENEMY_ABILITY_CATALOG_PATH);
+                bool isNew = catalog == null;
+                if (isNew)
+                {
+                    catalog = ScriptableObject.CreateInstance<AbilityCatalog>();
+                    AssetDatabase.CreateAsset(catalog, ENEMY_ABILITY_CATALOG_PATH);
+                    builder.Created(ENEMY_ABILITY_CATALOG_PATH);
+                }
+                else
+                {
+                    builder.Updated(ENEMY_ABILITY_CATALOG_PATH);
+                }
+
+                catalog.ApplyFromCastleDb(_enemyAbilities, _enemyProjectiles, _enemyOnHitSequences, _enemyBuffs);
+                builder.AddInfo($"EnemyAbilityCatalog: {_enemyAbilities.Count} abilities");
+                builder.AddInfo($"EnemyAbilityProjectiles: {_enemyProjectiles.Count} entries");
+                builder.AddInfo($"EnemyAbilityOnHitSequences: {_enemyOnHitSequences.Count} sequences");
+                builder.AddInfo($"EnemyAbilityBuffs: {_enemyBuffs.Count} entries");
+
+                EditorUtility.SetDirty(catalog);
+            }
+            catch (Exception ex)
+            {
+                builder.AddError($"Create/Update EnemyAbilityCatalog failed: {ex.Message}");
             }
 
             return builder.Build();
@@ -345,6 +937,16 @@ namespace CastleDB.Editor.Providers
                 return _detectionZones.Cast<T>().ToList();
             }
 
+            if (typeof(T) == typeof(NpcAbilityEntry))
+            {
+                return _npcAbilities.Cast<T>().ToList();
+            }
+
+            if (typeof(T) == typeof(AbilityEntry))
+            {
+                return _enemyAbilities.Cast<T>().ToList();
+            }
+
             return new List<T>();
         }
 
@@ -361,6 +963,16 @@ namespace CastleDB.Editor.Providers
             if (typeof(T) == typeof(DetectionZoneEntry))
             {
                 return _detectionZones.FirstOrDefault(z => z.id == id) as T;
+            }
+
+            if (typeof(T) == typeof(NpcAbilityEntry))
+            {
+                return _npcAbilities.FirstOrDefault(a => a.id == id) as T;
+            }
+
+            if (typeof(T) == typeof(AbilityEntry))
+            {
+                return _enemyAbilities.FirstOrDefault(a => a.id == id) as T;
             }
 
             return null;
@@ -401,6 +1013,11 @@ namespace CastleDB.Editor.Providers
         {
             _npcs.Clear();
             _detectionZones.Clear();
+            _npcAbilities.Clear();
+            _enemyAbilities.Clear();
+            _enemyProjectiles.Clear();
+            _enemyOnHitSequences.Clear();
+            _enemyBuffs.Clear();
         }
 
         #endregion

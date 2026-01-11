@@ -86,6 +86,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     // ===== 攻击系统（统一由基类管理）=====
     private float _attackCooldownTimer = 0f;
+    private NpcAbilityController _npcAbilityController;
     private bool _hasTarget = false;  // 由 PrimaryAttack 检测区事件驱动更新
     private DetectionZone _primaryAttackZone;  // 缓存 PrimaryAttack 检测区
 
@@ -100,6 +101,8 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     protected int _attackDamage;
     protected float _attackRange;
     protected float _attackCooldown;
+    protected int _attackZonePriority;
+    protected int _abilityZonePriority;
     protected float _perceptionRadius;
     protected float _knockbackMultiplier;
     protected float _knockbackToPlayer;
@@ -229,6 +232,21 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         animator = GetComponent<Animator>();
         damageable = GetComponent<Damageable>();
         statLayer = GetComponent<StatModifierLayer>();
+        if (statLayer == null)
+        {
+            statLayer = gameObject.AddComponent<StatModifierLayer>();
+        }
+
+        if (GetComponent<StatusEffectController>() == null)
+        {
+            gameObject.AddComponent<StatusEffectController>();
+        }
+
+        _npcAbilityController = GetComponent<NpcAbilityController>();
+        if (_npcAbilityController == null)
+        {
+            _npcAbilityController = gameObject.AddComponent<NpcAbilityController>();
+        }
         detectionZone = GetComponent<DetectionZone>();
         cacheTransform = transform;
 
@@ -395,6 +413,8 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         _attackDamage = tuningProfile.attackDamage;
         _attackRange = tuningProfile.attackRange;
         _attackCooldown = tuningProfile.attackCooldown;
+        _attackZonePriority = tuningProfile.attackZonePriority;
+        _abilityZonePriority = tuningProfile.abilityZonePriority;
         _perceptionRadius = tuningProfile.perceptionRadius;
         _knockbackMultiplier = tuningProfile.knockbackMultiplier;
         _knockbackToPlayer = tuningProfile.knockbackToPlayer;
@@ -422,7 +442,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
                 $"  Profile: {tuningProfile.profileName}\n" +
                 $"  数值缓存：\n" +
                 $"    MoveSpeed={_moveSpeed}, AttackDamage={_attackDamage}\n" +
-                $"    AttackRange={_attackRange}, AttackCooldown={_attackCooldown}\n" +
+                $"    AttackRange={_attackRange}, AttackCooldown={_attackCooldown}, ZonePriority={_attackZonePriority}/{_abilityZonePriority}\n" +
                 $"    PerceptionRadius={_perceptionRadius}, KnockbackMult={_knockbackMultiplier}\n" +
                 $"    KnockbackToPlayer={_knockbackToPlayer}\n" +
                 $"    AnimTrigger='{_attackTriggerName}', LegacyFallback={_useLegacyLogicFallback}",
@@ -904,14 +924,44 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             _attackCooldownTimer -= deltaTime;
         }
 
-        // 2. 同步 hasTarget 到 Animator（可选，如果 Animator 使用该参数）
-        if (animator != null)
+        // 2. PrimaryAttack / SecondaryAttack 互斥仲裁（0.5 Phase 3）
+        // - PrimaryAttack：只触发近战（不触发法术）
+        // - SecondaryAttack：只触发法术（不触发近战）
+        // - 同时命中：按 Profile.attackZonePriority / abilityZonePriority 互斥选择
+        bool hasSecondaryTarget = false;
+        if (_npcAbilityController != null)
         {
-            animator.SetBool(AnimationStrings.hasTarget, _hasTarget);
+            if (_npcAbilityController.TickPendingCast())
+            {
+                if (animator != null)
+                {
+                    animator.SetBool(AnimationStrings.hasTarget, true);
+                }
+
+                return;
+            }
+
+            var secondaryTargets = GetDetectedTargetsForRole(DetectionZoneBinding.Role.SecondaryAttack);
+            hasSecondaryTarget = secondaryTargets != null && secondaryTargets.Count > 0;
         }
 
-        // 3. 检查是否满足攻击条件
-        if (_hasTarget && _attackCooldownTimer <= 0f)
+        bool hasAnyTarget = _hasTarget || hasSecondaryTarget;
+        if (animator != null)
+        {
+            animator.SetBool(AnimationStrings.hasTarget, hasAnyTarget);
+        }
+
+        bool shouldMelee = _hasTarget && (!hasSecondaryTarget || _attackZonePriority >= _abilityZonePriority);
+        if (!shouldMelee && hasSecondaryTarget && _npcAbilityController != null)
+        {
+            if (_npcAbilityController.Tick(DetectionZoneBinding.Role.SecondaryAttack, deltaTime))
+            {
+                return;
+            }
+        }
+
+        // 3. 检查是否满足近战攻击条件
+        if (shouldMelee && _attackCooldownTimer <= 0f)
         {
             // 触发攻击动画
             TriggerAttackAnimation();

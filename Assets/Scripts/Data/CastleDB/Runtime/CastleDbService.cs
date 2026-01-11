@@ -423,6 +423,7 @@ namespace CastleDB.Runtime
                 displayName = GetStringValue(dict, "displayName"),
                 prefabName = GetStringValue(dict, "prefabName"),
                 animationTrigger = GetStringValue(dict, "animationTrigger"),
+                castTrigger = GetStringValue(dict, "castTrigger"),
                 maxHealth = GetFloatValue(dict, "maxHealth"),
                 attackDamage = GetFloatValue(dict, "attackDamage"),
                 moveSpeed = GetFloatValue(dict, "moveSpeed"),
@@ -433,6 +434,8 @@ namespace CastleDB.Runtime
                 enableDeathAnimation = GetBoolValue(dict, "enableDeathAnimation"),
                 useLegacyLogicFallback = GetBoolValue(dict, "useLegacyLogicFallback"),
                 perceptionRadius = GetFloatValue(dict, "perceptionRadius"),
+                attackZonePriority = GetIntValue(dict, "attackZonePriority"),
+                abilityZonePriority = GetIntValue(dict, "abilityZonePriority"),
                 // 怪物命中玩家时的击退缩放系数，默认值为 1（保持 Prefab 原始击退）
                 knockbackToPlayer = GetFloatValueWithDefault(dict, "knockbackToPlayer", 1f)
             };

@@ -188,10 +188,13 @@ public class StatusEffectController : MonoBehaviour
 
         _expireBuffer.Clear();
 
-        foreach (var kvp in _active)
+        for (int i = 0; i < _activeList.Count; i++)
         {
-            string statusId = kvp.Key;
-            StatusRuntimeState state = kvp.Value;
+            string statusId = _activeList[i];
+            if (!_active.TryGetValue(statusId, out StatusRuntimeState state))
+            {
+                continue;
+            }
 
             if (float.IsPositiveInfinity(state.remainingSeconds))
             {

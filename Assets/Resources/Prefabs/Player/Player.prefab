@@ -17,7 +17,6 @@ GameObject:
   - component: {fileID: 1668787239493653326}
   - component: {fileID: 5688832267645984175}
   - component: {fileID: 8042548726888523234}
-  - component: {fileID: 522005193886461813}
   - component: {fileID: 2162528640944512698}
   m_Layer: 7
   m_Name: Player
@@ -143,6 +142,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerConfig: {fileID: 11400000, guid: 6b8b04acbdcb58b4085d006902f07fe8, type: 2}
   usePlayerConfigFromCastleDb: 1
+  abilityFirePoint: {fileID: 7248650784197642701}
+  defaultRangedLaunchPoint: {fileID: 8757556435578522254}
+  defaultRangedProjectilePrefab: {fileID: 4694569668316640340, guid: 54b64f3f910399e41be63194c8594571, type: 3}
   walkSpeed: 5
   runSpeed: 8
   airWalkSpeed: 3
@@ -434,21 +436,6 @@ MonoBehaviour:
   isInvincible: 0
   knockbackMultiplier: 1
   invincibilityTime: 1
---- !u!114 &522005193886461813
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 575829110812012758}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60f1d431b6b930a4e98a797d8fa59e35, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 4694569668316640340, guid: 54b64f3f910399e41be63194c8594571, type: 3}
-  launchPoint: {fileID: 8757556435578522254}
-  projectileResourcesPath: Prefabs/Projectiles/Player/Arrow
 --- !u!114 &2162528640944512698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -795,7 +782,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7248650784197642701}
-  - component: {fileID: 3953381630009049865}
   m_Layer: 7
   m_Name: FirePoint
   m_TagString: Untagged
@@ -818,21 +804,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1203198991915796206}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3953381630009049865
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4054772927668966305}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60f1d431b6b930a4e98a797d8fa59e35, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 7950604984664587297, guid: 7cbe900acc390cb4a94cad1c5f78d3b3, type: 3}
-  launchPoint: {fileID: 0}
-  projectileResourcesPath: 
 --- !u!1 &4144285741232646864
 GameObject:
   m_ObjectHideFlags: 0

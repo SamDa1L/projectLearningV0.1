@@ -66,7 +66,7 @@ public class CreateEnemyPrefabWizard : EditorWindow
         string[] roleNames = new string[]
         {
             "DZ_Attack (主攻击检测)",
-            "DZ_SecondaryAttack (副攻击检测)",
+            "DZ_Ability (法术检测)",
             "DZ_Cliff (崖边检测)",
             "DZ_Alert (警戒范围)",
             "DZ_Lookout (视野范围)"
@@ -231,7 +231,12 @@ public class CreateEnemyPrefabWizard : EditorWindow
             if (!selectedDetectionRoles[i])
                 continue;
 
-            string zoneName = $"DZ_{roles[i]}";
+            string zoneName = roles[i] switch
+            {
+                DetectionZoneBinding.Role.PrimaryAttack => "DZ_Attack",
+                DetectionZoneBinding.Role.SecondaryAttack => "DZ_Ability",
+                _ => $"DZ_{roles[i]}"
+            };
             GameObject zoneGO = new GameObject(zoneName);
             zoneGO.transform.SetParent(container.transform);
             zoneGO.transform.localPosition = Vector3.zero;

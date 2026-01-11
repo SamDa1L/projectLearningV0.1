@@ -136,6 +136,128 @@ public class AbilityProjectileControllerTests
     }
 
     [Test]
+    public void ProjectileHit_TargetIsSiblingUnderSameRoot_DoesNotGetIgnoredAsSelfHit()
+    {
+        GameObject root = null;
+        GameObject owner = null;
+        GameObject projectile = null;
+        GameObject target = null;
+        StatusCatalog statusCatalog = null;
+
+        try
+        {
+            root = new GameObject("Root");
+            owner = new GameObject("Owner");
+            owner.transform.SetParent(root.transform);
+
+            statusCatalog = CreateStatusCatalog();
+            target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
+            target.transform.SetParent(root.transform);
+
+            var def = new AbilityProjectileDefinition
+            {
+                id = "TestProjectile",
+                prefabPath = "",
+                speed = 5f,
+                lifetime = 0f,
+                baseDamage = 10,
+                hitMask = "",
+                onHitVfxPath = "",
+                onExpireVfxPath = "",
+                tags = ""
+            };
+
+            var nodes = new List<AbilityOnHitNode>
+            {
+                new AbilityOnHitNode
+                {
+                    order = 1,
+                    nodeType = AbilityOnHitNodeType.ApplyStatus,
+                    statusId = "Freeze"
+                }
+            };
+
+            projectile = CreateProjectile(owner, def, nodes, out var controller);
+            float initialHealth = damageable.Health;
+
+            InvokeOnTriggerEnter2D(controller, targetCollider);
+
+            Assert.Less(damageable.Health, initialHealth, "同 Root 下的非 Owner 子物体不应被误判为自伤过滤");
+            Assert.IsTrue(statusController.HasStatus("Freeze"), "命中后应附加 Freeze");
+            Assert.Less(statLayer.MoveSpeedMultiplier, 1f, "Freeze modifiers 应影响 MoveSpeedMultiplier");
+        }
+        finally
+        {
+            if (projectile != null) Object.DestroyImmediate(projectile);
+            if (target != null) Object.DestroyImmediate(target);
+            if (owner != null) Object.DestroyImmediate(owner);
+            if (root != null) Object.DestroyImmediate(root);
+            if (statusCatalog != null) Object.DestroyImmediate(statusCatalog);
+        }
+    }
+
+    [Test]
+    public void ProjectileHit_TargetIsOwnerChild_IgnoresCollision()
+    {
+        GameObject root = null;
+        GameObject owner = null;
+        GameObject projectile = null;
+        GameObject target = null;
+        StatusCatalog statusCatalog = null;
+
+        try
+        {
+            root = new GameObject("Root");
+            owner = new GameObject("Owner");
+            owner.transform.SetParent(root.transform);
+
+            statusCatalog = CreateStatusCatalog();
+            target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
+            target.transform.SetParent(owner.transform);
+
+            var def = new AbilityProjectileDefinition
+            {
+                id = "TestProjectile",
+                prefabPath = "",
+                speed = 5f,
+                lifetime = 0f,
+                baseDamage = 10,
+                hitMask = "",
+                onHitVfxPath = "",
+                onExpireVfxPath = "",
+                tags = ""
+            };
+
+            var nodes = new List<AbilityOnHitNode>
+            {
+                new AbilityOnHitNode
+                {
+                    order = 1,
+                    nodeType = AbilityOnHitNodeType.ApplyStatus,
+                    statusId = "Freeze"
+                }
+            };
+
+            projectile = CreateProjectile(owner, def, nodes, out var controller);
+            float initialHealth = damageable.Health;
+
+            InvokeOnTriggerEnter2D(controller, targetCollider);
+
+            Assert.AreEqual(initialHealth, damageable.Health, 0.001f, "Owner 子物体应被过滤（防自伤）");
+            Assert.IsFalse(statusController.HasStatus("Freeze"), "Owner 子物体被过滤时不应附加状态");
+            Assert.AreEqual(1f, statLayer.MoveSpeedMultiplier, 0.001f, "Owner 子物体被过滤时不应修改 MoveSpeedMultiplier");
+        }
+        finally
+        {
+            if (projectile != null) Object.DestroyImmediate(projectile);
+            if (target != null) Object.DestroyImmediate(target);
+            if (owner != null) Object.DestroyImmediate(owner);
+            if (root != null) Object.DestroyImmediate(root);
+            if (statusCatalog != null) Object.DestroyImmediate(statusCatalog);
+        }
+    }
+
+    [Test]
     public void ProjectileHit_WithHitMaskMismatch_IgnoresCollision()
     {
         GameObject owner = null;
@@ -254,4 +376,3 @@ public class AbilityProjectileControllerTests
         }
     }
 }
-

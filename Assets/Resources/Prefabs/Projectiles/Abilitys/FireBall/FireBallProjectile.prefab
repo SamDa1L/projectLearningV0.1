@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 4224758853711571018}
   - component: {fileID: 1014009390674477335}
   - component: {fileID: 5036457713504646891}
-  - component: {fileID: 5132748728348125809}
   - component: {fileID: 6845561306474719589}
   m_Layer: 9
   m_Name: FireBallProjectile
@@ -150,21 +149,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 4
---- !u!114 &5132748728348125809
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7950604984664587297}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c9463111e612774caa33dc64375f9f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveSpeed: {x: 15, y: 0}
-  damage: 10
-  knockback: {x: 0, y: 0}
 --- !u!95 &6845561306474719589
 Animator:
   serializedVersion: 5

@@ -25,11 +25,6 @@ namespace CastleDB.Editor
         /// </summary>
         public static void EnsureRegistered()
         {
-            if (_registered)
-            {
-                return;
-            }
-
             RegisterDefaults();
             _registered = true;
         }

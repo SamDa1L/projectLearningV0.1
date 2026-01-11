@@ -142,6 +142,7 @@ namespace CastleDB.Editor.Providers
                         baseDamage = Mathf.Max(0, Mathf.RoundToInt(baseDamage)),
                         hitMask = GetStringValue(dict, "hitMask"),
                         onHitVfxPath = GetStringValue(dict, "onHitVfxPath"),
+                        onHitVfxDuration = Mathf.Max(0f, GetFloatValue(dict, "onHitVfxDuration")),
                         onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
                         tags = GetStringValue(dict, "tags")
                     });

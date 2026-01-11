@@ -476,6 +476,17 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
                         }
                     }
                 }
+
+                if (profile != null && !string.IsNullOrEmpty(profile.castTrigger))
+                {
+                    if (animator.runtimeAnimatorController != null)
+                    {
+                        if (!HasTriggerParameterInController(animator.runtimeAnimatorController, profile.castTrigger))
+                        {
+                            issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.castTrigger}'（Profile 中配置的 castTrigger）");
+                        }
+                    }
+                }
             }
         }
 
@@ -719,6 +730,17 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
                     if (!HasTriggerParameterInController(animator.runtimeAnimatorController, profile.animationTrigger))
                     {
                         issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.animationTrigger}'（Profile 中配置的 animationTrigger）");
+                    }
+                }
+            }
+
+            if (profile != null && !string.IsNullOrEmpty(profile.castTrigger))
+            {
+                if (animator.runtimeAnimatorController != null)
+                {
+                    if (!HasTriggerParameterInController(animator.runtimeAnimatorController, profile.castTrigger))
+                    {
+                        issueList.Add($"Animator Controller 缺少 Trigger 参数 '{profile.castTrigger}'（Profile 中配置的 castTrigger）");
                     }
                 }
             }

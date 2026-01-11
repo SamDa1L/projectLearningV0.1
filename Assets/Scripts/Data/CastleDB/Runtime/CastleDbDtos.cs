@@ -51,6 +51,9 @@ namespace CastleDB.Runtime
         public List<NpcEntry> npcLines = new List<NpcEntry>();
 
         [System.NonSerialized]
+        public List<NpcAbilityEntry> npcAbilityLines = new List<NpcAbilityEntry>();
+
+        [System.NonSerialized]
         public List<AbilityEntry> abilityLines = new List<AbilityEntry>();
 
         [System.NonSerialized]
@@ -89,6 +92,9 @@ namespace CastleDB.Runtime
         public string animationTrigger;
 
         [SerializeField]
+        public string castTrigger;
+
+        [SerializeField]
         public float maxHealth;
 
         [SerializeField]
@@ -118,6 +124,12 @@ namespace CastleDB.Runtime
         [SerializeField]
         public float perceptionRadius;
 
+        [SerializeField]
+        public int attackZonePriority;
+
+        [SerializeField]
+        public int abilityZonePriority;
+
         /// <summary>
         /// 怪物命中玩家时的击退缩放系数（Monster → Player）
         /// 与 knockbackMultiplier（Player → Monster：怪物受击倍率）是独立的两条链路
@@ -129,6 +141,47 @@ namespace CastleDB.Runtime
         public override string ToString()
         {
             return $"NPC[id={id}, displayName={displayName}, maxHealth={maxHealth}, moveSpeed={moveSpeed}]";
+        }
+    }
+
+    /// <summary>
+    /// NPC Ability 绑定条目（0.5 Phase 3）
+    /// 对应 MonsterSystem.cdb 的 NpcAbility Sheet 一行数据
+    ///
+    /// 约定：
+    /// - triggerRole：Enumeration 类型在 JSON 中以 int 存储
+    ///   0=PrimaryAttack, 1=SecondaryAttack, 2=Custom
+    /// - cooldownOverride：<=0 表示使用 Ability 默认 cooldown
+    /// - minRange/maxRange：0 表示使用默认策略（Phase 3 在 Runtime 内定义口径）
+    /// </summary>
+    [System.Serializable]
+    public class NpcAbilityEntry
+    {
+        [SerializeField] public string id;
+        [SerializeField] public string npcId;
+        [SerializeField] public string abilityId;
+        [SerializeField] public bool enabled;
+        [SerializeField] public int priority;
+        [SerializeField] public float cooldownOverride;
+        [SerializeField] public int triggerRole; // 0=PrimaryAttack, 1=SecondaryAttack, 2=Custom
+        [SerializeField] public float minRange;
+        [SerializeField] public float maxRange;
+        [SerializeField] public string paramsJson;
+
+        public string GetTriggerRoleName()
+        {
+            return triggerRole switch
+            {
+                0 => "PrimaryAttack",
+                1 => "SecondaryAttack",
+                2 => "Custom",
+                _ => $"Unknown({triggerRole})"
+            };
+        }
+
+        public override string ToString()
+        {
+            return $"NpcAbility[id={id}, npcId={npcId}, abilityId={abilityId}, enabled={enabled}, priority={priority}, triggerRole={GetTriggerRoleName()}]";
         }
     }
 

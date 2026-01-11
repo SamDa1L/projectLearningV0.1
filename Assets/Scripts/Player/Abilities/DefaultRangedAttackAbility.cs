@@ -3,12 +3,13 @@ using UnityEngine;
 /// <summary>
 /// 默认远程攻击能力（阶段 3B）
 ///
-/// 封装原有 PlayerController.OnRangedAttack 的业务逻辑：
-/// - 触发远程攻击动画
+/// 0.5 约束：玩家基础能力不包含远程攻击。
+/// 远程攻击（投射物/法术）应由拾取获得的能力（如 kind=Projectile）负责。
 /// </summary>
 public class DefaultRangedAttackAbility : IPlayerAbility
 {
-    private Animator animator;
+    private readonly PlayerController playerController;
+    private readonly Animator animator;
 
     public string AbilityId { get; private set; }
     public int Priority { get; private set; }
@@ -16,7 +17,8 @@ public class DefaultRangedAttackAbility : IPlayerAbility
 
     public DefaultRangedAttackAbility(PlayerController playerController, string abilityId, int priority, bool enabled)
     {
-        this.animator = playerController.GetComponent<Animator>();
+        this.playerController = playerController;
+        this.animator = playerController != null ? playerController.GetComponent<Animator>() : null;
         this.AbilityId = abilityId;
         this.Priority = priority;
         this.Enabled = enabled;
@@ -24,13 +26,6 @@ public class DefaultRangedAttackAbility : IPlayerAbility
 
     public bool OnRangedAttack(AbilityInput input)
     {
-        // 只响应 Started 阶段
-        if (input.Phase == AbilityInputPhase.Started)
-        {
-            animator.SetTrigger(AnimationStrings.rangedAttackTrigger);
-            return true; // 消费输入
-        }
-
         return false;
     }
 

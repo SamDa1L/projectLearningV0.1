@@ -106,7 +106,7 @@
 					"id": "BasicRangedAttack",
 					"hookType": 4,
 					"priority": 0,
-					"enabled": true,
+					"enabled": false,
 					"paramsJson": "",
 					"kind": 0,
 					"projectileId": "FireBall_player",
@@ -169,6 +169,11 @@
 					"display": null
 				},
 				{
+					"typeStr": "4",
+					"name": "onHitVfxDuration",
+					"display": null
+				},
+				{
 					"typeStr": "1",
 					"name": "onExpireVfxPath",
 					"display": null
@@ -188,6 +193,7 @@
 					"baseDamage": 10,
 					"hitMask": "",
 					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
+					"onHitVfxDuration": 0.5,
 					"onExpireVfxPath": "",
 					"tags": "fire"
 				}

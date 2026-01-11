@@ -51,6 +51,21 @@ public class PlayerController : MonoBehaviour
     [Tooltip("是否使用 PlayerConfig 加载配置（false则使用硬编码默认值）")]
     private bool usePlayerConfigFromCastleDb = true;
 
+    [Header("Ability Release (0.5 Phase 2)")]
+    [SerializeField]
+    [Tooltip("Skill release spawn point (e.g. Fireball). If empty, fallback to Player Transform.")]
+    private Transform abilityFirePoint;
+
+    private struct PendingAbilityRelease
+    {
+        public bool hasRequest;
+        public float expiresAt;
+        public string abilityId;
+        public Action releaseAction;
+    }
+
+    private PendingAbilityRelease _pendingAbilityRelease;
+
     /// <summary>行走速度(m/s)</summary>
     [Header("移动参数（运行时从 PlayerConfig 覆盖）")]
     public float walkSpeed = 5f;
@@ -276,6 +291,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public Transform AbilityFirePoint => abilityFirePoint != null ? abilityFirePoint : transform;
+
     public bool IsAlive
     {
         get 
@@ -356,6 +373,15 @@ public class PlayerController : MonoBehaviour
         touchingDirections = GetComponent<TouchingDirections>();
         damageable = GetComponent<Damageable>();
         statLayer = GetComponent<StatModifierLayer>();
+        if (statLayer == null)
+        {
+            statLayer = gameObject.AddComponent<StatModifierLayer>();
+        }
+
+        if (GetComponent<StatusEffectController>() == null)
+        {
+            gameObject.AddComponent<StatusEffectController>();
+        }
 
         // 阶段 3A: 从 PlayerConfig 加载配置
         LoadConfigFromPlayerConfig();
@@ -957,6 +983,58 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
+    public bool QueueAbilityRelease(string abilityId, Action releaseAction, float expirySeconds = 1.5f)
+    {
+        if (releaseAction == null)
+        {
+            Debug.LogError(
+                $"[PlayerController] QueueAbilityRelease failed: releaseAction is null (abilityId='{abilityId ?? ""}')",
+                this);
+            return false;
+        }
+
+        _pendingAbilityRelease = new PendingAbilityRelease
+        {
+            hasRequest = true,
+            expiresAt = Time.time + Mathf.Max(0.05f, expirySeconds),
+            abilityId = abilityId ?? "",
+            releaseAction = releaseAction
+        };
+
+        return true;
+    }
+
+    public void OnAbilityRelease()
+    {
+        if (!_pendingAbilityRelease.hasRequest)
+        {
+            return;
+        }
+
+        if (Time.time > _pendingAbilityRelease.expiresAt)
+        {
+            _pendingAbilityRelease.hasRequest = false;
+            _pendingAbilityRelease.releaseAction = null;
+            return;
+        }
+
+        Action releaseAction = _pendingAbilityRelease.releaseAction;
+        string abilityId = _pendingAbilityRelease.abilityId;
+        _pendingAbilityRelease.hasRequest = false;
+        _pendingAbilityRelease.releaseAction = null;
+
+        try
+        {
+            releaseAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                $"[PlayerController] OnAbilityRelease exception (abilityId='{abilityId}'): {ex.Message}\n{ex.StackTrace}",
+                this);
+        }
+    }
 
     public void OnHit(int damage, Vector2 knockback)
     {

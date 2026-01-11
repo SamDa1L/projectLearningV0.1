@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using CastleDB.Runtime;
 
@@ -59,6 +60,17 @@ public class EnemyTuningProfile : ScriptableObject
     [Tooltip("攻击冷却时间（秒）（最小0.1）")]
     public float attackCooldown = 1.5f;
 
+    [Header("区域优先级（0.5 Phase 3）")]
+    [Min(0)]
+    [SerializeField]
+    [Tooltip("PrimaryAttack（近战）检测区优先级：Primary/Secondary 同时命中时，用于互斥选择（越大越优先）")]
+    public int attackZonePriority = 0;
+
+    [Min(0)]
+    [SerializeField]
+    [Tooltip("SecondaryAttack（法术）检测区优先级：Primary/Secondary 同时命中时，用于互斥选择（越大越优先）")]
+    public int abilityZonePriority = 0;
+
     // ===== 物理与行为 =====
     [Header("物理与行为")]
     [SerializeField]
@@ -111,8 +123,16 @@ public class EnemyTuningProfile : ScriptableObject
     public string animationTrigger = "Attack";
 
     [SerializeField]
+    [Tooltip("施法动画触发器名称（用于 NPC Ability/SecondaryAttack；需与Animator Controller中的Trigger参数匹配）")]
+    public string castTrigger = "";
+
+    [SerializeField]
     [Tooltip("是否使用旧版逻辑（兼容开关，用于回退到旧行为）")]
     public bool useLegacyLogicFallback = false;
+
+    [Header("NPC Abilities (0.5 Phase 3)")]
+    [SerializeField]
+    public List<NpcAbilityEntry> npcAbilities = new List<NpcAbilityEntry>();
 
     // ===== 验证 =====
 
@@ -151,6 +171,22 @@ public class EnemyTuningProfile : ScriptableObject
             animationTrigger = "Attack";
         }
 
+        // castTrigger 校验：空则回退到 animationTrigger，且仅含字母/数字/下划线（0.5 Phase 3）
+        if (string.IsNullOrWhiteSpace(castTrigger))
+        {
+            #if UNITY_EDITOR
+            Debug.LogWarning($"[EnemyTuningProfile] {profileName}: castTrigger 为空，已回滚到 animationTrigger '{animationTrigger}'。请到 CastleDB 的 NPC.castTrigger 修正。", this);
+            #endif
+            castTrigger = animationTrigger;
+        }
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(castTrigger, @"^[a-zA-Z0-9_]+$"))
+        {
+            #if UNITY_EDITOR
+            Debug.LogWarning($"[EnemyTuningProfile] {profileName}: castTrigger '{castTrigger}' 包含非法字符（仅允许字母/数字/下划线），已回滚到 animationTrigger '{animationTrigger}'。请到 CastleDB 修正。", this);
+            #endif
+            castTrigger = animationTrigger;
+        }
+
         #if UNITY_EDITOR
         // 轻量版"只读缓存"警告：提示用户不要手工修改 Profile
         // 注：严格版（带 lastImportedHash 自动回滚）可在后续实现
@@ -182,7 +218,7 @@ public class EnemyTuningProfile : ScriptableObject
     /// 2A 要求：全量覆盖所有字段，不保留旧值
     /// </summary>
     /// <param name="npc">来自 CastleDB 的 NPC 数据条目</param>
-    public void ApplyFromCastleDb(NpcEntry npc)
+    public void ApplyFromCastleDb(NpcEntry npc, IReadOnlyList<NpcAbilityEntry> abilities)
     {
         // ===== 基础信息 =====
         profileName = npc.displayName;
@@ -197,6 +233,8 @@ public class EnemyTuningProfile : ScriptableObject
         attackRange = npc.attackRange;
         attackDamage = Mathf.RoundToInt(npc.attackDamage);
         attackCooldown = npc.attackCooldown;
+        attackZonePriority = npc.attackZonePriority;
+        abilityZonePriority = npc.abilityZonePriority;
 
         // ===== 物理与行为 =====
         // patrolDistance、hitRecoveryDelay：NpcEntry 暂无这些字段
@@ -212,14 +250,21 @@ public class EnemyTuningProfile : ScriptableObject
 
         // ===== 动画与行为控制 =====
         animationTrigger = npc.animationTrigger;
+        castTrigger = !string.IsNullOrWhiteSpace(npc.castTrigger) ? npc.castTrigger : npc.animationTrigger;
         useLegacyLogicFallback = npc.useLegacyLogicFallback;
+
+        npcAbilities.Clear();
+        if (abilities != null)
+        {
+            npcAbilities.AddRange(abilities);
+        }
 
         #if UNITY_EDITOR
         Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName}\n" +
                   $"  HP={maxHealth}, Speed={moveSpeed}, Dmg={attackDamage}\n" +
                   $"  AtkRange={attackRange}, Cooldown={attackCooldown}\n" +
                   $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x, KnockbackToPlayer={knockbackToPlayer}x\n" +
-                  $"  AnimTrigger='{animationTrigger}', LegacyFallback={useLegacyLogicFallback}");
+                  $"  AnimTrigger='{animationTrigger}', CastTrigger='{castTrigger}', LegacyFallback={useLegacyLogicFallback}, NpcAbilities={npcAbilities.Count}");
         #endif
     }
 
@@ -260,6 +305,8 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  Attack Range: {attackRange}\n" +
                   $"  Attack Damage: {attackDamage}\n" +
                   $"  Attack Cooldown: {attackCooldown}\n" +
+                  $"  Attack Zone Priority: {attackZonePriority}\n" +
+                  $"  Ability Zone Priority: {abilityZonePriority}\n" +
                   $"  Knockback Force: {knockbackForce}\n" +
                   $"  Knockback Multiplier: {knockbackMultiplier}\n" +
                   $"  Knockback To Player: {knockbackToPlayer}\n" +
@@ -269,6 +316,7 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  Enable Death Animation: {enableDeathAnimation}\n" +
                   $"  Death Delay: {deathDelay}\n" +
                   $"  Animation Trigger: '{animationTrigger}'\n" +
+                  $"  Cast Trigger: '{castTrigger}'\n" +
                   $"  Use Legacy Logic Fallback: {useLegacyLogicFallback}\n" +
                   $"  Timestamp: {System.DateTime.Now:HH:mm:ss}");
     }
@@ -288,6 +336,8 @@ public class EnemyTuningProfile : ScriptableObject
         cloned.attackRange = attackRange;
         cloned.attackDamage = attackDamage;
         cloned.attackCooldown = attackCooldown;
+        cloned.attackZonePriority = attackZonePriority;
+        cloned.abilityZonePriority = abilityZonePriority;
         cloned.knockbackForce = knockbackForce;
         cloned.knockbackMultiplier = knockbackMultiplier;
         cloned.knockbackToPlayer = knockbackToPlayer;
@@ -297,7 +347,34 @@ public class EnemyTuningProfile : ScriptableObject
         cloned.enableDeathAnimation = enableDeathAnimation;
         cloned.deathDelay = deathDelay;
         cloned.animationTrigger = animationTrigger;
+        cloned.castTrigger = castTrigger;
         cloned.useLegacyLogicFallback = useLegacyLogicFallback;
+
+        cloned.npcAbilities = new List<NpcAbilityEntry>();
+        if (npcAbilities != null)
+        {
+            foreach (var entry in npcAbilities)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                cloned.npcAbilities.Add(new NpcAbilityEntry
+                {
+                    id = entry.id,
+                    npcId = entry.npcId,
+                    abilityId = entry.abilityId,
+                    enabled = entry.enabled,
+                    priority = entry.priority,
+                    cooldownOverride = entry.cooldownOverride,
+                    triggerRole = entry.triggerRole,
+                    minRange = entry.minRange,
+                    maxRange = entry.maxRange,
+                    paramsJson = entry.paramsJson
+                });
+            }
+        }
 
         return cloned;
     }

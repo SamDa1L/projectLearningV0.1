@@ -19,7 +19,6 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
     private float nextReadyTime;
 
     private GameObject cachedPrefab;
-    private Transform cachedLaunchPoint;
     private bool loggedMissingPrefab;
 
     public string AbilityId { get; private set; }
@@ -115,6 +114,14 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
             return false;
         }
 
+        // 0.5 Phase 2：优先走 AnimationEvent 发射（修复“火球施放会额外发箭”）
+        // - 输入时只排队，不 Instantiate
+        // - 动画事件调用 PlayerController.OnAbilityRelease() 时真正生成投射物
+        if (animator != null && TryQueueProjectileForAbilityRelease())
+        {
+            return true;
+        }
+
         if (cachedPrefab == null)
         {
             cachedPrefab = Resources.Load<GameObject>(prefabResourcesPath);
@@ -162,42 +169,84 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
         return true;
     }
 
+    private bool TryQueueProjectileForAbilityRelease()
+    {
+        if (playerController == null)
+        {
+            return false;
+        }
+
+        GameObject prefab = cachedPrefab;
+        if (prefab == null)
+        {
+            prefab = Resources.Load<GameObject>(prefabResourcesPath);
+            if (prefab == null)
+            {
+                if (!loggedMissingPrefab)
+                {
+                    Debug.LogError(
+                        $"[ProjectileRangedAttackAbility] Resources.Load failed: '{prefabResourcesPath}' (abilityId='{AbilityId}')");
+                    loggedMissingPrefab = true;
+                }
+
+                return false;
+            }
+
+            cachedPrefab = prefab;
+        }
+
+        Transform launchPoint = ResolveLaunchPoint();
+        AbilityProjectileDefinition def = projectileDef;
+        IReadOnlyList<AbilityOnHitNode> nodes = onHitSequence != null ? onHitSequence.nodes : null;
+
+        return playerController.QueueAbilityRelease(
+            AbilityId,
+            () =>
+            {
+                if (playerController == null)
+                {
+                    return;
+                }
+
+                Transform spawnPoint = launchPoint != null ? launchPoint : playerController.transform;
+                Vector3 spawnPosition = spawnPoint.position;
+                GameObject projectile = Object.Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+
+                float dirSign = playerController.IsFacingRight ? 1f : -1f;
+                Vector3 scale = projectile.transform.localScale;
+                scale.x = Mathf.Abs(scale.x) * dirSign;
+                projectile.transform.localScale = scale;
+
+                if (def == null)
+                {
+                    return;
+                }
+
+                var legacy = projectile.GetComponent<Projectile>();
+                if (legacy != null)
+                {
+                    legacy.enabled = false;
+                }
+
+                var controller = projectile.GetComponent<AbilityProjectileController>();
+                if (controller == null)
+                {
+                    controller = projectile.AddComponent<AbilityProjectileController>();
+                }
+
+                controller.Initialize(playerController.gameObject, AbilityId, def, nodes);
+            },
+            expirySeconds: 1.5f);
+    }
+
     private Transform ResolveLaunchPoint()
     {
-        if (cachedLaunchPoint != null)
+        if (playerController == null)
         {
-            return cachedLaunchPoint;
+            return null;
         }
 
-        // 优先：子物体上的 ProjectileLauncher（常见为 FirePoint），避免拿到根节点上的 Launcher（例如箭矢）。
-        ProjectileLauncher[] launchers = playerController.GetComponentsInChildren<ProjectileLauncher>(true);
-        foreach (var launcher in launchers)
-        {
-            if (launcher == null)
-            {
-                continue;
-            }
-
-            if (launcher.gameObject == playerController.gameObject)
-            {
-                continue;
-            }
-
-            cachedLaunchPoint = launcher.launchPoint != null ? launcher.launchPoint : launcher.transform;
-            return cachedLaunchPoint;
-        }
-
-        // 回退：根节点上的 ProjectileLauncher（如果存在）
-        ProjectileLauncher rootLauncher = playerController.GetComponent<ProjectileLauncher>();
-        if (rootLauncher != null)
-        {
-            cachedLaunchPoint = rootLauncher.launchPoint != null ? rootLauncher.launchPoint : rootLauncher.transform;
-            return cachedLaunchPoint;
-        }
-
-        // 最终回退：玩家自身
-        cachedLaunchPoint = playerController.transform;
-        return cachedLaunchPoint;
+        return playerController.AbilityFirePoint;
     }
 
     public bool OnMove(AbilityInput input) => false;

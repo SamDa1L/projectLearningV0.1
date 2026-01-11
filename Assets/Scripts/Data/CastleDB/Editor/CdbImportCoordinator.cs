@@ -1064,6 +1064,7 @@ namespace CastleDB.Editor
         private const string PROFILE_OUTPUT_DIR = "Assets/Resources/Profiles";
         private const string PLAYER_CONFIG_PATH = "Assets/Resources/Config/PlayerConfig.asset";
         private const string ABILITY_CATALOG_PATH = "Assets/Resources/Config/AbilityCatalog.asset";
+        private const string ENEMY_ABILITY_CATALOG_PATH = "Assets/Resources/Config/EnemyAbilityCatalog.asset";
 
         /// <summary>
         /// 备份现有资产（Profile/PlayerConfig/AbilityCatalog）
@@ -1118,6 +1119,19 @@ namespace CastleDB.Editor
                 string fileName = Path.GetFileName(ABILITY_CATALOG_PATH);
                 string destPath = Path.Combine(backupPath, fileName);
                 File.Copy(ABILITY_CATALOG_PATH, destPath, true);
+                backupCount++;
+            }
+
+            if (File.Exists(ENEMY_ABILITY_CATALOG_PATH))
+            {
+                if (!Directory.Exists(backupPath))
+                {
+                    Directory.CreateDirectory(backupPath);
+                }
+
+                string fileName = Path.GetFileName(ENEMY_ABILITY_CATALOG_PATH);
+                string destPath = Path.Combine(backupPath, fileName);
+                File.Copy(ENEMY_ABILITY_CATALOG_PATH, destPath, true);
                 backupCount++;
             }
 
@@ -1246,6 +1260,24 @@ namespace CastleDB.Editor
             }
 
             // 4. 刷新 AssetDatabase
+            string backupEnemyAbilityCatalog = Path.Combine(backupPath, "EnemyAbilityCatalog.asset");
+            if (File.Exists(backupEnemyAbilityCatalog))
+            {
+                try
+                {
+                    if (File.Exists(ENEMY_ABILITY_CATALOG_PATH))
+                    {
+                        File.Delete(ENEMY_ABILITY_CATALOG_PATH);
+                    }
+                    File.Copy(backupEnemyAbilityCatalog, ENEMY_ABILITY_CATALOG_PATH, true);
+                    restoredCount++;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[CdbImportCoordinator] Restore EnemyAbilityCatalog failed: {ex.Message}");
+                }
+            }
+
             AssetDatabase.Refresh();
 
             Debug.Log($"[CdbImportCoordinator] 回滚完成：恢复了 {restoredCount} 个文件");

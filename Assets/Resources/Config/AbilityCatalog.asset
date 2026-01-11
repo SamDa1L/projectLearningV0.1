@@ -56,7 +56,7 @@ MonoBehaviour:
   - id: BasicRangedAttack
     hookType: 4
     priority: 0
-    enabled: 1
+    enabled: 0
     kind: 0
     projectileId: FireBall_player
     buffId: 
@@ -81,6 +81,7 @@ MonoBehaviour:
     baseDamage: 10
     hitMask: 
     onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
+    onHitVfxDuration: 0.5
     onExpireVfxPath: 
     tags: fire
   onHitSequences:
