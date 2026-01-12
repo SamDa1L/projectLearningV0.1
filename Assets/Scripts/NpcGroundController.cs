@@ -5,7 +5,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(TouchingDirections), typeof(Damageable))]
 
-public class Knight : EnemyAgentBase
+public class NpcGroundController : EnemyAgentBase
 {
     public float walkAcceleration = 3f;
     public float maxSpeed = 3f;
@@ -59,7 +59,7 @@ public class Knight : EnemyAgentBase
             // 攻击触发时的子类额外处理（可选）
             if (debugStateOverlay)
             {
-                Debug.Log($"[Knight] 攻击触发 - Damage={AttackDamage}, Range={AttackRange}");
+                Debug.Log($"[NpcGroundController] 攻击触发 - Damage={AttackDamage}, Range={AttackRange}");
             }
         });
     }
@@ -69,6 +69,18 @@ public class Knight : EnemyAgentBase
         // 击退保护期间，跳过所有移动逻辑，让击退速度自然生效
         if (IsKnockbackProtected)
         {
+            return;
+        }
+
+        // 0.5 阶段3：当主/副检测区任意命中玩家时，持续停走并按冷却循环攻击。
+        // - 玩家未离开检测区：保持原地（通常进入 Idle/Attack 动画）。
+        // - 玩家离开检测区：恢复巡逻移动。
+        if (HasAnyCombatTarget())
+        {
+            if (!damageable.LockVelocity)
+            {
+                rb2d.velocity = new Vector2(0f, rb2d.velocity.y);
+            }
             return;
         }
 

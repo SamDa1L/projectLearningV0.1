@@ -144,6 +144,7 @@ namespace CastleDB.Editor.Providers
                         onHitVfxPath = GetStringValue(dict, "onHitVfxPath"),
                         onHitVfxDuration = Mathf.Max(0f, GetFloatValue(dict, "onHitVfxDuration")),
                         onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
+                        onExpireVfxDuration = Mathf.Max(0f, GetFloatValue(dict, "onExpireVfxDuration")),
                         tags = GetStringValue(dict, "tags")
                     });
                 }

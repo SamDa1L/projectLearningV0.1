@@ -111,7 +111,9 @@ public class AbilityProjectileController : MonoBehaviour
         _finished = true;
 
         Vector3 pos = transform.position;
-        SpawnVfx(ResolveExpireVfxPath(), pos);
+        string vfxPath = ResolveExpireVfxPath();
+        float vfxDuration = ResolveExpireVfxDuration();
+        SpawnVfx(vfxPath, pos, vfxDuration);
         Destroy(gameObject);
     }
 
@@ -291,6 +293,21 @@ public class AbilityProjectileController : MonoBehaviour
         }
 
         return _def.onHitVfxPath;
+    }
+
+    private float ResolveExpireVfxDuration()
+    {
+        if (_def == null)
+        {
+            return 0f;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_def.onExpireVfxPath))
+        {
+            return Mathf.Max(0f, _def.onExpireVfxDuration);
+        }
+
+        return Mathf.Max(0f, _def.onHitVfxDuration);
     }
 
     private void SpawnVfx(string vfxPath, Vector3 position, float destroyAfterSeconds = 0f)

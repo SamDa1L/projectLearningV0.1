@@ -13,7 +13,7 @@ public class CastleDbBridgeTests
 {
     private GameObject knightGameObject;
     private GameObject audioListenerGameObject;
-    private Knight knight;
+    private NpcGroundController knight;
     private Damageable damageable;
     private EnemyTuningProfile profile;
     private NpcEntry knightEntry;
@@ -35,8 +35,8 @@ public class CastleDbBridgeTests
         knightGameObject = Object.Instantiate(knightPrefab);
         Assert.IsNotNull(knightGameObject, "Knight Prefab instantiation failed");
 
-        knight = knightGameObject.GetComponent<Knight>();
-        Assert.IsNotNull(knight, "Knight component missing");
+        knight = knightGameObject.GetComponent<NpcGroundController>();
+        Assert.IsNotNull(knight, "NpcGroundController component missing");
 
         damageable = knightGameObject.GetComponent<Damageable>();
         Assert.IsNotNull(damageable, "Damageable component missing");

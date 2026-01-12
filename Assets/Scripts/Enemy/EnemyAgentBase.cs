@@ -13,12 +13,13 @@ public struct DetectionZoneBinding
     /// </summary>
     public enum Role
     {
-        PrimaryAttack,  // 主攻击检测（用于GetDetectedTargets）
-        SecondaryAttack,// 副攻击检测
-        Cliff,          // 崖边检测
-        Alert,          // 警戒范围
-        Lookout,        // 视野范围
-        Custom          // 自定义用途
+        PrimaryAttack = 0,   // 主攻击检测（用于GetDetectedTargets）
+        SecondaryAttack = 1, // 副攻击检测
+        Cliff = 2,           // 崖边检测
+        Alert = 3,           // 警戒范围
+        Lookout = 4,         // 视野范围
+        Custom = 5,          // 自定义用途
+        Wall = 6,            // 墙壁检测
     }
 
     [Tooltip("该检测区的角色/用途")]
@@ -94,6 +95,25 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     /// 是否有攻击目标（只读访问器，供子类查询）
     /// </summary>
     protected bool HasTarget => _hasTarget;
+
+    /// <summary>
+    /// 0.5 阶段3：战斗判定（用于“命中即停走 + 冷却循环攻击”）
+    /// - 只要 PrimaryAttack 或 SecondaryAttack 任意检测区里仍有目标，就视为“在战斗中”。
+    /// - 控制器在战斗中应停止移动（原地输出），目标离开后恢复移动。
+    /// </summary>
+    protected bool HasAnyCombatTarget()
+    {
+        if (_hasTarget)
+        {
+            return true;
+        }
+
+        // SecondaryAttack 不走事件驱动（避免每个敌人都写额外绑定），直接读取检测列表即可。
+        var secondaryZone = GetZone(DetectionZoneBinding.Role.SecondaryAttack);
+        return secondaryZone != null
+               && secondaryZone.detectedColliders != null
+               && secondaryZone.detectedColliders.Count > 0;
+    }
 
     // ===== 2A 数值缓存（由 ApplyTuningProfile 填充）=====
     // 以下字段在运行时从 EnemyTuningProfile 下发，供子类使用
@@ -732,6 +752,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     /// - PrimaryAttack: 红色
     /// - SecondaryAttack: 橙色
     /// - Cliff: 蓝色
+    /// - Wall: 紫色
     /// - Alert: 绿色
     /// - Lookout: 黄色
     /// - Custom: 灰色
@@ -772,6 +793,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             DetectionZoneBinding.Role.PrimaryAttack => new Color(1f, 0f, 0f, 0.3f),      // 红色
             DetectionZoneBinding.Role.SecondaryAttack => new Color(1f, 0.5f, 0f, 0.3f),  // 橙色
             DetectionZoneBinding.Role.Cliff => new Color(0f, 0f, 1f, 0.3f),             // 蓝色
+            DetectionZoneBinding.Role.Wall => new Color(0.6f, 0.2f, 1f, 0.3f),           // 紫色
             DetectionZoneBinding.Role.Alert => new Color(0f, 1f, 0f, 0.3f),             // 绿色
             DetectionZoneBinding.Role.Lookout => new Color(1f, 1f, 0f, 0.3f),           // 黄色
             _ => new Color(0.5f, 0.5f, 0.5f, 0.3f)                                       // 灰色（Custom）
@@ -785,21 +807,22 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     private void DrawCollider2DGizmo(Collider2D collider, Color color)
     {
         Gizmos.color = color;
-        var transform = collider.transform;
+        var colliderTransform = collider.transform;
 
         if (collider is BoxCollider2D boxCollider)
         {
-            // 绘制Box
+            // BoxCollider2D.offset/size 是 colliderTransform 的本地空间值。
+            // 这里必须通过 TransformPoint 应用旋转/缩放（含负缩放翻转），否则翻转后 Gizmos 会画在错误位置。
             Vector2 offset = boxCollider.offset;
             Vector2 size = boxCollider.size;
-            Vector3 center = transform.position + (Vector3)offset;
+            Vector2 half = size * 0.5f;
 
             Vector3[] corners = new Vector3[4]
             {
-                center + new Vector3(-size.x / 2, -size.y / 2, 0),
-                center + new Vector3(size.x / 2, -size.y / 2, 0),
-                center + new Vector3(size.x / 2, size.y / 2, 0),
-                center + new Vector3(-size.x / 2, size.y / 2, 0)
+                colliderTransform.TransformPoint(offset + new Vector2(-half.x, -half.y)),
+                colliderTransform.TransformPoint(offset + new Vector2( half.x, -half.y)),
+                colliderTransform.TransformPoint(offset + new Vector2( half.x,  half.y)),
+                colliderTransform.TransformPoint(offset + new Vector2(-half.x,  half.y))
             };
 
             // 绘制矩形边界
@@ -813,15 +836,17 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         }
         else if (collider is CircleCollider2D circleCollider)
         {
-            // 绘制Circle
+            // CircleCollider2D.offset/radius 也是本地空间值，需要应用 Transform（含负缩放）。
             Vector2 offset = circleCollider.offset;
             float radius = circleCollider.radius;
-            Vector3 center = transform.position + (Vector3)offset;
+            Vector3 center = colliderTransform.TransformPoint(offset);
 
-            Gizmos.DrawWireSphere(center, radius);
+            Vector3 axisX = colliderTransform.TransformVector(new Vector3(radius, 0f, 0f));
+            Vector3 axisY = colliderTransform.TransformVector(new Vector3(0f, radius, 0f));
+            float worldRadiusX = axisX.magnitude;
+            float worldRadiusY = axisY.magnitude;
 
-            // 绘制填充圆形
-            DrawFilledCircle(center, radius, color, 20);
+            DrawEllipse(center, worldRadiusX, worldRadiusY, color, 28);
         }
     }
 
@@ -833,8 +858,17 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (binding.zone == null)
             return;
 
-        var transform = binding.zone.transform;
-        Vector3 labelPos = transform.position + Vector3.up * 0.5f;
+        Vector3 labelPos;
+        var zoneCollider = binding.zone.GetComponent<Collider2D>();
+        if (zoneCollider != null)
+        {
+            var bounds = zoneCollider.bounds;
+            labelPos = bounds.center + Vector3.up * (bounds.extents.y + 0.15f);
+        }
+        else
+        {
+            labelPos = binding.zone.transform.position + Vector3.up * 0.5f;
+        }
 
         // 获取检测到的目标数量
         int targetCount = binding.zone.detectedColliders.Count;
@@ -868,6 +902,25 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         for (int i = 0; i < segments; i++)
         {
             Gizmos.DrawLine(points[i], points[i + 1]);
+        }
+    }
+
+    private static void DrawEllipse(Vector3 center, float radiusX, float radiusY, Color color, int segments)
+    {
+        Gizmos.color = color;
+
+        if (segments < 8)
+        {
+            segments = 8;
+        }
+
+        Vector3 prev = center + new Vector3(radiusX, 0f, 0f);
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = (i / (float)segments) * Mathf.PI * 2f;
+            Vector3 next = center + new Vector3(Mathf.Cos(t) * radiusX, Mathf.Sin(t) * radiusY, 0f);
+            Gizmos.DrawLine(prev, next);
+            prev = next;
         }
     }
 
@@ -935,6 +988,9 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             {
                 if (animator != null)
                 {
+                    // 0.5 阶段3需求：只要主/副攻击检测区任意命中玩家，都应视为“战斗中”。
+                    // - hasTarget=true：驱动 Animator 进入战斗/待机/攻击等状态机分支
+                    // - 注意：canMove 由 AnimatorController 的 SetBoolBehaviour 统一控制（避免代码与动画双写导致抖动）
                     animator.SetBool(AnimationStrings.hasTarget, true);
                 }
 

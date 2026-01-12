@@ -177,13 +177,16 @@ public class NpcAbilityControllerIntegrationTests
             var prefabCache = GetPrivateField<Dictionary<string, GameObject>>(npcAbilityController, "_prefabCache");
             prefabCache["Test/ProjectilePrefab"] = projectilePrefab;
 
-            enemy.SetActive(true);
+             enemy.SetActive(true);
+ 
+             bool handled = npcAbilityController.Tick(DetectionZoneBinding.Role.SecondaryAttack, 0f);
+             Assert.IsTrue(handled, "NpcAbilityController should take over SecondaryAttack when bindings exist");
 
-            bool handled = npcAbilityController.Tick(DetectionZoneBinding.Role.SecondaryAttack, 0f);
-            Assert.IsTrue(handled, "NpcAbilityController should take over SecondaryAttack when bindings exist");
-
-            var controllers = Object.FindObjectsOfType<AbilityProjectileController>(true);
-            Assert.AreEqual(1, controllers.Length, "Should spawn exactly one AbilityProjectileController");
+             // 模拟施法动画的 AnimationEvent：OnAbilityRelease
+             npcAbilityController.OnAbilityRelease();
+ 
+             var controllers = Object.FindObjectsOfType<AbilityProjectileController>(true);
+             Assert.AreEqual(1, controllers.Length, "Should spawn exactly one AbilityProjectileController");
 
             float initialHealth = playerDamageable.Health;
             InvokeOnTriggerEnter2D(controllers[0], playerCollider);

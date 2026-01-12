@@ -179,6 +179,11 @@
 					"display": null
 				},
 				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
 					"typeStr": "1",
 					"name": "tags",
 					"display": null
@@ -195,6 +200,7 @@
 					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
 					"onHitVfxDuration": 0.5,
 					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0.5,
 					"tags": "fire"
 				}
 			],

@@ -5,6 +5,7 @@ using UnityEngine;
 public class NpcAbilityController : MonoBehaviour
 {
     private const string AbilityCatalogResourcePath = "Config/EnemyAbilityCatalog";
+    private const float DefaultAbilityReleaseExpirySeconds = 1.5f;
 
     [Header("Optional Overrides")]
     [SerializeField] private AbilityCatalog abilityCatalogOverride;
@@ -31,7 +32,8 @@ public class NpcAbilityController : MonoBehaviour
         public string abilityId;
         public AbilityProjectileDefinition projectile;
         public IReadOnlyList<AbilityOnHitNode> onHitNodes;
-        public float releaseAtTime;
+        public float fallbackReleaseAtTime;
+        public float expiresAtTime;
         public float directionSign;
     }
 
@@ -48,8 +50,8 @@ public class NpcAbilityController : MonoBehaviour
     }
 
     /// <summary>
-    /// Ticks only the pending cast timer/release (if any), independent from DetectionZone role/targets.
-    /// Returns true if there is (or was) a pending cast, so the caller can skip melee for this frame.
+    /// 仅 Tick“待释放的施法请求”（如果存在），与 DetectionZone 的 role/targets 无关。
+    /// 返回 true 表示当前仍处于“施法等待释放”阶段，调用方应跳过近战逻辑。
     /// </summary>
     public bool TickPendingCast()
     {
@@ -58,17 +60,34 @@ public class NpcAbilityController : MonoBehaviour
             return false;
         }
 
-        if (_pendingCast.releaseAtTime > 0f && Time.time >= _pendingCast.releaseAtTime)
+        float now = Time.time;
+
+        // 兜底：如果没有配置 AnimationEvent（或动画没走到事件帧），允许按 releaseDelay 走延迟发射
+        if (_pendingCast.fallbackReleaseAtTime > 0f && now >= _pendingCast.fallbackReleaseAtTime)
         {
             ReleasePendingCast();
+            return true;
+        }
+
+        // 超时保护：避免因为“动画事件未触发”导致 NPC 永久卡在 pending 状态
+        if (_pendingCast.expiresAtTime > 0f && now > _pendingCast.expiresAtTime)
+        {
+            string abilityId = _pendingCast.abilityId ?? "";
+            _hasPendingCast = false;
+            _pendingCast = default;
+
+            Debug.LogWarning(
+                $"[NpcAbilityController] 施法等待超时，可能缺少 AnimationEvent: OnAbilityRelease（abilityId='{abilityId}'）",
+                this);
+            return false;
         }
 
         return true;
     }
 
     /// <summary>
-    /// AnimationEvent entry: releases the currently queued projectile cast (if any).
-    /// Keep the name aligned with PlayerController.OnAbilityRelease().
+    /// AnimationEvent 入口：释放当前排队的投射物施法（如果存在）。
+    /// 命名需与 PlayerController.OnAbilityRelease() 保持一致，方便复用同一套动画事件。
     /// </summary>
     public void OnAbilityRelease()
     {
@@ -81,8 +100,8 @@ public class NpcAbilityController : MonoBehaviour
     }
 
     /// <summary>
-    /// Tick NPC projectile abilities for a specific DetectionZone role.
-    /// Returns true if this controller is responsible for the role (so the caller should skip legacy melee attack).
+    /// Tick 指定 DetectionZone role 下的 NPC 投射物技能。
+    /// 返回 true 表示该 role 已由本控制器接管（调用方应跳过旧近战逻辑）。
     /// </summary>
     public bool Tick(DetectionZoneBinding.Role role, float deltaTime)
     {
@@ -125,12 +144,11 @@ public class NpcAbilityController : MonoBehaviour
 
         if (_hasPendingCast)
         {
-            if (_pendingCast.releaseAtTime > 0f && Time.time >= _pendingCast.releaseAtTime)
+            // 统一走 TickPendingCast：包含 AnimationEvent 兜底延迟与超时保护
+            if (TickPendingCast())
             {
-                ReleasePendingCast();
+                return true;
             }
-
-            return true;
         }
 
         if (!_agent.IsAlive())
@@ -262,6 +280,27 @@ public class NpcAbilityController : MonoBehaviour
 
         float dirSign = target.position.x >= transform.position.x ? 1f : -1f;
 
+        // 0.5 阶段3优化：NPC 施法改为“动画事件驱动释放”
+        // - 施法时只排队，不 Instantiate
+        // - 由动画 clip 的 AnimationEvent（functionName=OnAbilityRelease）触发真正发射
+        // - releaseDelay 仅作为“没有事件/动画没触发事件帧”的兜底延迟
+        if (_animator != null && !string.IsNullOrWhiteSpace(animTrigger))
+        {
+            _hasPendingCast = true;
+            float expirySeconds = Mathf.Max(DefaultAbilityReleaseExpirySeconds, releaseDelay + 0.25f);
+            _pendingCast = new PendingCast
+            {
+                abilityId = bestBinding.abilityId ?? "",
+                projectile = bestProjectile,
+                onHitNodes = bestOnHitNodes,
+                fallbackReleaseAtTime = releaseDelay > 0f ? now + releaseDelay : 0f,
+                expiresAtTime = now + expirySeconds,
+                directionSign = dirSign
+            };
+            return;
+        }
+
+        // 兼容：没有 Animator/Trigger 的情况下，维持旧行为（立即或延迟发射）
         if (releaseDelay > 0f)
         {
             _hasPendingCast = true;
@@ -270,7 +309,8 @@ public class NpcAbilityController : MonoBehaviour
                 abilityId = bestBinding.abilityId ?? "",
                 projectile = bestProjectile,
                 onHitNodes = bestOnHitNodes,
-                releaseAtTime = now + releaseDelay,
+                fallbackReleaseAtTime = now + releaseDelay,
+                expiresAtTime = now + Mathf.Max(DefaultAbilityReleaseExpirySeconds, releaseDelay + 0.25f),
                 directionSign = dirSign
             };
             return;
@@ -291,17 +331,14 @@ public class NpcAbilityController : MonoBehaviour
 
     private static float ResolveCooldownSeconds(NpcAbilityEntry binding, AbilityCatalogEntry ability)
     {
-        if (binding == null || ability == null)
+        if (binding == null)
         {
             return 0f;
         }
 
-        if (binding.cooldownOverride > 0f)
-        {
-            return binding.cooldownOverride;
-        }
-
-        return Mathf.Max(0f, ability.cooldown);
+        // 约定：怪物/NPC 的技能冷却只由 NpcAbilityEntry.cooldownOverride 配置。
+        // AbilityCatalogEntry.cooldown 仅用于玩家能力，这里不参与 NPC 施法冷却计算。
+        return Mathf.Max(0f, binding.cooldownOverride);
     }
 
     private static bool IsInRange(EnemyTuningProfile profile, NpcAbilityEntry binding, float distanceToTarget)

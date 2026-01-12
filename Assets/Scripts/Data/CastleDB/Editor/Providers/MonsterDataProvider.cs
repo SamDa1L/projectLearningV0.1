@@ -292,6 +292,7 @@ namespace CastleDB.Editor.Providers
                     onHitVfxPath = GetStringValue(dict, "onHitVfxPath"),
                     onHitVfxDuration = GetFloatValue(dict, "onHitVfxDuration"),
                     onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
+                    onExpireVfxDuration = GetFloatValue(dict, "onExpireVfxDuration"),
                     tags = GetStringValue(dict, "tags")
                 });
             }
@@ -574,6 +575,17 @@ namespace CastleDB.Editor.Providers
                 if (proj.onHitVfxDuration < 0f)
                 {
                     errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' onHitVfxDuration must be >= 0 (current={proj.onHitVfxDuration})");
+                }
+
+                if (proj.onExpireVfxDuration < 0f)
+                {
+                    errors.Add($"MonsterSystem/EnemyAbilityProjectile '{proj.id}' onExpireVfxDuration must be >= 0 (current={proj.onExpireVfxDuration})");
+                }
+
+                if (!string.IsNullOrWhiteSpace(proj.onExpireVfxPath) && proj.onExpireVfxDuration <= 0f)
+                {
+                    errors.Add(
+                        $"MonsterSystem/EnemyAbilityProjectile '{proj.id}' onExpireVfxDuration must be > 0 when onExpireVfxPath is set (current={proj.onExpireVfxDuration})");
                 }
             }
 

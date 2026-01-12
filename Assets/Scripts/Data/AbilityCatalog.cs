@@ -30,6 +30,7 @@ public class AbilityProjectileDefinition
     public string onHitVfxPath;
     public float onHitVfxDuration;
     public string onExpireVfxPath;
+    public float onExpireVfxDuration;
     public string tags;
 }
 

@@ -489,6 +489,12 @@ MonoBehaviour:
   - role: 1
     zone: {fileID: 5729719117895174802}
     note: 
+  - role: 2
+    zone: {fileID: 6277536773260209252}
+    note:
+  - role: 6
+    zone: {fileID: 9001000000000000003}
+    note:
   debugStateOverlay: 1
   showDetectionZoneGizmos: 1
   showGizmosInPlayMode: 0
@@ -564,7 +570,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 7958072578570537189}
-        m_TargetAssemblyTypeName: Knight, Assembly-CSharp
+        m_TargetAssemblyTypeName: NpcGroundController, Assembly-CSharp
         m_MethodName: OnHit
         m_Mode: 0
         m_Arguments:
@@ -639,7 +645,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 7958072578570537189}
-        m_TargetAssemblyTypeName: Knight, Assembly-CSharp
+        m_TargetAssemblyTypeName: NpcGroundController, Assembly-CSharp
         m_MethodName: OnCliffDetected
         m_Mode: 1
         m_Arguments:
@@ -748,7 +754,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 7958072578570537189}
-        m_TargetAssemblyTypeName: Knight, Assembly-CSharp
+        m_TargetAssemblyTypeName: NpcGroundController, Assembly-CSharp
         m_MethodName: OnWallDetected
         m_Mode: 1
         m_Arguments:

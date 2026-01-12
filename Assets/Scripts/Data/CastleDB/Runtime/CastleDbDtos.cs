@@ -151,7 +151,7 @@ namespace CastleDB.Runtime
     /// 约定：
     /// - triggerRole：Enumeration 类型在 JSON 中以 int 存储
     ///   0=PrimaryAttack, 1=SecondaryAttack, 2=Custom
-    /// - cooldownOverride：<=0 表示使用 Ability 默认 cooldown
+    /// - cooldownOverride：怪物施法冷却（秒），<=0 表示无冷却（可能导致每帧都可触发）
     /// - minRange/maxRange：0 表示使用默认策略（Phase 3 在 Runtime 内定义口径）
     /// </summary>
     [System.Serializable]

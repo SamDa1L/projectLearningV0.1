@@ -250,7 +250,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 963440080936122262}
-        m_TargetAssemblyTypeName: FlyingEye, Assembly-CSharp
+        m_TargetAssemblyTypeName: NpcFlyController, Assembly-CSharp
         m_MethodName: OnDeath
         m_Mode: 1
         m_Arguments:

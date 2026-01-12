@@ -20,12 +20,12 @@ MonoBehaviour:
     kind: 1
     projectileId: FireBall_enemy
     buffId: 
-    cooldown: 2
+    cooldown: 0
     onHitSequenceId: 
     paramsJson: 
   projectiles:
   - id: FireBall_enemy
-    prefabPath: Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile
+    prefabPath: Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile
     speed: 5
     lifetime: 3
     baseDamage: 10
@@ -33,6 +33,7 @@ MonoBehaviour:
     onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
     onHitVfxDuration: 0.5
     onExpireVfxPath: 
+    onExpireVfxDuration: 0.5
     tags: fire
   onHitSequences: []
   buffs: []

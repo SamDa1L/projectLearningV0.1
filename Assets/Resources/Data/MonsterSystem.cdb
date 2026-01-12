@@ -1,605 +1,578 @@
 {
-    "sheets":  [
-                   {
-                       "name":  "Meta",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "key",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "value",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-                                     {
-                                         "key":  "schemaVersion",
-                                         "value":  "0.4"
-                                     },
-                                     {
-                                         "key":  "providerId",
-                                         "value":  "Monster"
-                                     },
-                                     {
-                                         "key":  "displayName",
-                                         "value":  "怪物数据"
-                                     },
-                                      {
-                                          "key":  "dependencies",
-                                          "value":  "Status"
-                                      },
-                                     {
-                                         "key":  "resourcePath",
-                                         "value":  "Data/MonsterSystem"
-                                     },
-                                     {
-                                         "key":  "featureFlags",
-                                         "value":  "UseNewDamageable=true"
-                                     }
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "NPC",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id"
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "displayName",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "prefabName",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "animationTrigger",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "castTrigger",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "maxHealth"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "attackDamage"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "moveSpeed"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "attackRange"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "attackCooldown"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "invincibleDuration"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "knockbackToPlayer"
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "knockbackMultiplier"
-                                       },
-                                       {
-                                           "typeStr":  "2",
-                                           "name":  "enableDeathAnimation",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "2",
-                                           "name":  "useLegacyLogicFallback",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "perceptionRadius"
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "attackZonePriority"
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "abilityZonePriority"
-                                       }
-                                   ],
-                       "lines":  [
-                                     {
-                                         "id":  "M_Knight",
-                                         "displayName":  "Knight",
-                                         "prefabName":  "KnightEnemy",
-                                         "animationTrigger":  "Attack",
-                                         "castTrigger":  "AttackAlt",
-                                         "maxHealth":  800,
-                                         "attackDamage":  60,
-                                         "moveSpeed":  3,
-                                         "attackRange":  10,
-                                         "attackCooldown":  0.25,
-                                         "invincibleDuration":  0.5,
-                                         "knockbackMultiplier":  3,
-                                         "enableDeathAnimation":  true,
-                                         "useLegacyLogicFallback":  true,
-                                         "perceptionRadius":  5,
-                                         "knockbackToPlayer":  1,
-                                         "attackZonePriority":  0,
-                                         "abilityZonePriority":  0
-                                     },
-                                     {
-                                         "id":  "M_FlyingEye",
-                                         "displayName":  "FlyingEye",
-                                         "prefabName":  "FlyingEye",
-                                         "animationTrigger":  "Attack",
-                                         "castTrigger":  "Attack",
-                                         "maxHealth":  50,
-                                         "attackDamage":  30,
-                                         "moveSpeed":  4,
-                                         "attackRange":  10,
-                                         "attackCooldown":  0.25,
-                                         "invincibleDuration":  3,
-                                         "knockbackMultiplier":  2,
-                                         "enableDeathAnimation":  true,
-                                         "useLegacyLogicFallback":  true,
-                                         "perceptionRadius":  8,
-                                         "knockbackToPlayer":  1,
-                                         "attackZonePriority":  0,
-                                         "abilityZonePriority":  0
-                                     },
-                                     {
-                                         "id":  "M_Goblin",
-                                         "displayName":  "Goblin",
-                                         "prefabName":  "Goblin",
-                                         "animationTrigger":  "Attack",
-                                         "castTrigger":  "Attack",
-                                         "maxHealth":  60,
-                                         "attackDamage":  25,
-                                         "moveSpeed":  2.5,
-                                         "attackRange":  1.5,
-                                         "attackCooldown":  1,
-                                         "invincibleDuration":  0.3,
-                                         "knockbackMultiplier":  1,
-                                         "enableDeathAnimation":  true,
-                                         "useLegacyLogicFallback":  false,
-                                         "perceptionRadius":  4,
-                                         "knockbackToPlayer":  1,
-                                         "attackZonePriority":  0,
-                                         "abilityZonePriority":  0
-                                     },
-                                     {
-                                         "id":  "M_Ghost",
-                                         "displayName":  "Ghost",
-                                         "prefabName":  "Ghost",
-                                         "animationTrigger":  "Attack",
-                                         "castTrigger":  "Attack",
-                                         "maxHealth":  100,
-                                         "attackDamage":  100,
-                                         "moveSpeed":  3,
-                                         "attackRange":  10,
-                                         "attackCooldown":  2,
-                                         "invincibleDuration":  0.5,
-                                         "knockbackToPlayer":  1,
-                                         "knockbackMultiplier":  1,
-                                         "enableDeathAnimation":  true,
-                                         "useLegacyLogicFallback":  true,
-                                         "perceptionRadius":  2,
-                                         "attackZonePriority":  0,
-                                         "abilityZonePriority":  0
-                                     }
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "DetectionZone",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "6:NPC",
-                                           "name":  "npcId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:PrimaryAttack,SecondaryAttack,Cliff,Alert,Lookout,Custom",
-                                           "name":  "role"
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "childId",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-                                     {
-                                         "id":  "M_Knight_DZ",
-                                         "npcId":  "M_Knight",
-                                         "childId":  "DZ_Attack",
-                                         "role":  0
-                                     },
-                                     {
-                                         "id":  "M_Knight_DZ_Ability",
-                                         "npcId":  "M_Knight",
-                                         "childId":  "DZ_Ability",
-                                         "role":  1
-                                     },
-                                     {
-                                         "id":  "M_FlyingEye_DZ",
-                                         "npcId":  "M_FlyingEye",
-                                         "role":  0,
-                                         "childId":  "DZ_Attack"
-                                     },
-                                     {
-                                         "id":  "M_Ghost_DZ",
-                                         "npcId":  "M_Ghost",
-                                         "role":  0,
-                                         "childId":  "DZ_Attack"
-                                     }
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "EnemyAbility",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:Move,Run,Jump,Attack,RangedAttack",
-                                           "name":  "hookType"
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "priority",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "2",
-                                           "name":  "enabled",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:BuiltinDefault,Projectile,StatModifier,Buff",
-                                           "name":  "kind",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "6:EnemyAbilityProjectile",
-                                           "name":  "projectileId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "6:EnemyAbilityBuff",
-                                           "name":  "buffId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "cooldown",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "onHitSequenceId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "paramsJson",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-                                     {
-                                         "id":  "Fireball_Enemy",
-                                         "hookType":  4,
-                                         "priority":  0,
-                                         "enabled":  false,
-                                         "paramsJson":  "",
-                                         "kind":  1,
-                                         "projectileId":  "FireBall_enemy",
-                                         "buffId":  "",
-                                         "cooldown":  2,
-                                         "onHitSequenceId":  ""
-                                     }
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "EnemyAbilityProjectile",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "prefabPath",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "speed",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "lifetime",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "baseDamage",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "hitMask",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "onHitVfxPath",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "onHitVfxDuration",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "onExpireVfxPath",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "tags",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-                                     {
-                                         "id":  "FireBall_enemy",
-                                         "prefabPath":  "Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile",
-                                         "speed":  5,
-                                         "lifetime":  3,
-                                         "baseDamage":  10,
-                                         "hitMask":  "Player",
-                                         "onHitVfxPath":  "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
-                                         "onHitVfxDuration":  0.5,
-                                         "onExpireVfxPath":  "",
-                                         "tags":  "fire"
-                                     }
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "EnemyAbilityOnHitSequence",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "sequenceId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "order",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:ApplyStatus,PlayVfx,TriggerAOE,TriggerSummon,SpawnProjectile",
-                                           "name":  "nodeType",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "statusId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "aoeId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "summonId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "waitMode",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "paramsJson",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "EnemyAbilityBuff",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "duration",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:Refresh,Add,Ignore,Replace",
-                                           "name":  "stackRule",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "maxStacks",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "uniqueKey",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "modifiersJson",
-                                           "display":  null
-                                       }
-                                   ],
-                       "lines":  [
-
-                                 ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   },
-                   {
-                       "name":  "NpcAbility",
-                       "columns":  [
-                                       {
-                                           "typeStr":  "0",
-                                           "name":  "id",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "6:NPC",
-                                           "name":  "npcId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "6:EnemyAbility",
-                                           "name":  "abilityId",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "2",
-                                           "name":  "enabled",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "3",
-                                           "name":  "priority",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "cooldownOverride",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "5:PrimaryAttack,SecondaryAttack,Custom",
-                                           "name":  "triggerRole",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "minRange",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "4",
-                                           "name":  "maxRange",
-                                           "display":  null
-                                       },
-                                       {
-                                           "typeStr":  "1",
-                                           "name":  "paramsJson",
-                                           "display":  null
-                                       }
-                                   ],
-                        "lines":  [
-                                      {
-                                          "id":  "M_Knight_Fireball",
-                                          "npcId":  "M_Knight",
-                                          "abilityId":  "Fireball_Enemy",
-                                          "enabled":  true,
-                                          "priority":  100,
-                                          "cooldownOverride":  2.0,
-                                          "triggerRole":  1,
-                                          "minRange":  0,
-                                          "maxRange":  0,
-                                          "paramsJson":  ""
-                                      }
- 
-                                  ],
-                       "separators":  [
-
-                                      ],
-                       "props":  {
-
-                                 }
-                   }
-               ],
-    "customTypes":  [
-
-                    ],
-    "compress":  false
+	"sheets": [
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "Monster"
+				},
+				{
+					"key": "displayName",
+					"value": "怪物数据"
+				},
+				{
+					"key": "dependencies",
+					"value": "Status"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/MonsterSystem"
+				},
+				{
+					"key": "featureFlags",
+					"value": "UseNewDamageable=true"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "NPC",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "animationTrigger",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "castTrigger",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackDamage"
+				},
+				{
+					"typeStr": "4",
+					"name": "moveSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackRange"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackCooldown"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibleDuration"
+				},
+				{
+					"typeStr": "4",
+					"name": "knockbackToPlayer"
+				},
+				{
+					"typeStr": "4",
+					"name": "knockbackMultiplier"
+				},
+				{
+					"typeStr": "2",
+					"name": "enableDeathAnimation",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "useLegacyLogicFallback",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "perceptionRadius"
+				},
+				{
+					"typeStr": "3",
+					"name": "attackZonePriority"
+				},
+				{
+					"typeStr": "3",
+					"name": "abilityZonePriority"
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight",
+					"displayName": "Knight",
+					"prefabName": "KnightEnemy",
+					"animationTrigger": "Attack",
+					"castTrigger": "AttackAlt",
+					"maxHealth": 800,
+					"attackDamage": 60,
+					"moveSpeed": 3,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 0.5,
+					"knockbackMultiplier": 3,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 5,
+					"knockbackToPlayer": 1,
+					"attackZonePriority": 0,
+					"abilityZonePriority": 0
+				},
+				{
+					"id": "M_FlyingEye",
+					"displayName": "FlyingEye",
+					"prefabName": "FlyingEye",
+					"animationTrigger": "Attack",
+					"castTrigger": "Attack",
+					"maxHealth": 50,
+					"attackDamage": 30,
+					"moveSpeed": 4,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 3,
+					"knockbackMultiplier": 2,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 8,
+					"knockbackToPlayer": 1,
+					"attackZonePriority": 0,
+					"abilityZonePriority": 0
+				},
+				{
+					"id": "M_Goblin",
+					"displayName": "Goblin",
+					"prefabName": "Goblin",
+					"animationTrigger": "Attack",
+					"castTrigger": "Attack",
+					"maxHealth": 60,
+					"attackDamage": 25,
+					"moveSpeed": 2.5,
+					"attackRange": 1.5,
+					"attackCooldown": 1,
+					"invincibleDuration": 0.3,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": false,
+					"perceptionRadius": 4,
+					"knockbackToPlayer": 1,
+					"attackZonePriority": 0,
+					"abilityZonePriority": 0
+				},
+				{
+					"id": "M_Mushroom",
+					"displayName": "蘑菇怪",
+					"prefabName": "Mushroom",
+					"animationTrigger": "Attack",
+					"castTrigger": "AttackAlt",
+					"maxHealth": 100,
+					"attackDamage": 100,
+					"moveSpeed": 3,
+					"attackRange": 10,
+					"attackCooldown": 2,
+					"invincibleDuration": 0.5,
+					"knockbackToPlayer": 1,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 2,
+					"attackZonePriority": 0,
+					"abilityZonePriority": 0
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "DetectionZone",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:NPC",
+					"name": "npcId",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Cliff,Alert,Lookout,Custom",
+					"name": "role"
+				},
+				{
+					"typeStr": "1",
+					"name": "childId",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight_DZ",
+					"npcId": "M_Knight",
+					"childId": "DZ_Attack",
+					"role": 0
+				},
+				{
+					"id": "M_Knight_DZ_Ability",
+					"npcId": "M_Knight",
+					"childId": "DZ_Ability",
+					"role": 1
+				},
+				{
+					"id": "M_FlyingEye_DZ",
+					"npcId": "M_FlyingEye",
+					"role": 0,
+					"childId": "DZ_Attack"
+				},
+				{
+					"id": "M_Mushroom_DZ_Ability",
+					"npcId": "M_Mushroom",
+					"role": 1,
+					"childId": "DZ_Ability"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "EnemyAbility",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "5:Move,Run,Jump,Attack,RangedAttack",
+					"name": "hookType"
+				},
+				{
+					"typeStr": "3",
+					"name": "priority",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "5:BuiltinDefault,Projectile,StatModifier,Buff",
+					"name": "kind",
+					"display": null
+				},
+				{
+					"typeStr": "6:EnemyAbilityProjectile",
+					"name": "projectileId",
+					"display": null
+				},
+				{
+					"typeStr": "6:EnemyAbilityBuff",
+					"name": "buffId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitSequenceId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "Fireball_Enemy",
+					"hookType": 4,
+					"priority": 0,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 1,
+					"projectileId": "FireBall_enemy",
+					"buffId": "",
+					"onHitSequenceId": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "EnemyAbilityProjectile",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "speed",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "lifetime",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "baseDamage",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "hitMask",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onHitVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "tags",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "FireBall_enemy",
+					"prefabPath": "Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile",
+					"speed": 5,
+					"lifetime": 3,
+					"baseDamage": 10,
+					"hitMask": "Player",
+					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
+					"onHitVfxDuration": 0.5,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0.5,
+					"tags": "fire"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "EnemyAbilityOnHitSequence",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "sequenceId",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "order",
+					"display": null
+				},
+				{
+					"typeStr": "5:ApplyStatus,PlayVfx,TriggerAOE,TriggerSummon,SpawnProjectile",
+					"name": "nodeType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "statusId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "aoeId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "summonId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "waitMode",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "EnemyAbilityBuff",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "duration",
+					"display": null
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uniqueKey",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson",
+					"display": null
+				}
+			],
+			"lines": [],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "NpcAbility",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:NPC",
+					"name": "npcId",
+					"display": null
+				},
+				{
+					"typeStr": "6:EnemyAbility",
+					"name": "abilityId",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "priority",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "cooldownOverride",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Custom",
+					"name": "triggerRole",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "minRange",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "maxRange",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight_Fireball",
+					"npcId": "M_Knight",
+					"abilityId": "Fireball_Enemy",
+					"enabled": true,
+					"priority": 100,
+					"cooldownOverride": 10,
+					"triggerRole": 1,
+					"minRange": 0,
+					"maxRange": 0,
+					"paramsJson": ""
+				},
+				{
+					"id": "M_Mushroom_Fireball",
+					"npcId": "M_Mushroom",
+					"abilityId": "Fireball_Enemy",
+					"enabled": true,
+					"priority": 100,
+					"cooldownOverride": 10,
+					"triggerRole": 1,
+					"minRange": 0,
+					"maxRange": 0,
+					"paramsJson": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
 }

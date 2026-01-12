@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FlyingEye : EnemyAgentBase
+public class NpcFlyController : EnemyAgentBase
 {
     public float flightSpeed = 2f;
     public float waypointReachedDistance = 0.1f;
@@ -40,7 +40,7 @@ public class FlyingEye : EnemyAgentBase
             // 攻击触发时的子类额外处理（可选）
             if (debugStateOverlay)
             {
-                Debug.Log($"[FlyingEye] 攻击触发 - Damage={AttackDamage}, Range={AttackRange}");
+                Debug.Log($"[NpcFlyController] 攻击触发 - Damage={AttackDamage}, Range={AttackRange}");
             }
         });
     }
@@ -53,6 +53,14 @@ public class FlyingEye : EnemyAgentBase
         // 击退保护期间，跳过所有移动逻辑，让击退速度自然生效
         if (IsKnockbackProtected)
         {
+            return;
+        }
+
+        // 0.5 阶段3：当主/副检测区任意命中玩家时，持续停走并按冷却循环攻击。
+        // 飞行敌人“停走”口径：暂停巡逻 Flight，保持原地输出。
+        if (HasAnyCombatTarget())
+        {
+            rb2d.velocity = Vector2.zero;
             return;
         }
 

@@ -1,39 +1,32 @@
-using UnityEditor;
-using UnityEditor.SceneManagement;
-using UnityEngine;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.Events;
+using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
-/// 敌人Prefab创建向导
-/// 自动生成敌人Prefab的标准结构，包括所需的组件和检测区
-///
-/// 功能：
-/// 1. 弹出配置对话框，要求输入敌人名称和类型
-/// 2. 自动创建敌人GameObject及其标准结构
-/// 3. 为每个检测区创建子物体和Collider2D
-/// 4. 保存为Prefab到指定目录
-///
-/// 使用方式：
-/// Tools → Detection Zone → Create Enemy Prefab
+/// 敌人 Prefab 创建向导（Phase 4）
+/// - 目标：让新建敌人 Prefab“生成后可直接使用”，而不是只生成骨架。
+/// - 产物：Prefab + AnimatorController + DetectionZones + zoneBindings + 默认事件绑定。
 /// </summary>
 public class CreateEnemyPrefabWizard : EditorWindow
 {
-    // ===== 配置字段 =====
+    private const string PrefabRootDir = "Assets/Resources/Prefabs/Enemy";
+    private const string AnimatorTemplatePath = "Assets/Resources/Prefabs/Enemy/KnightEnemy/AC_Knight.controller";
+    private const string GroundControllerTemplatePrefabPath = "Assets/Resources/Prefabs/Enemy/KnightEnemy/KnightEnemy.prefab";
 
     private string enemyName = "NewEnemy";
-    private List<bool> selectedDetectionRoles = new List<bool>
-    {
-        true,   // PrimaryAttack
-        false,  // SecondaryAttack
-        true,   // Cliff
-        false,  // Alert
-        false,  // Lookout
-    };
+
+    private bool createPrimaryAttackZone = true;
+    private bool createSecondaryAttackZone = true;
+    private bool createCliffZone = true;
+    private bool createAlertZone = false;
+    private bool createLookoutZone = false;
 
     private Vector2 scrollPosition = Vector2.zero;
-
-    // ===== 菜单项 =====
 
     [MenuItem("Tools/Detection Zone/Create Enemy Prefab")]
     public static void ShowWindow()
@@ -41,238 +34,524 @@ public class CreateEnemyPrefabWizard : EditorWindow
         GetWindow<CreateEnemyPrefabWizard>("Create Enemy Prefab");
     }
 
-    // ===== GUI绘制 =====
-
     private void OnGUI()
     {
-        GUILayout.Label("敌人Prefab创建向导", EditorStyles.boldLabel);
-        GUILayout.Space(10);
+        GUILayout.Label("敌人 Prefab 创建向导", EditorStyles.boldLabel);
+        GUILayout.Space(8);
 
-        // 敌人名称输入
-        GUILayout.Label("基本信息", EditorStyles.boldLabel);
         enemyName = EditorGUILayout.TextField("敌人名称", enemyName);
-
-        if (string.IsNullOrWhiteSpace(enemyName))
+        if (!IsEnemyNameValid(enemyName, out string nameError))
         {
-            EditorGUILayout.HelpBox("敌人名称不能为空", MessageType.Warning);
+            EditorGUILayout.HelpBox(nameError, MessageType.Warning);
         }
 
-        GUILayout.Space(10);
-
-        // 检测区选择
+        GUILayout.Space(8);
         GUILayout.Label("检测区配置", EditorStyles.boldLabel);
-        GUILayout.Label("选择需要创建的检测区：");
-
-        string[] roleNames = new string[]
-        {
-            "DZ_Attack (主攻击检测)",
-            "DZ_Ability (法术检测)",
-            "DZ_Cliff (崖边检测)",
-            "DZ_Alert (警戒范围)",
-            "DZ_Lookout (视野范围)"
-        };
+        EditorGUILayout.HelpBox(
+            "Phase 4：默认生成可直接使用的地面敌人模板（NpcGroundController + AnimatorController + DetectionZones + zoneBindings + 默认事件绑定）。\n" +
+            "注意：DZ_Wall 为必选（墙壁检测）。",
+            MessageType.Info);
 
         scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(150));
+        createPrimaryAttackZone = EditorGUILayout.Toggle("DZ_Attack（主攻击检测）", createPrimaryAttackZone);
+        createSecondaryAttackZone = EditorGUILayout.Toggle("DZ_Ability（法术检测）", createSecondaryAttackZone);
+        createCliffZone = EditorGUILayout.Toggle("DZ_Cliff（悬崖检测）", createCliffZone);
 
-        for (int i = 0; i < selectedDetectionRoles.Count; i++)
+        using (new EditorGUI.DisabledScope(true))
         {
-            selectedDetectionRoles[i] = EditorGUILayout.Toggle(roleNames[i], selectedDetectionRoles[i]);
+            EditorGUILayout.Toggle("DZ_Wall（墙壁检测，必选）", true);
         }
 
+        createAlertZone = EditorGUILayout.Toggle("DZ_Alert（警戒范围，可选）", createAlertZone);
+        createLookoutZone = EditorGUILayout.Toggle("DZ_Lookout（视野范围，可选）", createLookoutZone);
         GUILayout.EndScrollView();
 
-        GUILayout.Space(10);
-
-        // 验证至少选择一个检测区
-        bool hasDetectionZone = selectedDetectionRoles.Any(x => x);
-        if (!hasDetectionZone)
+        if (!createPrimaryAttackZone)
         {
-            EditorGUILayout.HelpBox("至少需要选择一个检测区", MessageType.Warning);
+            EditorGUILayout.HelpBox("PrimaryAttack 是 EnemyAgentBase 的最小必需检测区（Plan A）。", MessageType.Warning);
         }
 
-        GUILayout.Space(10);
+        GUILayout.Space(8);
 
-        // 创建按钮
-        GUI.enabled = !string.IsNullOrWhiteSpace(enemyName) && hasDetectionZone;
-
-        if (GUILayout.Button("创建Prefab", GUILayout.Height(40)))
+        bool canCreate = IsEnemyNameValid(enemyName, out _) && createPrimaryAttackZone;
+        using (new EditorGUI.DisabledScope(!canCreate))
         {
-            CreateEnemyPrefab();
-        }
-
-        GUI.enabled = true;
-
-        GUILayout.Space(10);
-
-        GUILayout.Label("说明", EditorStyles.boldLabel);
-        EditorGUILayout.HelpBox(
-            "此向导将创建一个标准的敌人Prefab，包括：\n" +
-            "• 根GameObject (配置脚本)\n" +
-            "• DetectionZones容器\n" +
-            "• 各个检测区子物体 (DZ_*格式)\n" +
-            "• 必需的组件 (Rigidbody2D, Animator, Damageable等)\n\n" +
-            "Prefab将保存到：Assets/Resources/Prefabs/Enemy/",
-            MessageType.Info
-        );
-    }
-
-    // ===== 核心功能 =====
-
-    private void CreateEnemyPrefab()
-    {
-        // 1. 验证目录
-        string prefabDir = "Assets/Resources/Prefabs/Enemy";
-        if (!AssetDatabase.IsValidFolder(prefabDir))
-        {
-            Debug.LogError($"目录不存在：{prefabDir}");
-            EditorUtility.DisplayDialog("错误", $"目录不存在：{prefabDir}", "确定");
-            return;
-        }
-
-        // 2. 创建根GameObject
-        GameObject enemyRoot = new GameObject(enemyName);
-        enemyRoot.name = enemyName;
-
-        // 3. 添加必需的组件
-        AddRequiredComponents(enemyRoot);
-
-        // 4. 创建DetectionZones容器
-        GameObject detectionZonesContainer = new GameObject("DetectionZones");
-        detectionZonesContainer.transform.SetParent(enemyRoot.transform);
-        detectionZonesContainer.transform.localPosition = Vector3.zero;
-
-        // 5. 创建各个检测区
-        List<DetectionZone> createdZones = new List<DetectionZone>();
-        CreateDetectionZones(detectionZonesContainer, createdZones);
-
-        // 6. 配置EnemyAgentBase组件
-        ConfigureEnemyAgentBase(enemyRoot, createdZones);
-
-        // 7. 保存为Prefab
-        string prefabPath = $"{prefabDir}/{enemyName}.prefab";
-
-        // 检查是否已存在
-        if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null)
-        {
-            if (!EditorUtility.DisplayDialog("确认", $"Prefab已存在：{prefabPath}，是否覆盖？", "是", "否"))
+            if (GUILayout.Button("创建 Prefab", GUILayout.Height(40)))
             {
-                DestroyImmediate(enemyRoot);
-                return;
+                CreateEnemyPrefab();
             }
         }
 
-        PrefabUtility.SaveAsPrefabAsset(enemyRoot, prefabPath);
-        Debug.Log($"✓ 敌人Prefab创建成功：{prefabPath}");
+        GUILayout.Space(8);
+        GUILayout.Label("输出路径", EditorStyles.boldLabel);
 
-        // 8. 清理场景中的临时GameObject
-        DestroyImmediate(enemyRoot);
+        string normalizedName = (enemyName ?? string.Empty).Trim();
+        EditorGUILayout.HelpBox(
+            $"生成目录：{PrefabRootDir}/{normalizedName}/\n" +
+            $"- {normalizedName}.prefab\n" +
+            $"- AC_{normalizedName}.controller",
+            MessageType.None);
+    }
 
-        // 9. 刷新AssetDatabase
+    private void CreateEnemyPrefab()
+    {
+        string normalizedName = (enemyName ?? string.Empty).Trim();
+        if (!IsEnemyNameValid(normalizedName, out string nameError))
+        {
+            EditorUtility.DisplayDialog("错误", nameError, "确定");
+            return;
+        }
+
+        if (!AssetDatabase.IsValidFolder(PrefabRootDir))
+        {
+            EditorUtility.DisplayDialog("错误", $"目录不存在：{PrefabRootDir}", "确定");
+            return;
+        }
+
+        EnsureFolder(PrefabRootDir, normalizedName);
+        string enemyDir = $"{PrefabRootDir}/{normalizedName}";
+
+        string prefabPath = $"{enemyDir}/{normalizedName}.prefab";
+        string animatorPath = $"{enemyDir}/AC_{normalizedName}.controller";
+
+        bool prefabExists = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null;
+        bool animatorExists = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(animatorPath) != null;
+
+        if (prefabExists || animatorExists)
+        {
+            string msg =
+                $"已存在同名资源：\n" +
+                $"- Prefab: {(prefabExists ? "存在" : "不存在")}\n" +
+                $"- AnimatorController: {(animatorExists ? "存在" : "不存在")}\n\n" +
+                $"是否删除并重新生成？";
+            if (!EditorUtility.DisplayDialog("确认覆盖", msg, "覆盖", "取消"))
+            {
+                return;
+            }
+
+            if (prefabExists)
+            {
+                AssetDatabase.DeleteAsset(prefabPath);
+            }
+
+            if (animatorExists)
+            {
+                AssetDatabase.DeleteAsset(animatorPath);
+            }
+        }
+
+        AnimatorController animatorController = CreateAnimatorController(animatorPath, out string animatorError);
+        if (animatorController == null)
+        {
+            EditorUtility.DisplayDialog("错误", animatorError, "确定");
+            return;
+        }
+
+        GameObject enemyRoot = new GameObject(normalizedName);
+        try
+        {
+            var npcController = AddRequiredComponents(enemyRoot, animatorController, createSecondaryAttackZone);
+
+            var zonesContainer = new GameObject("DetectionZones");
+            zonesContainer.transform.SetParent(enemyRoot.transform);
+            zonesContainer.transform.localPosition = Vector3.zero;
+
+            var zonesByRole = new Dictionary<DetectionZoneBinding.Role, DetectionZone>();
+
+            if (createPrimaryAttackZone)
+            {
+                zonesByRole[DetectionZoneBinding.Role.PrimaryAttack] = CreateZone(
+                    zonesContainer.transform,
+                    "DZ_Attack",
+                    GetLayerOrFallback("EnemyHitBox", 10),
+                    new Vector2(1.5f, 0f),
+                    new Vector2(1.8f, 1.8f),
+                    Vector2.zero);
+            }
+
+            if (createSecondaryAttackZone)
+            {
+                zonesByRole[DetectionZoneBinding.Role.SecondaryAttack] = CreateZone(
+                    zonesContainer.transform,
+                    "DZ_Ability",
+                    GetLayerOrFallback("EnemyHitBox", 10),
+                    Vector2.zero,
+                    new Vector2(1.6f, 1.6f),
+                    new Vector2(3f, 0f));
+            }
+
+            if (createCliffZone)
+            {
+                zonesByRole[DetectionZoneBinding.Role.Cliff] = CreateZone(
+                    zonesContainer.transform,
+                    "DZ_Cliff",
+                    GetLayerOrFallback("GroundDetection", 11),
+                    new Vector2(1.06f, -1.7f),
+                    Vector2.one,
+                    Vector2.zero);
+            }
+
+            zonesByRole[DetectionZoneBinding.Role.Wall] = CreateZone(
+                zonesContainer.transform,
+                "DZ_Wall",
+                GetLayerOrFallback("GroundDetection", 11),
+                new Vector2(1.06f, 0f),
+                Vector2.one,
+                Vector2.zero);
+
+            if (createAlertZone)
+            {
+                zonesByRole[DetectionZoneBinding.Role.Alert] = CreateZone(
+                    zonesContainer.transform,
+                    "DZ_Alert",
+                    GetLayerOrFallback("EnemyHitBox", 10),
+                    Vector2.zero,
+                    Vector2.one,
+                    Vector2.zero);
+            }
+
+            if (createLookoutZone)
+            {
+                zonesByRole[DetectionZoneBinding.Role.Lookout] = CreateZone(
+                    zonesContainer.transform,
+                    "DZ_Lookout",
+                    GetLayerOrFallback("EnemyHitBox", 10),
+                    Vector2.zero,
+                    Vector2.one,
+                    Vector2.zero);
+            }
+
+            BindDefaultZoneEvents(npcController, zonesByRole);
+            WriteZoneBindings(npcController, zonesByRole);
+
+            PrefabUtility.SaveAsPrefabAsset(enemyRoot, prefabPath);
+        }
+        finally
+        {
+            DestroyImmediate(enemyRoot);
+        }
+
         AssetDatabase.Refresh();
 
-        // 10. 显示成功对话框
         EditorUtility.DisplayDialog(
             "成功",
-            $"敌人Prefab创建完成！\n\n路径：{prefabPath}\n\n" +
-            $"接下来您需要：\n" +
-            $"1. 为Prefab分配EnemyTuningProfile\n" +
-            $"2. 调整检测区的大小和位置\n" +
-            $"3. 添加Animator Controller\n" +
-            $"4. 自定义敌人脚本逻辑",
-            "确定"
-        );
+            $"敌人 Prefab 创建完成：\n{prefabPath}\n\n" +
+            "接下来建议：\n" +
+            "1. 给根物体分配 EnemyTuningProfile\n" +
+            "2. 调整各 DZ_* 的大小/位置\n" +
+            "3. 替换 AnimatorController 中的动画剪辑（参数已按模板创建）",
+            "确定");
 
         Close();
     }
 
-    /// <summary>
-    /// 添加必需的组件到敌人根GameObject
-    /// </summary>
-    private void AddRequiredComponents(GameObject enemyRoot)
+    private static NpcGroundController AddRequiredComponents(
+        GameObject enemyRoot,
+        RuntimeAnimatorController animatorController,
+        bool includeAbilityZone)
     {
-        // Rigidbody2D
+        enemyRoot.layer = GetLayerOrFallback("Enemy", 8);
+
         var rb2d = enemyRoot.AddComponent<Rigidbody2D>();
         rb2d.gravityScale = 1f;
         rb2d.constraints = RigidbodyConstraints2D.FreezeRotation;
 
-        // CircleCollider2D（作为敌人本身的碰撞体）
-        var collider = enemyRoot.AddComponent<CircleCollider2D>();
-        collider.radius = 0.4f;
+        var capsule = enemyRoot.AddComponent<CapsuleCollider2D>();
+        capsule.direction = CapsuleDirection2D.Vertical;
+        capsule.size = new Vector2(0.9f, 2.3f);
 
-        // Animator
-        enemyRoot.AddComponent<Animator>();
-
-        // Damageable
-        enemyRoot.AddComponent<Damageable>();
-
-        // SpriteRenderer（可选，用于显示敌人）
         var spriteRenderer = enemyRoot.AddComponent<SpriteRenderer>();
         spriteRenderer.sortingOrder = 1;
 
-        Debug.Log($"已添加必需组件到 {enemyRoot.name}");
+        var animator = enemyRoot.AddComponent<Animator>();
+        animator.runtimeAnimatorController = animatorController;
+
+        enemyRoot.AddComponent<Damageable>();
+
+        var touchingDirections = enemyRoot.AddComponent<TouchingDirections>();
+        touchingDirections.castFilter.useTriggers = false;
+        touchingDirections.castFilter.useLayerMask = true;
+        touchingDirections.castFilter.layerMask = LayerMask.GetMask("Ground");
+        touchingDirections.groundDistance = 0.05f;
+        touchingDirections.wallDistance = 0.2f;
+        touchingDirections.ceilingDistance = 0.05f;
+
+        var controller = enemyRoot.AddComponent<NpcGroundController>();
+
+        // 默认移动参数从 Knight 模板拷贝，避免新建敌人因为加速度太小而“原地跑步不位移”。
+        ApplyGroundControllerMovementDefaults(controller);
+
+        // 阶段4新增：勾选了 DZ_Ability（法术检测区）时，Prefab 需要自带 NpcAbilityController + FirePoint。
+        // 目的：
+        // 1) AnimationEvent 下拉列表可直接选到 OnAbilityRelease()（不依赖运行时 AddComponent）。
+        // 2) 统一发射点命名约定：NpcAbilityController 默认查找根节点下名为 "FirePoint" 的子物体。
+        if (includeAbilityZone)
+        {
+            EnsureNpcAbilityController(enemyRoot);
+            EnsureFirePoint(enemyRoot.transform);
+        }
+
+        return controller;
     }
 
-    /// <summary>
-    /// 根据选择创建检测区子物体
-    /// </summary>
-    private void CreateDetectionZones(GameObject container, List<DetectionZone> createdZones)
+    private static void EnsureNpcAbilityController(GameObject enemyRoot)
     {
-        DetectionZoneBinding.Role[] roles = new[]
+        if (enemyRoot == null)
         {
-            DetectionZoneBinding.Role.PrimaryAttack,
-            DetectionZoneBinding.Role.SecondaryAttack,
-            DetectionZoneBinding.Role.Cliff,
-            DetectionZoneBinding.Role.Alert,
-            DetectionZoneBinding.Role.Lookout
-        };
+            return;
+        }
 
-        for (int i = 0; i < selectedDetectionRoles.Count; i++)
+        if (enemyRoot.GetComponent<NpcAbilityController>() != null)
         {
-            if (!selectedDetectionRoles[i])
-                continue;
+            return;
+        }
 
-            string zoneName = roles[i] switch
+        enemyRoot.AddComponent<NpcAbilityController>();
+    }
+
+    private static Transform EnsureFirePoint(Transform enemyRoot)
+    {
+        if (enemyRoot == null)
+        {
+            return null;
+        }
+
+        Transform existing = enemyRoot.Find("FirePoint");
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        var firePoint = new GameObject("FirePoint");
+        firePoint.layer = enemyRoot.gameObject.layer;
+        firePoint.transform.SetParent(enemyRoot);
+        firePoint.transform.localPosition = new Vector3(1.0f, 0.2f, 0f);
+        firePoint.transform.localRotation = Quaternion.identity;
+        firePoint.transform.localScale = Vector3.one;
+        return firePoint.transform;
+    }
+
+    private static void ApplyGroundControllerMovementDefaults(NpcGroundController controller)
+    {
+        if (controller == null)
+        {
+            return;
+        }
+
+        // 兜底值：参考 Knight 模板（当前 walkAcceleration=30）。
+        const float fallbackWalkAcceleration = 30f;
+        const float fallbackWalkStopRate = 0.05f;
+        const float fallbackMaxSpeed = 3f;
+
+        // 尝试从 KnightEnemy.prefab 读取模板值（后续模板调整时，工具可自动跟随）。
+        var templatePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GroundControllerTemplatePrefabPath);
+        if (templatePrefab != null)
+        {
+            var templateController = templatePrefab.GetComponent<NpcGroundController>();
+            if (templateController != null)
             {
-                DetectionZoneBinding.Role.PrimaryAttack => "DZ_Attack",
-                DetectionZoneBinding.Role.SecondaryAttack => "DZ_Ability",
-                _ => $"DZ_{roles[i]}"
-            };
-            GameObject zoneGO = new GameObject(zoneName);
-            zoneGO.transform.SetParent(container.transform);
-            zoneGO.transform.localPosition = Vector3.zero;
+                controller.walkAcceleration = templateController.walkAcceleration;
+                controller.walkStopRate = templateController.walkStopRate;
+                controller.maxSpeed = templateController.maxSpeed;
+                return;
+            }
+        }
 
-            // 添加BoxCollider2D（1x1，IsTrigger=true）
-            var boxCollider = zoneGO.AddComponent<BoxCollider2D>();
-            boxCollider.size = Vector2.one;
-            boxCollider.isTrigger = true;
+        // 模板缺失/读取失败时，使用兜底值保证敌人至少能移动。
+        controller.walkAcceleration = fallbackWalkAcceleration;
+        controller.walkStopRate = fallbackWalkStopRate;
+        controller.maxSpeed = fallbackMaxSpeed;
+    }
 
-            // 添加DetectionZone脚本
-            var detectionZone = zoneGO.AddComponent<DetectionZone>();
-            createdZones.Add(detectionZone);
+    private static DetectionZone CreateZone(
+        Transform parent,
+        string zoneName,
+        int layer,
+        Vector2 localPosition,
+        Vector2 colliderSize,
+        Vector2 colliderOffset)
+    {
+        var zoneGO = new GameObject(zoneName);
+        zoneGO.layer = layer;
+        zoneGO.transform.SetParent(parent);
+        zoneGO.transform.localPosition = localPosition;
+        zoneGO.transform.localRotation = Quaternion.identity;
+        zoneGO.transform.localScale = Vector3.one;
 
-            Debug.Log($"✓ 创建检测区：{zoneName}");
+        var detectionZone = zoneGO.AddComponent<DetectionZone>();
+
+        var box = zoneGO.AddComponent<BoxCollider2D>();
+        box.isTrigger = true;
+        box.size = colliderSize;
+        box.offset = colliderOffset;
+
+        return detectionZone;
+    }
+
+    private static void BindDefaultZoneEvents(
+        NpcGroundController controller,
+        IReadOnlyDictionary<DetectionZoneBinding.Role, DetectionZone> zonesByRole)
+    {
+        if (controller == null)
+        {
+            return;
+        }
+
+        if (zonesByRole.TryGetValue(DetectionZoneBinding.Role.Cliff, out var cliffZone) && cliffZone != null)
+        {
+            if (cliffZone.NoColliderRemain == null)
+            {
+                cliffZone.NoColliderRemain = new UnityEvent();
+            }
+
+            UnityEventTools.AddPersistentListener(cliffZone.NoColliderRemain, controller.OnCliffDetected);
+        }
+
+        if (zonesByRole.TryGetValue(DetectionZoneBinding.Role.Wall, out var wallZone) && wallZone != null)
+        {
+            if (wallZone.OnTargetEnter == null)
+            {
+                wallZone.OnTargetEnter = new UnityEvent();
+            }
+
+            UnityEventTools.AddPersistentListener(wallZone.OnTargetEnter, controller.OnWallDetected);
         }
     }
 
-    /// <summary>
-    /// 配置EnemyAgentBase组件（若继承）
-    /// </summary>
-    private void ConfigureEnemyAgentBase(GameObject enemyRoot, List<DetectionZone> createdZones)
+    private static void WriteZoneBindings(
+        EnemyAgentBase agent,
+        IReadOnlyDictionary<DetectionZoneBinding.Role, DetectionZone> zonesByRole)
     {
-        // 添加EnemyAgentBase的基础配置（如果需要）
-        // 注意：由于EnemyAgentBase是抽象类，实际需要子类
-        // 这里主要是配置zoneBindings列表
-
-        // 由于EnemyAgentBase是抽象的，这里只做准备
-        // 真正的配置需要在Prefab中手动指定脚本类型和绑定
-
-        if (createdZones.Count > 0)
+        if (agent == null)
         {
-            Debug.Log($"✓ 已创建 {createdZones.Count} 个检测区");
-            Debug.Log("✓ 请在Prefab中手动配置：");
-            Debug.Log("  1. 添加继承EnemyAgentBase的脚本组件");
-            Debug.Log("  2. 将检测区拖拽到zoneBindings列表中");
-            Debug.Log("  3. 分配EnemyTuningProfile资源");
+            return;
         }
+
+        var serializedObject = new SerializedObject(agent);
+        var zoneBindingsProp = serializedObject.FindProperty("zoneBindings");
+        if (zoneBindingsProp == null)
+        {
+            Debug.LogError($"[{agent.name}] 写入 zoneBindings 失败：找不到序列化字段 zoneBindings。", agent);
+            return;
+        }
+
+        zoneBindingsProp.arraySize = 0;
+
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.PrimaryAttack, "主攻击检测区");
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.SecondaryAttack, "法术检测区");
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.Cliff, "悬崖检测区");
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.Wall, "墙壁检测区");
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.Alert, "警戒范围（可选）");
+        AddBindingIfPresent(zoneBindingsProp, zonesByRole, DetectionZoneBinding.Role.Lookout, "视野范围（可选）");
+
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void AddBindingIfPresent(
+        SerializedProperty zoneBindingsProp,
+        IReadOnlyDictionary<DetectionZoneBinding.Role, DetectionZone> zonesByRole,
+        DetectionZoneBinding.Role role,
+        string note)
+    {
+        if (!zonesByRole.TryGetValue(role, out var zone) || zone == null)
+        {
+            return;
+        }
+
+        int index = zoneBindingsProp.arraySize;
+        zoneBindingsProp.InsertArrayElementAtIndex(index);
+
+        var element = zoneBindingsProp.GetArrayElementAtIndex(index);
+        var roleProp = element.FindPropertyRelative("role");
+        var zoneProp = element.FindPropertyRelative("zone");
+        var noteProp = element.FindPropertyRelative("note");
+
+        roleProp.enumValueIndex = (int)role;
+        zoneProp.objectReferenceValue = zone;
+        noteProp.stringValue = note;
+    }
+
+    private static AnimatorController CreateAnimatorController(string targetPath, out string error)
+    {
+        error = "";
+
+        var template = AssetDatabase.LoadAssetAtPath<AnimatorController>(AnimatorTemplatePath);
+        if (template == null)
+        {
+            error = $"找不到 AnimatorController 模板：{AnimatorTemplatePath}";
+            return null;
+        }
+
+        var controller = AnimatorController.CreateAnimatorControllerAtPath(targetPath);
+
+        foreach (var param in controller.parameters.ToArray())
+        {
+            controller.RemoveParameter(param);
+        }
+
+        foreach (var param in template.parameters)
+        {
+            var copied = new AnimatorControllerParameter
+            {
+                name = param.name,
+                type = param.type,
+                defaultBool = param.defaultBool,
+                defaultFloat = param.defaultFloat,
+                defaultInt = param.defaultInt
+            };
+            controller.AddParameter(copied);
+        }
+
+        AssetDatabase.SaveAssets();
+        return controller;
+    }
+
+    private static int GetLayerOrFallback(string layerName, int fallback)
+    {
+        int layer = LayerMask.NameToLayer(layerName);
+        return layer >= 0 ? layer : fallback;
+    }
+
+    private static void EnsureFolder(string parentFolder, string childFolderName)
+    {
+        string childPath = $"{parentFolder}/{childFolderName}";
+        if (AssetDatabase.IsValidFolder(childPath))
+        {
+            return;
+        }
+
+        AssetDatabase.CreateFolder(parentFolder, childFolderName);
+    }
+
+    private static bool IsEnemyNameValid(string name, out string error)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            error = "敌人名称不能为空。";
+            return false;
+        }
+
+        string trimmed = name.Trim();
+        if (trimmed.Length <= 0)
+        {
+            error = "敌人名称不能为空。";
+            return false;
+        }
+
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        if (trimmed.IndexOfAny(invalidChars) >= 0)
+        {
+            error = "敌人名称包含非法字符，请修改后再试。";
+            return false;
+        }
+
+        if (trimmed.Contains("/") || trimmed.Contains("\\"))
+        {
+            error = "敌人名称不能包含路径分隔符。";
+            return false;
+        }
+
+        error = "";
+        return true;
     }
 }

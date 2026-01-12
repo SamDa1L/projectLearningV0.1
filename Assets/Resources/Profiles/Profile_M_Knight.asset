@@ -39,7 +39,7 @@ MonoBehaviour:
     abilityId: Fireball_Enemy
     enabled: 1
     priority: 100
-    cooldownOverride: 2
+    cooldownOverride: 10
     triggerRole: 1
     minRange: 0
     maxRange: 0

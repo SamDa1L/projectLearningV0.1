@@ -83,6 +83,7 @@ MonoBehaviour:
     onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
     onHitVfxDuration: 0.5
     onExpireVfxPath: 
+    onExpireVfxDuration: 0.5
     tags: fire
   onHitSequences:
   - sequenceId: Fireball_Player_OnHit

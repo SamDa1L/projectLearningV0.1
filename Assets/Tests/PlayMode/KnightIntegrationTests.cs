@@ -13,7 +13,7 @@ public class KnightIntegrationTests
     private GameObject knightGameObject;
     private GameObject audioListenerGameObject;
     private GameObject testGroundGameObject;
-    private Knight knight;
+    private NpcGroundController knight;
     private Damageable damageable;
 
     private static int RequireLayer(string layerName)
@@ -62,8 +62,8 @@ public class KnightIntegrationTests
         knightGameObject = Object.Instantiate(knightPrefab);
         Assert.IsNotNull(knightGameObject, "Knight Prefab instantiation failed");
 
-        knight = knightGameObject.GetComponent<Knight>();
-        Assert.IsNotNull(knight, "Knight component missing");
+        knight = knightGameObject.GetComponent<NpcGroundController>();
+        Assert.IsNotNull(knight, "NpcGroundController component missing");
 
         damageable = knightGameObject.GetComponent<Damageable>();
         Assert.IsNotNull(damageable, "Damageable component missing");
