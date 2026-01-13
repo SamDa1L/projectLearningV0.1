@@ -217,7 +217,13 @@ namespace CastleDB.Editor.Providers
                         stackRule = (StatusStackRule)GetIntValue(dict, "stackRule"),
                         maxStacks = Mathf.Max(1, GetIntValue(dict, "maxStacks")),
                         uniqueKey = GetStringValue(dict, "uniqueKey"),
-                        modifiersJson = GetStringValue(dict, "modifiersJson")
+                        modifiersJson = GetStringValue(dict, "modifiersJson"),
+                        prefabPath = GetStringValue(dict, "prefabPath"),
+                        prefabDuration = GetFloatValue(dict, "prefabDuration"),
+                        onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
+                        onExpireVfxDuration = GetFloatValue(dict, "onExpireVfxDuration"),
+                        attachPointPath = GetStringValue(dict, "attachPointPath"),
+                        followTarget = !dict.ContainsKey("followTarget") || GetBoolValue(dict, "followTarget")
                     });
                 }
             }
@@ -390,6 +396,16 @@ namespace CastleDB.Editor.Providers
                     {
                         errors.Add($"AbilityBuff '{buff.id}' 的 modifiersJson 必须是 JSON 对象 ({{...}})");
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(buff.prefabPath) && buff.prefabDuration < 0f)
+                {
+                    errors.Add($"AbilityBuff '{buff.id}' 的 prefabDuration 不能为负数 (current={buff.prefabDuration})");
+                }
+
+                if (!string.IsNullOrWhiteSpace(buff.onExpireVfxPath) && buff.onExpireVfxDuration < 0f)
+                {
+                    errors.Add($"AbilityBuff '{buff.id}' onExpireVfxDuration must be >= 0 when onExpireVfxPath is set (current={buff.onExpireVfxDuration})");
                 }
             }
 

@@ -76,6 +76,16 @@
 					"uiTag": ""
 				},
 				{
+					"id": "ability_moveSpeedUp",
+					"displayName": "移速提升",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Potions/Icons/icon4",
+					"maxStack": 1,
+					"abilityId": "Attr_MoveSpeedUp",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
 					"id": "ability_attack",
 					"displayName": "攻击能力",
 					"itemType": "Ability",

@@ -188,7 +188,7 @@
 				},
 				{
 					"id": "M_Mushroom",
-					"displayName": "蘑菇怪",
+					"displayName": "Mushroom",
 					"prefabName": "Mushroom",
 					"animationTrigger": "Attack",
 					"castTrigger": "AttackAlt",
@@ -263,6 +263,183 @@
 			"props": {}
 		},
 		{
+			"name": "NpcAbility",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:NPC",
+					"name": "npcId",
+					"display": null
+				},
+				{
+					"typeStr": "6:EnemyAbility",
+					"name": "abilityId",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "priority",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "cooldownOverride",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Custom",
+					"name": "triggerRole",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "minRange",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "maxRange",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight_Fireball",
+					"npcId": "M_Knight",
+					"abilityId": "Fireball_Enemy",
+					"enabled": true,
+					"priority": 100,
+					"cooldownOverride": 10,
+					"triggerRole": 1,
+					"minRange": 0,
+					"maxRange": 0,
+					"paramsJson": ""
+				},
+				{
+					"id": "M_Knight_Rage",
+					"npcId": "M_Knight",
+					"abilityId": "Knight_Rage",
+					"enabled": true,
+					"priority": 200,
+					"cooldownOverride": 0,
+					"triggerRole": 2,
+					"minRange": 0,
+					"maxRange": 0,
+					"paramsJson": "{\"releaseDelay\":0.2}"
+				},
+				{
+					"id": "M_Mushroom_Fireball",
+					"npcId": "M_Mushroom",
+					"abilityId": "Fireball_Enemy",
+					"enabled": true,
+					"priority": 100,
+					"cooldownOverride": 10,
+					"triggerRole": 1,
+					"minRange": 0,
+					"maxRange": 0,
+					"paramsJson": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "NpcPassiveAbilityBinding",
+			"columns": [
+				{
+					"typeStr": "6:NpcAbility",
+					"name": "bindingId",
+					"display": null
+				},
+				{
+					"typeStr": "5:Self,CurrentTarget",
+					"name": "targetMode",
+					"display": null
+				},
+				{
+					"typeStr": "5:WhileTrue,OnEnter",
+					"name": "applyMode",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"bindingId": "M_Knight_Rage",
+					"targetMode": 0,
+					"applyMode": 0
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "NpcPassiveAbilityCondition",
+			"columns": [
+				{
+					"typeStr": "6:NpcAbility",
+					"name": "bindingId",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "order",
+					"display": null
+				},
+				{
+					"typeStr": "5:SelfHpBelowPercent,SelfHpAbovePercent,HasTargetInRole",
+					"name": "conditionType",
+					"display": "条件类型（NpcPassiveAbilityConditionType）\nSelfHpBelowPercent=floatValue(0~1)\nSelfHpAbovePercent=floatValue(0~1)\nHasTargetInRole=role(+intValue:MinCount)"
+				},
+				{
+					"typeStr": "4",
+					"name": "floatValue",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "intValue",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Cliff,Alert,Lookout,Custom",
+					"name": "role",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "stringValue",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"bindingId": "M_Knight_Rage",
+					"order": 0,
+					"conditionType": 0,
+					"floatValue": 0.5,
+					"intValue": 0,
+					"role": 0,
+					"stringValue": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
 			"name": "EnemyAbility",
 			"columns": [
 				{
@@ -295,7 +472,7 @@
 					"display": null
 				},
 				{
-					"typeStr": "6:EnemyAbilityBuff",
+					"typeStr": "6:NpcPassiveAbility",
 					"name": "buffId",
 					"display": null
 				},
@@ -320,6 +497,17 @@
 					"kind": 1,
 					"projectileId": "FireBall_enemy",
 					"buffId": "",
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Knight_Rage",
+					"hookType": 4,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": "",
+					"kind": 2,
+					"projectileId": "",
+					"buffId": "Knight_Rage_Buff",
 					"onHitSequenceId": ""
 				}
 			],
@@ -404,6 +592,89 @@
 			"props": {}
 		},
 		{
+			"name": "NpcPassiveAbility",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "duration",
+					"display": null
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uniqueKey",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "prefabDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "attachPointPath",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "followTarget",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "Knight_Rage_Buff",
+					"duration": 0,
+					"stackRule": 3,
+					"maxStacks": 1,
+					"uniqueKey": "",
+					"modifiersJson": "{\"attackMultiplier\":1.3}",
+					"prefabPath": "",
+					"prefabDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"attachPointPath": "",
+					"followTarget": true
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
 			"name": "EnemyAbilityOnHitSequence",
 			"columns": [
 				{
@@ -448,127 +719,6 @@
 				}
 			],
 			"lines": [],
-			"separators": [],
-			"props": {}
-		},
-		{
-			"name": "EnemyAbilityBuff",
-			"columns": [
-				{
-					"typeStr": "0",
-					"name": "id",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "duration",
-					"display": null
-				},
-				{
-					"typeStr": "5:Refresh,Add,Ignore,Replace",
-					"name": "stackRule",
-					"display": null
-				},
-				{
-					"typeStr": "3",
-					"name": "maxStacks",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "uniqueKey",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "modifiersJson",
-					"display": null
-				}
-			],
-			"lines": [],
-			"separators": [],
-			"props": {}
-		},
-		{
-			"name": "NpcAbility",
-			"columns": [
-				{
-					"typeStr": "0",
-					"name": "id",
-					"display": null
-				},
-				{
-					"typeStr": "6:NPC",
-					"name": "npcId",
-					"display": null
-				},
-				{
-					"typeStr": "6:EnemyAbility",
-					"name": "abilityId",
-					"display": null
-				},
-				{
-					"typeStr": "2",
-					"name": "enabled",
-					"display": null
-				},
-				{
-					"typeStr": "3",
-					"name": "priority",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "cooldownOverride",
-					"display": null
-				},
-				{
-					"typeStr": "5:PrimaryAttack,SecondaryAttack,Custom",
-					"name": "triggerRole",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "minRange",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "maxRange",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "paramsJson",
-					"display": null
-				}
-			],
-			"lines": [
-				{
-					"id": "M_Knight_Fireball",
-					"npcId": "M_Knight",
-					"abilityId": "Fireball_Enemy",
-					"enabled": true,
-					"priority": 100,
-					"cooldownOverride": 10,
-					"triggerRole": 1,
-					"minRange": 0,
-					"maxRange": 0,
-					"paramsJson": ""
-				},
-				{
-					"id": "M_Mushroom_Fireball",
-					"npcId": "M_Mushroom",
-					"abilityId": "Fireball_Enemy",
-					"enabled": true,
-					"priority": 100,
-					"cooldownOverride": 10,
-					"triggerRole": 1,
-					"minRange": 0,
-					"maxRange": 0,
-					"paramsJson": ""
-				}
-			],
 			"separators": [],
 			"props": {}
 		}

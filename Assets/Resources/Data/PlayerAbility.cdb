@@ -125,6 +125,18 @@
 					"buffId": "",
 					"cooldown": 1,
 					"onHitSequenceId": "Fireball_Player_OnHit"
+				},
+				{
+					"id": "Attr_MoveSpeedUp",
+					"hookType": 0,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 2,
+					"projectileId": "",
+					"buffId": "Attr_MoveSpeedUp_Buff",
+					"cooldown": 0,
+					"onHitSequenceId": ""
 				}
 			],
 			"separators": [],
@@ -208,6 +220,89 @@
 			"props": {}
 		},
 		{
+			"name": "AbilityBuff",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "duration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uniqueKey",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "prefabDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "attachPointPath",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "followTarget",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "Attr_MoveSpeedUp_Buff",
+					"duration": 10,
+					"stackRule": 3,
+					"maxStacks": 1,
+					"uniqueKey": "",
+					"modifiersJson": "{\"moveSpeedMultiplier\":5}",
+					"prefabPath": "Icons/UIs/Buffs/SpeedUpBuff",
+					"prefabDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"attachPointPath": "",
+					"followTarget": true
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
 			"name": "AbilityOnHitSequence",
 			"columns": [
 				{
@@ -263,44 +358,6 @@
 					"paramsJson": ""
 				}
 			],
-			"separators": [],
-			"props": {}
-		},
-		{
-			"name": "AbilityBuff",
-			"columns": [
-				{
-					"typeStr": "0",
-					"name": "id",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "duration",
-					"display": null
-				},
-				{
-					"typeStr": "5:Refresh,Add,Ignore,Replace",
-					"name": "stackRule",
-					"display": null
-				},
-				{
-					"typeStr": "3",
-					"name": "maxStacks",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "uniqueKey",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "modifiersJson",
-					"display": null
-				}
-			],
-			"lines": [],
 			"separators": [],
 			"props": {}
 		},

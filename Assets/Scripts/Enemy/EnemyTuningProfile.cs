@@ -134,6 +134,13 @@ public class EnemyTuningProfile : ScriptableObject
     [SerializeField]
     public List<NpcAbilityEntry> npcAbilities = new List<NpcAbilityEntry>();
 
+    [Header("Npc Passive Abilities (0.5 Phase 5)")]
+    [SerializeField]
+    public List<NpcPassiveAbilityBindingEntry> npcPassiveAbilityBindings = new List<NpcPassiveAbilityBindingEntry>();
+
+    [SerializeField]
+    public List<NpcPassiveAbilityConditionEntry> npcPassiveAbilityConditions = new List<NpcPassiveAbilityConditionEntry>();
+
     // ===== 验证 =====
 
     /// <summary>
@@ -218,7 +225,11 @@ public class EnemyTuningProfile : ScriptableObject
     /// 2A 要求：全量覆盖所有字段，不保留旧值
     /// </summary>
     /// <param name="npc">来自 CastleDB 的 NPC 数据条目</param>
-    public void ApplyFromCastleDb(NpcEntry npc, IReadOnlyList<NpcAbilityEntry> abilities)
+    public void ApplyFromCastleDb(
+        NpcEntry npc,
+        IReadOnlyList<NpcAbilityEntry> abilities,
+        IReadOnlyList<NpcPassiveAbilityBindingEntry> passiveBindings = null,
+        IReadOnlyList<NpcPassiveAbilityConditionEntry> passiveConditions = null)
     {
         // ===== 基础信息 =====
         profileName = npc.displayName;
@@ -259,12 +270,24 @@ public class EnemyTuningProfile : ScriptableObject
             npcAbilities.AddRange(abilities);
         }
 
+        npcPassiveAbilityBindings.Clear();
+        if (passiveBindings != null)
+        {
+            npcPassiveAbilityBindings.AddRange(passiveBindings);
+        }
+
+        npcPassiveAbilityConditions.Clear();
+        if (passiveConditions != null)
+        {
+            npcPassiveAbilityConditions.AddRange(passiveConditions);
+        }
+
         #if UNITY_EDITOR
         Debug.Log($"[EnemyTuningProfile] 已从 CastleDB 应用数据: {profileName}\n" +
                   $"  HP={maxHealth}, Speed={moveSpeed}, Dmg={attackDamage}\n" +
                   $"  AtkRange={attackRange}, Cooldown={attackCooldown}\n" +
                   $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x, KnockbackToPlayer={knockbackToPlayer}x\n" +
-                  $"  AnimTrigger='{animationTrigger}', CastTrigger='{castTrigger}', LegacyFallback={useLegacyLogicFallback}, NpcAbilities={npcAbilities.Count}");
+                  $"  AnimTrigger='{animationTrigger}', CastTrigger='{castTrigger}', LegacyFallback={useLegacyLogicFallback}, NpcAbilities={npcAbilities.Count}, PassiveBindings={npcPassiveAbilityBindings.Count}, PassiveConditions={npcPassiveAbilityConditions.Count}");
         #endif
     }
 
@@ -372,6 +395,48 @@ public class EnemyTuningProfile : ScriptableObject
                     minRange = entry.minRange,
                     maxRange = entry.maxRange,
                     paramsJson = entry.paramsJson
+                });
+            }
+        }
+
+        cloned.npcPassiveAbilityBindings = new List<NpcPassiveAbilityBindingEntry>();
+        if (npcPassiveAbilityBindings != null)
+        {
+            foreach (var entry in npcPassiveAbilityBindings)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                cloned.npcPassiveAbilityBindings.Add(new NpcPassiveAbilityBindingEntry
+                {
+                    bindingId = entry.bindingId,
+                    targetMode = entry.targetMode,
+                    applyMode = entry.applyMode
+                });
+            }
+        }
+
+        cloned.npcPassiveAbilityConditions = new List<NpcPassiveAbilityConditionEntry>();
+        if (npcPassiveAbilityConditions != null)
+        {
+            foreach (var entry in npcPassiveAbilityConditions)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                cloned.npcPassiveAbilityConditions.Add(new NpcPassiveAbilityConditionEntry
+                {
+                    bindingId = entry.bindingId,
+                    order = entry.order,
+                    conditionType = entry.conditionType,
+                    floatValue = entry.floatValue,
+                    intValue = entry.intValue,
+                    role = entry.role,
+                    stringValue = entry.stringValue
                 });
             }
         }

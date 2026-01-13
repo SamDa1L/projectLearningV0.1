@@ -44,12 +44,25 @@ public class Attack : MonoBehaviour
         {
             Vector2 deliveredKnockBack = transform.parent.localScale.x > 0 ? knockback : new Vector2(-knockback.x, knockback.y);
 
-            //����Ŀ��
-            bool gotHit = damageable.Hit(attackDamage, deliveredKnockBack);
-
-            if (gotHit) 
+            if (attackDamage <= 0)
             {
-                Debug.Log(collision.name + "����" + attackDamage);
+                return;
+            }
+
+            float attackMultiplier = 1f;
+            StatModifierLayer stats = GetComponentInParent<StatModifierLayer>();
+            if (stats != null)
+            {
+                attackMultiplier = Mathf.Max(0f, stats.AttackMultiplier);
+            }
+
+            int finalDamage = Mathf.Max(1, Mathf.RoundToInt(attackDamage * attackMultiplier));
+
+            bool gotHit = damageable.Hit(finalDamage, deliveredKnockBack);
+
+            if (gotHit)
+            {
+                Debug.Log(collision.name + "����" + finalDamage);
             }
             
         }

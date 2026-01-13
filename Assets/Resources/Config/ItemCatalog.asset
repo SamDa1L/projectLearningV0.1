@@ -43,6 +43,16 @@ MonoBehaviour:
       heal: 0
     consumeEffectRawJson: 
     uiTag: 
+  - id: ability_moveSpeedUp
+    displayName: "\u79FB\u901F\u63D0\u5347"
+    itemType: 0
+    icon: Icons/Items/Potions/Icons/icon4
+    abilityId: Attr_MoveSpeedUp
+    maxStack: 1
+    consumeEffect:
+      heal: 0
+    consumeEffectRawJson: 
+    uiTag: 
   - id: ability_attack
     displayName: "\u653B\u51FB\u80FD\u529B"
     itemType: 0

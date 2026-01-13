@@ -997,6 +997,16 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
                 return;
             }
 
+            if (_npcAbilityController.TickPassiveAbilities(deltaTime))
+            {
+                if (animator != null)
+                {
+                    animator.SetBool(AnimationStrings.hasTarget, true);
+                }
+
+                return;
+            }
+
             var secondaryTargets = GetDetectedTargetsForRole(DetectionZoneBinding.Role.SecondaryAttack);
             hasSecondaryTarget = secondaryTargets != null && secondaryTargets.Count > 0;
         }

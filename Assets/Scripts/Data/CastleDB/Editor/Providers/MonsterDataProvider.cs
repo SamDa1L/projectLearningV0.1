@@ -35,10 +35,12 @@ namespace CastleDB.Editor.Providers
         private List<NpcEntry> _npcs = new List<NpcEntry>();
         private List<DetectionZoneEntry> _detectionZones = new List<DetectionZoneEntry>();
         private List<NpcAbilityEntry> _npcAbilities = new List<NpcAbilityEntry>();
+        private List<NpcPassiveAbilityBindingEntry> _npcPassiveAbilityBindings = new List<NpcPassiveAbilityBindingEntry>();
+        private List<NpcPassiveAbilityConditionEntry> _npcPassiveAbilityConditions = new List<NpcPassiveAbilityConditionEntry>();
         private List<AbilityEntry> _enemyAbilities = new List<AbilityEntry>();
         private List<AbilityProjectileDefinition> _enemyProjectiles = new List<AbilityProjectileDefinition>();
         private List<AbilityOnHitSequenceDefinition> _enemyOnHitSequences = new List<AbilityOnHitSequenceDefinition>();
-        private List<AbilityBuffDefinition> _enemyBuffs = new List<AbilityBuffDefinition>();
+        private List<AbilityBuffDefinition> _npcPassiveAbilities = new List<AbilityBuffDefinition>();
 
         private const string ENEMY_ABILITY_CATALOG_PATH = "Assets/Resources/Config/EnemyAbilityCatalog.asset";
 
@@ -53,10 +55,12 @@ namespace CastleDB.Editor.Providers
             _npcs.Clear();
             _detectionZones.Clear();
             _npcAbilities.Clear();
+            _npcPassiveAbilityBindings.Clear();
+            _npcPassiveAbilityConditions.Clear();
             _enemyAbilities.Clear();
             _enemyProjectiles.Clear();
             _enemyOnHitSequences.Clear();
-            _enemyBuffs.Clear();
+            _npcPassiveAbilities.Clear();
 
             foreach (var sheet in root.sheets)
             {
@@ -77,6 +81,16 @@ namespace CastleDB.Editor.Providers
                         Debug.Log($"[MonsterDataProvider] Parsed NpcAbility Sheet: {_npcAbilities.Count} lines");
                         break;
 
+                    case "NpcPassiveAbilityBinding":
+                        _npcPassiveAbilityBindings = ConvertLinesToNpcPassiveAbilityBindingEntries(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed NpcPassiveAbilityBinding Sheet: {_npcPassiveAbilityBindings.Count} lines");
+                        break;
+
+                    case "NpcPassiveAbilityCondition":
+                        _npcPassiveAbilityConditions = ConvertLinesToNpcPassiveAbilityConditionEntries(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed NpcPassiveAbilityCondition Sheet: {_npcPassiveAbilityConditions.Count} lines");
+                        break;
+
                     case "EnemyAbility":
                         _enemyAbilities = ConvertLinesToAbilityEntries(sheet.lines);
                         Debug.Log($"[MonsterDataProvider] Parsed EnemyAbility Sheet: {_enemyAbilities.Count} lines");
@@ -92,9 +106,9 @@ namespace CastleDB.Editor.Providers
                         Debug.Log($"[MonsterDataProvider] Parsed EnemyAbilityOnHitSequence Sheet: {_enemyOnHitSequences.Count} sequences");
                         break;
 
-                    case "EnemyAbilityBuff":
-                        _enemyBuffs = ConvertLinesToBuffDefinitions(sheet.lines);
-                        Debug.Log($"[MonsterDataProvider] Parsed EnemyAbilityBuff Sheet: {_enemyBuffs.Count} lines");
+                    case "NpcPassiveAbility":
+                        _npcPassiveAbilities = ConvertLinesToBuffDefinitions(sheet.lines);
+                        Debug.Log($"[MonsterDataProvider] Parsed NpcPassiveAbility Sheet: {_npcPassiveAbilities.Count} lines");
                         break;
 
                     case "Meta":
@@ -233,6 +247,62 @@ namespace CastleDB.Editor.Providers
             };
         }
 
+        private List<NpcPassiveAbilityBindingEntry> ConvertLinesToNpcPassiveAbilityBindingEntries(List<object> lines)
+        {
+            var result = new List<NpcPassiveAbilityBindingEntry>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                result.Add(new NpcPassiveAbilityBindingEntry
+                {
+                    bindingId = GetStringValue(dict, "bindingId"),
+                    targetMode = GetIntValue(dict, "targetMode"),
+                    applyMode = GetIntValue(dict, "applyMode")
+                });
+            }
+
+            return result;
+        }
+
+        private List<NpcPassiveAbilityConditionEntry> ConvertLinesToNpcPassiveAbilityConditionEntries(List<object> lines)
+        {
+            var result = new List<NpcPassiveAbilityConditionEntry>();
+            if (lines == null)
+            {
+                return result;
+            }
+
+            foreach (var line in lines)
+            {
+                if (line is not Dictionary<string, object> dict)
+                {
+                    continue;
+                }
+
+                result.Add(new NpcPassiveAbilityConditionEntry
+                {
+                    bindingId = GetStringValue(dict, "bindingId"),
+                    order = GetIntValue(dict, "order"),
+                    conditionType = GetIntValue(dict, "conditionType"),
+                    floatValue = GetFloatValue(dict, "floatValue"),
+                    intValue = GetIntValue(dict, "intValue"),
+                    role = GetIntValue(dict, "role"),
+                    stringValue = GetStringValue(dict, "stringValue")
+                });
+            }
+
+            return result;
+        }
+
         private List<AbilityEntry> ConvertLinesToAbilityEntries(List<object> lines)
         {
             var result = new List<AbilityEntry>();
@@ -322,7 +392,13 @@ namespace CastleDB.Editor.Providers
                     stackRule = (StatusStackRule)GetIntValue(dict, "stackRule"),
                     maxStacks = Mathf.Max(1, GetIntValue(dict, "maxStacks")),
                     uniqueKey = GetStringValue(dict, "uniqueKey"),
-                    modifiersJson = GetStringValue(dict, "modifiersJson")
+                    modifiersJson = GetStringValue(dict, "modifiersJson"),
+                    prefabPath = GetStringValue(dict, "prefabPath"),
+                    prefabDuration = GetFloatValue(dict, "prefabDuration"),
+                    onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
+                    onExpireVfxDuration = GetFloatValue(dict, "onExpireVfxDuration"),
+                    attachPointPath = GetStringValue(dict, "attachPointPath"),
+                    followTarget = !dict.ContainsKey("followTarget") || GetBoolValue(dict, "followTarget")
                 });
             }
 
@@ -590,29 +666,39 @@ namespace CastleDB.Editor.Providers
             }
 
             var buffIdSet = new HashSet<string>();
-            foreach (var buff in _enemyBuffs)
+            foreach (var buff in _npcPassiveAbilities)
             {
                 if (buff == null)
                 {
-                    errors.Add("MonsterSystem/EnemyAbilityBuff contains null entry");
+                    errors.Add("MonsterSystem/NpcPassiveAbility contains null entry");
                     continue;
                 }
 
                 if (string.IsNullOrWhiteSpace(buff.id))
                 {
-                    errors.Add("MonsterSystem/EnemyAbilityBuff id is empty");
+                    errors.Add("MonsterSystem/NpcPassiveAbility id is empty");
                     continue;
                 }
 
                 if (!buffIdSet.Add(buff.id))
                 {
-                    errors.Add($"MonsterSystem/EnemyAbilityBuff id duplicated: '{buff.id}'");
+                    errors.Add($"MonsterSystem/NpcPassiveAbility id duplicated: '{buff.id}'");
                 }
 
                 if (!string.IsNullOrWhiteSpace(buff.modifiersJson)
                     && CastleDbJsonUtil.TryParseJsonObject(buff.modifiersJson) == null)
                 {
-                    errors.Add($"MonsterSystem/EnemyAbilityBuff '{buff.id}' modifiersJson must be a JSON object");
+                    errors.Add($"MonsterSystem/NpcPassiveAbility '{buff.id}' modifiersJson must be a JSON object");
+                }
+
+                if (!string.IsNullOrWhiteSpace(buff.prefabPath) && buff.prefabDuration < 0f)
+                {
+                    errors.Add($"MonsterSystem/NpcPassiveAbility '{buff.id}' prefabDuration must be >= 0 when prefabPath is set (current={buff.prefabDuration})");
+                }
+
+                if (!string.IsNullOrWhiteSpace(buff.onExpireVfxPath) && buff.onExpireVfxDuration < 0f)
+                {
+                    errors.Add($"MonsterSystem/NpcPassiveAbility '{buff.id}' onExpireVfxDuration must be >= 0 when onExpireVfxPath is set (current={buff.onExpireVfxDuration})");
                 }
             }
 
@@ -715,11 +801,16 @@ namespace CastleDB.Editor.Providers
                     }
                 }
 
-                if ((kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
-                    && !string.IsNullOrWhiteSpace(ability.buffId)
-                    && !buffIdSet.Contains(ability.buffId))
+                if (kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
                 {
-                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing buffId='{ability.buffId}'");
+                    if (string.IsNullOrWhiteSpace(ability.buffId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind={kind} but buffId is empty");
+                    }
+                    else if (!buffIdSet.Contains(ability.buffId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing buffId='{ability.buffId}'");
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(ability.onHitSequenceId)
@@ -730,7 +821,24 @@ namespace CastleDB.Editor.Providers
             }
 
             // ===== NpcAbility validation (0.5 Phase 3) =====
+            var enemyAbilityById = new Dictionary<string, AbilityEntry>();
+            foreach (var ability in _enemyAbilities)
+            {
+                if (ability == null || string.IsNullOrWhiteSpace(ability.id))
+                {
+                    continue;
+                }
+
+                if (!enemyAbilityById.ContainsKey(ability.id))
+                {
+                    enemyAbilityById.Add(ability.id, ability);
+                }
+            }
+
             var npcAbilityIdSet = new HashSet<string>();
+            var npcAbilityById = new Dictionary<string, NpcAbilityEntry>();
+            var npcAbilityKindByBindingId = new Dictionary<string, AbilityKind>();
+            var npcAbilitiesRequiringPassiveBinding = new HashSet<string>();
             foreach (var binding in _npcAbilities)
             {
                 if (binding == null)
@@ -749,6 +857,10 @@ namespace CastleDB.Editor.Providers
                 {
                     errors.Add($"NpcAbility id '{binding.id}' duplicated");
                 }
+                else
+                {
+                    npcAbilityById[binding.id] = binding;
+                }
 
                 if (string.IsNullOrWhiteSpace(binding.npcId))
                 {
@@ -766,6 +878,18 @@ namespace CastleDB.Editor.Providers
                 else if (!enemyAbilityIdSet.Contains(binding.abilityId))
                 {
                     errors.Add($"NpcAbility '{binding.id}' abilityId '{binding.abilityId}' not found in MonsterSystem/EnemyAbility");
+                }
+                else if (enemyAbilityById.TryGetValue(binding.abilityId, out var enemyAbility) && enemyAbility != null)
+                {
+                    AbilityKind kind = enemyAbility.kind >= 0 && enemyAbility.kind <= (int)AbilityKind.Buff
+                        ? (AbilityKind)enemyAbility.kind
+                        : AbilityKind.BuiltinDefault;
+                    npcAbilityKindByBindingId[binding.id] = kind;
+
+                    if (kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
+                    {
+                        npcAbilitiesRequiringPassiveBinding.Add(binding.id);
+                    }
                 }
 
                 if (binding.triggerRole < 0 || binding.triggerRole > 2)
@@ -801,6 +925,160 @@ namespace CastleDB.Editor.Providers
                     {
                         errors.Add($"NpcAbility '{binding.id}' uses triggerRole=SecondaryAttack, but DetectionZone missing role=SecondaryAttack for npcId='{binding.npcId}' (suggest childId='DZ_Ability')");
                     }
+                }
+            }
+
+            // ===== NpcPassiveAbility validation (0.5 Phase 5) =====
+            var passiveBindingIdSet = new HashSet<string>();
+            var passiveBindingByBindingId = new Dictionary<string, NpcPassiveAbilityBindingEntry>();
+            foreach (var passiveBinding in _npcPassiveAbilityBindings)
+            {
+                if (passiveBinding == null)
+                {
+                    errors.Add("NpcPassiveAbilityBinding contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(passiveBinding.bindingId))
+                {
+                    errors.Add("NpcPassiveAbilityBinding bindingId is empty");
+                    continue;
+                }
+
+                if (!npcAbilityIdSet.Contains(passiveBinding.bindingId))
+                {
+                    errors.Add($"NpcPassiveAbilityBinding bindingId '{passiveBinding.bindingId}' not found in NpcAbility");
+                    continue;
+                }
+
+                if (!passiveBindingIdSet.Add(passiveBinding.bindingId))
+                {
+                    errors.Add($"NpcPassiveAbilityBinding bindingId duplicated: '{passiveBinding.bindingId}'");
+                    continue;
+                }
+
+                passiveBindingByBindingId[passiveBinding.bindingId] = passiveBinding;
+
+                if (!npcAbilityKindByBindingId.TryGetValue(passiveBinding.bindingId, out var npcKind)
+                    || (npcKind != AbilityKind.Buff && npcKind != AbilityKind.StatModifier))
+                {
+                    errors.Add($"NpcPassiveAbilityBinding '{passiveBinding.bindingId}' is configured, but referenced EnemyAbility.kind is not Buff/StatModifier");
+                }
+
+                if (passiveBinding.targetMode < 0 || passiveBinding.targetMode > (int)NpcPassiveAbilityTargetMode.CurrentTarget)
+                {
+                    errors.Add(
+                        $"NpcPassiveAbilityBinding '{passiveBinding.bindingId}' targetMode out of range (0-{(int)NpcPassiveAbilityTargetMode.CurrentTarget}): {passiveBinding.targetMode}");
+                }
+
+                if (passiveBinding.applyMode < 0 || passiveBinding.applyMode > (int)NpcPassiveAbilityApplyMode.OnEnter)
+                {
+                    errors.Add(
+                        $"NpcPassiveAbilityBinding '{passiveBinding.bindingId}' applyMode out of range (0-{(int)NpcPassiveAbilityApplyMode.OnEnter}): {passiveBinding.applyMode}");
+                }
+            }
+
+            foreach (string bindingId in npcAbilitiesRequiringPassiveBinding)
+            {
+                if (!passiveBindingIdSet.Contains(bindingId))
+                {
+                    AbilityKind kind = npcAbilityKindByBindingId.TryGetValue(bindingId, out var k) ? k : AbilityKind.BuiltinDefault;
+                    errors.Add(
+                        $"NpcAbility '{bindingId}' references EnemyAbility.kind={kind}, but missing NpcPassiveAbilityBinding (bindingId='{bindingId}')");
+                }
+            }
+
+            var hasTargetConditionByBindingId = new HashSet<string>();
+            var orderSetByBindingId = new Dictionary<string, HashSet<int>>();
+            foreach (var cond in _npcPassiveAbilityConditions)
+            {
+                if (cond == null)
+                {
+                    errors.Add("NpcPassiveAbilityCondition contains null entry");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(cond.bindingId))
+                {
+                    errors.Add("NpcPassiveAbilityCondition bindingId is empty");
+                    continue;
+                }
+
+                if (!npcAbilityIdSet.Contains(cond.bindingId))
+                {
+                    errors.Add($"NpcPassiveAbilityCondition bindingId '{cond.bindingId}' not found in NpcAbility");
+                    continue;
+                }
+
+                if (cond.order < 0)
+                {
+                    errors.Add($"NpcPassiveAbilityCondition '{cond.bindingId}' order must be >= 0 (current={cond.order})");
+                }
+
+                if (!orderSetByBindingId.TryGetValue(cond.bindingId, out var orderSet))
+                {
+                    orderSet = new HashSet<int>();
+                    orderSetByBindingId.Add(cond.bindingId, orderSet);
+                }
+
+                if (!orderSet.Add(cond.order))
+                {
+                    errors.Add($"NpcPassiveAbilityCondition '{cond.bindingId}' duplicated order={cond.order}");
+                }
+
+                if (cond.conditionType < 0 || cond.conditionType > (int)NpcPassiveAbilityConditionType.HasTargetInRole)
+                {
+                    errors.Add(
+                        $"NpcPassiveAbilityCondition '{cond.bindingId}' conditionType out of range (0-{(int)NpcPassiveAbilityConditionType.HasTargetInRole}): {cond.conditionType}");
+                    continue;
+                }
+
+                switch ((NpcPassiveAbilityConditionType)cond.conditionType)
+                {
+                    case NpcPassiveAbilityConditionType.SelfHpBelowPercent:
+                    case NpcPassiveAbilityConditionType.SelfHpAbovePercent:
+                        if (!(cond.floatValue > 0f && cond.floatValue < 1f))
+                        {
+                            errors.Add(
+                                $"NpcPassiveAbilityCondition '{cond.bindingId}' {((NpcPassiveAbilityConditionType)cond.conditionType)} floatValue must be in (0,1) (current={cond.floatValue})");
+                        }
+                        break;
+
+                    case NpcPassiveAbilityConditionType.HasTargetInRole:
+                        if (cond.role < 0 || cond.role > 5)
+                        {
+                            errors.Add(
+                                $"NpcPassiveAbilityCondition '{cond.bindingId}' HasTargetInRole role out of range (0-5): {cond.role}");
+                        }
+                        hasTargetConditionByBindingId.Add(cond.bindingId);
+                        break;
+                }
+            }
+
+            foreach (var kvp in passiveBindingByBindingId)
+            {
+                string bindingId = kvp.Key;
+                var passiveBinding = kvp.Value;
+                if (passiveBinding == null || string.IsNullOrWhiteSpace(bindingId))
+                {
+                    continue;
+                }
+
+                if (passiveBinding.targetMode != (int)NpcPassiveAbilityTargetMode.CurrentTarget)
+                {
+                    continue;
+                }
+
+                if (!npcAbilityById.TryGetValue(bindingId, out var npcAbility) || npcAbility == null)
+                {
+                    continue;
+                }
+
+                // triggerRole=Custom 时 runtime 无法从 DetectionZone 获取目标，必须配置 HasTargetInRole 来提供目标 hint。
+                if (npcAbility.triggerRole == 2 && !hasTargetConditionByBindingId.Contains(bindingId))
+                {
+                    errors.Add(
+                        $"NpcPassiveAbilityBinding '{bindingId}' targetMode=CurrentTarget but NpcAbility.triggerRole=Custom and no HasTargetInRole condition configured");
                 }
             }
 
@@ -863,7 +1141,20 @@ namespace CastleDB.Editor.Providers
                         .ThenBy(binding => binding.id)
                         .ToList();
 
-                    profile.ApplyFromCastleDb(npc, npcAbilities);
+                    var npcAbilityIdSet = new HashSet<string>(npcAbilities.Where(b => b != null).Select(b => b.id));
+
+                    var passiveBindings = _npcPassiveAbilityBindings
+                        .Where(b => b != null && npcAbilityIdSet.Contains(b.bindingId))
+                        .OrderBy(b => b.bindingId)
+                        .ToList();
+
+                    var passiveConditions = _npcPassiveAbilityConditions
+                        .Where(c => c != null && npcAbilityIdSet.Contains(c.bindingId))
+                        .OrderBy(c => c.bindingId)
+                        .ThenBy(c => c.order)
+                        .ToList();
+
+                    profile.ApplyFromCastleDb(npc, npcAbilities, passiveBindings, passiveConditions);
 
                     // animationTrigger 变更记录
                     if (!string.IsNullOrEmpty(oldTrigger) && oldTrigger != npc.animationTrigger)
@@ -914,11 +1205,11 @@ namespace CastleDB.Editor.Providers
                     builder.Updated(ENEMY_ABILITY_CATALOG_PATH);
                 }
 
-                catalog.ApplyFromCastleDb(_enemyAbilities, _enemyProjectiles, _enemyOnHitSequences, _enemyBuffs);
+                catalog.ApplyFromCastleDb(_enemyAbilities, _enemyProjectiles, _enemyOnHitSequences, _npcPassiveAbilities);
                 builder.AddInfo($"EnemyAbilityCatalog: {_enemyAbilities.Count} abilities");
                 builder.AddInfo($"EnemyAbilityProjectiles: {_enemyProjectiles.Count} entries");
                 builder.AddInfo($"EnemyAbilityOnHitSequences: {_enemyOnHitSequences.Count} sequences");
-                builder.AddInfo($"EnemyAbilityBuffs: {_enemyBuffs.Count} entries");
+                builder.AddInfo($"NpcPassiveAbilities: {_npcPassiveAbilities.Count} entries");
 
                 EditorUtility.SetDirty(catalog);
             }
@@ -1026,10 +1317,12 @@ namespace CastleDB.Editor.Providers
             _npcs.Clear();
             _detectionZones.Clear();
             _npcAbilities.Clear();
+            _npcPassiveAbilityBindings.Clear();
+            _npcPassiveAbilityConditions.Clear();
             _enemyAbilities.Clear();
             _enemyProjectiles.Clear();
             _enemyOnHitSequences.Clear();
-            _enemyBuffs.Clear();
+            _npcPassiveAbilities.Clear();
         }
 
         #endregion

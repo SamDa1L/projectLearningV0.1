@@ -73,6 +73,16 @@ MonoBehaviour:
     cooldown: 1
     onHitSequenceId: Fireball_Player_OnHit
     paramsJson: 
+  - id: Attr_MoveSpeedUp
+    hookType: 0
+    priority: 100
+    enabled: 0
+    kind: 2
+    projectileId: 
+    buffId: Attr_MoveSpeedUp_Buff
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
   projectiles:
   - id: FireBall_player
     prefabPath: Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile
@@ -95,4 +105,16 @@ MonoBehaviour:
       summonId: 
       waitMode: 
       paramsJson: 
-  buffs: []
+  buffs:
+  - id: Attr_MoveSpeedUp_Buff
+    duration: 10
+    stackRule: 3
+    maxStacks: 1
+    uniqueKey: 
+    modifiersJson: '{"moveSpeedMultiplier":5}'
+    prefabPath: Icons/UIs/Buffs/SpeedUpBuff
+    prefabDuration: 0
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    attachPointPath: 
+    followTarget: 1

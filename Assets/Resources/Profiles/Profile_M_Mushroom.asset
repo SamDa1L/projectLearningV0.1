@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Profile_M_Mushroom
   m_EditorClassIdentifier: 
   version: 1.0.0
-  profileName: "\u8611\u83C7\u602A"
+  profileName: Mushroom
   maxHealth: 100
   moveSpeed: 3
   perceptionRadius: 2
@@ -44,3 +44,5 @@ MonoBehaviour:
     minRange: 0
     maxRange: 0
     paramsJson: 
+  npcPassiveAbilityBindings: []
+  npcPassiveAbilityConditions: []

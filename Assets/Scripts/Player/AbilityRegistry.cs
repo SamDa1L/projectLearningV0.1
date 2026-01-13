@@ -25,12 +25,14 @@ public static class AbilityRegistry
 
     public const string KindBuiltinDefault = "BuiltinDefault";
     public const string KindProjectile = "Projectile";
+    public const string KindStatModifier = "StatModifier";
 
     private static readonly Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>> Factories
         = new Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>>(StringComparer.OrdinalIgnoreCase)
         {
             { KindBuiltinDefault, CreateBuiltinDefaultAbility },
-            { KindProjectile, CreateProjectileAbility }
+            { KindProjectile, CreateProjectileAbility },
+            { KindStatModifier, CreateStatModifierAbility }
         };
 
     public static bool IsKindRegistered(string kind)
@@ -252,5 +254,19 @@ public static class AbilityRegistry
 
         return new ProjectileRangedAttackAbility(playerController, entry.id, entry.priority, entry.enabled, prefabPath);
     }
-}
 
+    private static IPlayerAbility CreateStatModifierAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog catalog,
+        Dictionary<string, object> _)
+    {
+        return new StatModifierPassiveAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            catalog,
+            entry.buffId);
+    }
+}

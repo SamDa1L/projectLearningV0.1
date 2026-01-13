@@ -34,3 +34,5 @@ MonoBehaviour:
   castTrigger: Attack
   useLegacyLogicFallback: 0
   npcAbilities: []
+  npcPassiveAbilityBindings: []
+  npcPassiveAbilityConditions: []

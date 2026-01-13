@@ -185,6 +185,65 @@ namespace CastleDB.Runtime
         }
     }
 
+    // ===== 0.5 Phase 5: NpcPassiveAbility (Buff/StatModifier) bindings & conditions =====
+
+    public enum NpcPassiveAbilityTargetMode
+    {
+        Self = 0,
+        CurrentTarget = 1
+    }
+
+    public enum NpcPassiveAbilityApplyMode
+    {
+        WhileTrue = 0,
+        OnEnter = 1
+    }
+
+    public enum NpcPassiveAbilityConditionType
+    {
+        SelfHpBelowPercent = 0,
+        SelfHpAbovePercent = 1,
+        HasTargetInRole = 2
+    }
+
+    /// <summary>
+    /// Buff 系统绑定条目（0.5 Phase 5）
+    /// 对应 MonsterSystem.cdb 的 NpcPassiveAbilityBinding Sheet 一行数据
+    /// </summary>
+    [System.Serializable]
+    public class NpcPassiveAbilityBindingEntry
+    {
+        [SerializeField] public string bindingId;
+        [SerializeField] public int targetMode; // 0=Self, 1=CurrentTarget
+        [SerializeField] public int applyMode;  // 0=WhileTrue, 1=OnEnter
+
+        public override string ToString()
+        {
+            return $"NpcPassiveAbilityBinding[bindingId={bindingId}, targetMode={targetMode}, applyMode={applyMode}]";
+        }
+    }
+
+    /// <summary>
+    /// Buff 条件条目（0.5 Phase 5）
+    /// 对应 MonsterSystem.cdb 的 NpcPassiveAbilityCondition Sheet 一行数据
+    /// </summary>
+    [System.Serializable]
+    public class NpcPassiveAbilityConditionEntry
+    {
+        [SerializeField] public string bindingId;
+        [SerializeField] public int order;
+        [SerializeField] public int conditionType; // NpcPassiveAbilityConditionType
+        [SerializeField] public float floatValue;
+        [SerializeField] public int intValue;
+        [SerializeField] public int role; // DetectionZoneBinding.Role
+        [SerializeField] public string stringValue;
+
+        public override string ToString()
+        {
+            return $"NpcPassiveAbilityCondition[bindingId={bindingId}, order={order}, type={conditionType}]";
+        }
+    }
+
     /// <summary>
     /// 技能表条目
     /// 对应 CastleDB 中 Ability Sheet 的一行数据

@@ -34,6 +34,16 @@ MonoBehaviour:
   castTrigger: AttackAlt
   useLegacyLogicFallback: 1
   npcAbilities:
+  - id: M_Knight_Rage
+    npcId: M_Knight
+    abilityId: Knight_Rage
+    enabled: 1
+    priority: 200
+    cooldownOverride: 0
+    triggerRole: 2
+    minRange: 0
+    maxRange: 0
+    paramsJson: '{"releaseDelay":0.2}'
   - id: M_Knight_Fireball
     npcId: M_Knight
     abilityId: Fireball_Enemy
@@ -44,3 +54,15 @@ MonoBehaviour:
     minRange: 0
     maxRange: 0
     paramsJson: 
+  npcPassiveAbilityBindings:
+  - bindingId: M_Knight_Rage
+    targetMode: 0
+    applyMode: 0
+  npcPassiveAbilityConditions:
+  - bindingId: M_Knight_Rage
+    order: 0
+    conditionType: 0
+    floatValue: 0.5
+    intValue: 0
+    role: 0
+    stringValue: 

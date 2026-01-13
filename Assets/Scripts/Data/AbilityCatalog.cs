@@ -85,6 +85,12 @@ public class AbilityBuffDefinition
     public int maxStacks = 1;
     public string uniqueKey;
     public string modifiersJson;
+    public string prefabPath;
+    public float prefabDuration;
+    public string onExpireVfxPath;
+    public float onExpireVfxDuration;
+    public string attachPointPath;
+    public bool followTarget = true;
 }
 
 /// <summary>
