@@ -273,7 +273,7 @@ namespace CastleDB.Runtime
         // ===== 0.5 扩展字段（与 PlayerAbility.cdb 对齐）=====
 
         [SerializeField]
-        public int kind; // 0=BuiltinDefault, 1=Projectile, 2=StatModifier, 3=Buff
+        public int kind; // 0=BuiltinDefault, 1=Projectile, 2=StatModifier, 3=Buff, 4=Dash, 5=Summon, 6=AttackOverride
 
         [SerializeField]
         public string projectileId;

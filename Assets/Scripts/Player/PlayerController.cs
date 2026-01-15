@@ -276,6 +276,25 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void EnsureInputModeSwitcher()
+    {
+        // Only wire this up when PlayerInput exists on the same GameObject.
+        if (GetComponent<PlayerInput>() == null)
+        {
+            return;
+        }
+
+        if (GetComponent<InputModeSwitcher>() == null)
+        {
+            gameObject.AddComponent<InputModeSwitcher>();
+        }
+
+        if (GetComponent<InputModeHintOverlay>() == null)
+        {
+            gameObject.AddComponent<InputModeHintOverlay>();
+        }
+    }
+
     /// <summary>
     /// 是否允许移动属性(只读)
     ///
@@ -355,6 +374,11 @@ public class PlayerController : MonoBehaviour
     /// <summary>能力系统（阶段 3B）</summary>
     private AbilitySystem abilitySystem;
 
+    /// <summary>
+    /// 玩家上下文（用于读取 Inventory 槽位，从而实现“按槽位释放”）
+    /// </summary>
+    private PlayerContext _playerContext;
+
 
     /// <summary>
     /// Awake生命周期函数
@@ -378,10 +402,20 @@ public class PlayerController : MonoBehaviour
             statLayer = gameObject.AddComponent<StatModifierLayer>();
         }
 
+        // 缓存 PlayerContext（可能在父节点）
+        _playerContext = GetComponent<PlayerContext>();
+        if (_playerContext == null)
+        {
+            _playerContext = GetComponentInParent<PlayerContext>();
+        }
+
         if (GetComponent<StatusEffectController>() == null)
         {
             gameObject.AddComponent<StatusEffectController>();
         }
+
+        // Phase 9: Last Input Wins control scheme switcher (no Find/Tag/singleton).
+        EnsureInputModeSwitcher();
 
         // 阶段 3A: 从 PlayerConfig 加载配置
         LoadConfigFromPlayerConfig();
@@ -935,7 +969,20 @@ public class PlayerController : MonoBehaviour
             if (context.started)
             {
                 AbilityInput input = AbilityInput.Started(isPressed: true);
-                abilitySystem.Dispatch(AbilityHookType.Attack, input);
+
+                // 0.5：按槽位释放（方块/Attack 固定触发 slot0 当前装备的能力）
+                if (_playerContext != null
+                    && _playerContext.Inventory != null
+                    && _playerContext.Inventory.TryGetAbilityIdInSlot(0, out string abilityId)
+                    && !string.IsNullOrWhiteSpace(abilityId))
+                {
+                    abilitySystem.TryDispatchByAbilityId(abilityId, input);
+                }
+                else
+                {
+                    // 兜底：避免 Inventory 未初始化导致开局无法攻击
+                    abilitySystem.Dispatch(AbilityHookType.Attack, input);
+                }
             }
             return;
         }
@@ -969,7 +1016,20 @@ public class PlayerController : MonoBehaviour
             if (context.started)
             {
                 AbilityInput input = AbilityInput.Started(isPressed: true);
-                abilitySystem.Dispatch(AbilityHookType.RangedAttack, input);
+
+                // 0.5：按槽位释放（圆圈/RangedAttack 固定触发 slot1 当前装备的能力）
+                if (_playerContext != null
+                    && _playerContext.Inventory != null
+                    && _playerContext.Inventory.TryGetAbilityIdInSlot(1, out string abilityId)
+                    && !string.IsNullOrWhiteSpace(abilityId))
+                {
+                    abilitySystem.TryDispatchByAbilityId(abilityId, input);
+                }
+                else
+                {
+                    // 兜底：保持旧逻辑，避免配置缺失导致输入完全无效
+                    abilitySystem.Dispatch(AbilityHookType.RangedAttack, input);
+                }
             }
             return;
         }

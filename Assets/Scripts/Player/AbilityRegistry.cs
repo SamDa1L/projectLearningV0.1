@@ -26,13 +26,21 @@ public static class AbilityRegistry
     public const string KindBuiltinDefault = "BuiltinDefault";
     public const string KindProjectile = "Projectile";
     public const string KindStatModifier = "StatModifier";
+    public const string KindBuff = "Buff";
+    public const string KindDash = "Dash";
+    public const string KindSummon = "Summon";
+    public const string KindAttackOverride = "AttackOverride";
 
     private static readonly Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>> Factories
         = new Dictionary<string, Func<AbilityCatalogEntry, PlayerController, AbilityCatalog, Dictionary<string, object>, IPlayerAbility>>(StringComparer.OrdinalIgnoreCase)
         {
             { KindBuiltinDefault, CreateBuiltinDefaultAbility },
             { KindProjectile, CreateProjectileAbility },
-            { KindStatModifier, CreateStatModifierAbility }
+            { KindStatModifier, CreateStatModifierAbility },
+            { KindBuff, CreateBuffAbility },
+            { KindDash, CreateDashAbility },
+            { KindSummon, CreateSummonAbility },
+            { KindAttackOverride, CreateAttackOverrideAbility }
         };
 
     public static bool IsKindRegistered(string kind)
@@ -268,5 +276,98 @@ public static class AbilityRegistry
             entry.enabled,
             catalog,
             entry.buffId);
+    }
+
+    private static IPlayerAbility CreateBuffAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog catalog,
+        Dictionary<string, object> _)
+    {
+        return new ActiveBuffAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            catalog,
+            entry.buffId,
+            entry.cooldown,
+            entry.paramsJson);
+    }
+
+    private static IPlayerAbility CreateDashAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog _,
+        Dictionary<string, object> __)
+    {
+        if (entry.hookType != AbilityHookType.Run)
+        {
+            Debug.LogWarning($"[AbilityRegistry] Dash kind used with hookType={entry.hookType} (id='{entry.id}'). Recommended hookType is Run.");
+        }
+
+        return new DashAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            entry.cooldown,
+            entry.paramsJson);
+    }
+
+    private static IPlayerAbility CreateSummonAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog _,
+        Dictionary<string, object> __)
+    {
+        return new SummonAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            entry.cooldown,
+            entry.paramsJson);
+    }
+
+    private static IPlayerAbility CreateAttackOverrideAbility(
+        AbilityCatalogEntry entry,
+        PlayerController playerController,
+        AbilityCatalog catalog,
+        Dictionary<string, object> _)
+    {
+        if (catalog == null)
+        {
+            Debug.LogError($"[AbilityRegistry] AttackOverride requires AbilityCatalog (abilityId='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.projectileId))
+        {
+            Debug.LogError($"[AbilityRegistry] AttackOverride requires projectileId (abilityId='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, null);
+        }
+
+        if (!catalog.TryGetProjectile(entry.projectileId, out var def) || def == null)
+        {
+            Debug.LogError($"[AbilityRegistry] AttackOverride missing projectile definition for projectileId='{entry.projectileId}' (abilityId='{entry.id}'), fallback to BuiltinDefault");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, null);
+        }
+
+        AbilityOnHitSequenceDefinition onHitSeq = null;
+        if (!string.IsNullOrWhiteSpace(entry.onHitSequenceId))
+        {
+            catalog.TryGetOnHitSequence(entry.onHitSequenceId, out onHitSeq);
+        }
+
+        return new AttackOverrideAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            def,
+            entry.cooldown,
+            onHitSeq,
+            entry.paramsJson);
     }
 }

@@ -229,7 +229,7 @@
                 {
                     "name": "",
                     "id": "143bb1cd-cc10-4eca-a2f0-a3664166fe91",
-                    "path": "<Gamepad>/rightTrigger",
+                    "path": "<Gamepad>/buttonWest",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Gamepad",
@@ -283,6 +283,17 @@
                 },
                 {
                     "name": "",
+                    "id": "4a4c89b4-dfa1-49f6-937a-5d24c62685e9",
+                    "path": "<Gamepad>/leftStickPress",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "Run",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "69ff4d99-1af6-4266-8265-7e23273232d3",
                     "path": "<Keyboard>/leftShift",
                     "interactions": "",
@@ -294,12 +305,45 @@
                 },
                 {
                     "name": "",
+                    "id": "1d9a252a-bd36-42ba-91ca-02b6eb419096",
+                    "path": "<Gamepad>/buttonSouth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "04420bd6-ab8b-4a81-9a03-8be06dedf053",
                     "path": "<Keyboard>/space",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2f5bd2ff-ef94-418e-96d9-52a1dfac7b16",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "RangedAttack",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "174f1c0a-1c46-4ffa-bb22-e1bb9256068a",
+                    "path": "<Gamepad>/buttonEast",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "RangedAttack",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

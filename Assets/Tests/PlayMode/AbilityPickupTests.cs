@@ -200,51 +200,26 @@ public class AbilityPickupTests
     }
 
     /// <summary>
-    /// 测试：槽满时拾取应返回 RequireReplace
-    /// 契约 [C-Test-1]：使用 4 个不同的 Ability 填满槽位，拾取第 5 个时返回 RequireReplace
+    /// 测试：Ability 拾取应按顺序覆盖槽位（slot0→slot3 循环），旧能力直接丢弃
     /// </summary>
     [Test]
-    public void TestFullSlotsRequireReplace()
+    public void TestAbilityPickupSequentiallyReplacesSlots()
     {
-        // Arrange: 填满 4 个槽位（使用不同的 itemId）
-        _inventory.EquipAbilityItemToSlot(0, "ability_arrow");
-        _inventory.EquipAbilityItemToSlot(1, "ability_walk");
-        _inventory.EquipAbilityItemToSlot(2, "ability_attack");
-        _inventory.EquipAbilityItemToSlot(3, "ability_run");
+        // Act + Assert：连续拾取 4 个不同 Ability，应依次写入 slot0~slot3
+        Assert.AreEqual(PickupResult.Success, _inventory.TryPickup(new PickupRequest("ability_arrow", 1, null), out _));
+        Assert.AreEqual("ability_arrow", _inventory.GetAbilityItemId(0), "第 1 次拾取应写入槽位 0");
 
-        // 验证：4 个槽位已填满
-        Assert.AreEqual("ability_arrow", _inventory.GetAbilityItemId(0), "槽位 0 应填充");
-        Assert.AreEqual("ability_walk", _inventory.GetAbilityItemId(1), "槽位 1 应填充");
-        Assert.AreEqual("ability_attack", _inventory.GetAbilityItemId(2), "槽位 2 应填充");
-        Assert.AreEqual("ability_run", _inventory.GetAbilityItemId(3), "槽位 3 应填充");
+        Assert.AreEqual(PickupResult.Success, _inventory.TryPickup(new PickupRequest("ability_walk", 1, null), out _));
+        Assert.AreEqual("ability_walk", _inventory.GetAbilityItemId(1), "第 2 次拾取应写入槽位 1");
 
-        // 创建第 5 个 Ability 的 pickup（模拟场景拾取物）
-        var pickupObj = new GameObject("TestPickup");
-        var collider = pickupObj.AddComponent<BoxCollider2D>();
-        collider.isTrigger = true;
-        var pickup = pickupObj.AddComponent<ItemPickup>();
-        pickup.itemId = "ability_jump"; // 第 5 个不同的 Ability
-        pickup.amount = 1;
+        Assert.AreEqual(PickupResult.Success, _inventory.TryPickup(new PickupRequest("ability_run", 1, null), out _));
+        Assert.AreEqual("ability_run", _inventory.GetAbilityItemId(2), "第 3 次拾取应写入槽位 2");
 
-        // Act: 尝试拾取第 5 个 Ability（槽满）
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        var result = _inventory.TryPickup(request, out var ctx);
+        Assert.AreEqual(PickupResult.Success, _inventory.TryPickup(new PickupRequest("ability_jump", 1, null), out _));
+        Assert.AreEqual("ability_jump", _inventory.GetAbilityItemId(3), "第 4 次拾取应写入槽位 3");
 
-        // Assert: 应返回 RequireReplace
-        Assert.AreEqual(PickupResult.RequireReplace, result, "槽满拾取应返回 RequireReplace");
-
-        // 验证：PendingReplaceContext 应包含正确信息
-        Assert.AreEqual("ability_jump", ctx.pendingItemId, "context.pendingItemId 应为 ability_jump");
-        Assert.AreEqual(1, ctx.pendingAmount, "context.pendingAmount 应为 1");
-        Assert.AreEqual(pickup, ctx.sourcePickup, "context.sourcePickup 应为 pickup");
-
-        // 验证：槽位未变化（RequireReplace 不自动替换）
-        Assert.AreEqual("ability_arrow", _inventory.GetAbilityItemId(0), "槽位 0 不应变化");
-        Assert.AreEqual("ability_walk", _inventory.GetAbilityItemId(1), "槽位 1 不应变化");
-        Assert.AreEqual("ability_attack", _inventory.GetAbilityItemId(2), "槽位 2 不应变化");
-        Assert.AreEqual("ability_run", _inventory.GetAbilityItemId(3), "槽位 3 不应变化");
-
-        // Cleanup
-        Object.DestroyImmediate(pickupObj);
+        // 第 5 次拾取：回到槽位 0，覆盖旧值（旧能力直接丢弃）
+        Assert.AreEqual(PickupResult.Success, _inventory.TryPickup(new PickupRequest("ability_attack", 1, null), out _));
+        Assert.AreEqual("ability_attack", _inventory.GetAbilityItemId(0), "第 5 次拾取应回到槽位 0 并覆盖");
     }
 }

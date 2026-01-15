@@ -22,6 +22,12 @@ public class PlayerInventory : MonoBehaviour
     /// </summary>
     public const int AbilitySlotCount = 4;
 
+    /// <summary>
+    /// 默认普通攻击对应的 itemId。
+    /// 用途：在“按槽位释放”的输入方案下，确保开局 slot0 有一个确定的能力可释放。
+    /// </summary>
+    private const string DefaultAttackItemId = "ability_attack";
+
     // ===== 数据 =====
     /// <summary>
     /// 能力槽位 itemId 数组（索引 0~3）
@@ -33,6 +39,12 @@ public class PlayerInventory : MonoBehaviour
     /// 当前血瓶数量
     /// </summary>
     private int _potionCount = 0;
+
+    /// <summary>
+    /// 自动入槽的下一个目标槽位（0~3）。
+    /// 规则：每次拾取 Ability 都按顺序覆盖该槽位，旧能力直接丢弃。
+    /// </summary>
+    private int _nextAutoEquipSlot = 0;
 
     // ===== 依赖注入 =====
     /// <summary>
@@ -82,6 +94,36 @@ public class PlayerInventory : MonoBehaviour
     }
 
     /// <summary>
+    /// 获取指定槽位当前装备的 abilityId（用于输入层按槽位释放）。
+    /// </summary>
+    /// <param name="slotIndex">槽位索引（0~3）</param>
+    /// <param name="abilityId">输出 abilityId</param>
+    /// <returns>true=获取成功；false=未初始化/空槽/配置非法</returns>
+    public bool TryGetAbilityIdInSlot(int slotIndex, out string abilityId)
+    {
+        abilityId = null;
+
+        if (!_initialized || _items == null)
+            return false;
+
+        string itemId = GetAbilityItemId(slotIndex);
+        if (string.IsNullOrEmpty(itemId))
+            return false;
+
+        if (!_items.TryGetItem(itemId, out ItemDefinition def) || def == null)
+            return false;
+
+        if (def.itemType != ItemType.Ability)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(def.abilityId))
+            return false;
+
+        abilityId = def.abilityId;
+        return true;
+    }
+
+    /// <summary>
     /// 当前血瓶数量
     /// </summary>
     public int PotionCount => _potionCount;
@@ -128,7 +170,43 @@ public class PlayerInventory : MonoBehaviour
         _cfg = cfg;
         _initialized = true;
 
+        // 0.5：为“按槽位释放”提供一个确定的开局默认值。
+        // 约定：slot0 默认装备普通攻击（ability_attack），后续拾取会从 slot0 开始顺序覆盖。
+        EnsureDefaultAttackInSlot0();
+
+        // 自动入槽从 slot0 开始（第一次拾取直接替换普通攻击）
+        _nextAutoEquipSlot = 0;
+
         Debug.Log($"[PlayerInventory] 初始化完成 - PotionMaxCount={GetPotionMaxCount()}");
+    }
+
+    private void EnsureDefaultAttackInSlot0()
+    {
+        if (_items == null)
+        {
+            return;
+        }
+
+        // 已有数据则不覆盖（允许未来扩展：从存档/配置写入初始槽位）
+        if (!string.IsNullOrEmpty(_abilityItemIds[0]))
+        {
+            return;
+        }
+
+        // 默认普通攻击必须存在且是有效 Ability
+        if (_items.TryGetItem(DefaultAttackItemId, out ItemDefinition def)
+            && def != null
+            && def.itemType == ItemType.Ability
+            && !string.IsNullOrWhiteSpace(def.abilityId))
+        {
+            _abilityItemIds[0] = DefaultAttackItemId;
+            // 不触发事件：Initialize 时通常尚未完成 HUD/Equipment 的订阅。
+            // 后续 HudPresenter.RefreshAll / EquipmentController.SyncAllSlotsToAbilities 会读取初始数据。
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerInventory] 默认攻击 itemId '{DefaultAttackItemId}' 不存在或不是有效 Ability，slot0 将保持为空");
+        }
     }
 
     // ===== 拾取流程 =====
@@ -243,33 +321,20 @@ public class PlayerInventory : MonoBehaviour
             }
         }
 
-        // 4) 若存在空槽：找到首个空槽并写入
-        for (int i = 0; i < AbilitySlotCount; i++)
+        // 4) 0.5 规则：拾取 Ability 永远按顺序覆盖 slot0~slot3（循环），旧能力直接丢弃。
+        // 这样可以保证：第一次拾取替换“普通攻击”（slot0），后续依次替换 slot1/2/3。
+        int targetSlot = _nextAutoEquipSlot;
+        if (targetSlot < 0 || targetSlot >= AbilitySlotCount)
         {
-            if (string.IsNullOrEmpty(_abilityItemIds[i]))
-            {
-                string oldItemId = _abilityItemIds[i];
-                _abilityItemIds[i] = req.itemId;
-                OnAbilitySlotChanged?.Invoke(i, oldItemId, req.itemId);
-                return PickupResult.Success;
-            }
+            targetSlot = 0;
         }
 
-        // 5) 槽满且 sourcePickup 为空：Error 并返回 Failed_NotSupported
-        if (req.sourcePickup == null)
-        {
-            string key = $"RequireReplace_NoSource_{req.itemId}";
-            if (!_loggedErrors.Contains(key))
-            {
-                Debug.LogError($"[PlayerInventory] 槽位已满但 sourcePickup 为空，无法 RequireReplace，itemId={req.itemId}");
-                _loggedErrors.Add(key);
-            }
-            return PickupResult.Failed_NotSupported;
-        }
+        string oldItemId = _abilityItemIds[targetSlot];
+        _abilityItemIds[targetSlot] = req.itemId;
+        OnAbilitySlotChanged?.Invoke(targetSlot, oldItemId, req.itemId);
 
-        // 6) 槽满：返回 RequireReplace
-        ctx = new PendingReplaceContext(req.itemId, req.amount, req.sourcePickup);
-        return PickupResult.RequireReplace;
+        _nextAutoEquipSlot = (targetSlot + 1) % AbilitySlotCount;
+        return PickupResult.Success;
     }
 
     /// <summary>

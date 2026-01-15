@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.SceneManagement;
@@ -10,12 +11,9 @@ using CastleDB.Runtime;
 /// Replace 流程完整测试（固定场景 + 固定资源）
 ///
 /// 契约 [C-Test-1] PlayMode 测试：
-/// - 第 5 个 Ability 触发替换面板
-/// - 选择槽位后 HUD/AbilitySystem 状态正确
-/// - SourcePickup 被销毁
-/// - 旧 ability 被禁用
-/// - 输入模式切换与恢复
-/// - ReplaceController 容错测试
+/// - 0.5：能力拾取改为“顺序覆盖槽位”，不再由 Inventory.TryPickup 返回 RequireReplace
+/// - ReplaceController 仍保留：相关测试通过手动构造 PendingReplaceContext 进入替换流程
+/// - 输入模式切换与恢复、Confirm/Cancel/失败路径清理
 /// </summary>
 public class ReplaceFlowIntegrationTests
 {
@@ -77,12 +75,12 @@ public class ReplaceFlowIntegrationTests
     }
 
     /// <summary>
-    /// 测试：第 5 个 Ability 触发替换面板
+    /// 测试：槽满时拾取 Ability 应直接覆盖一个槽位（不再触发 RequireReplace）
     /// </summary>
     [UnityTest]
-    public IEnumerator TestFifthAbilityTriggersReplacePanel()
+    public IEnumerator TestFifthAbilityDoesNotRequireReplace()
     {
-        if (_inventory == null || _replaceController == null)
+        if (_inventory == null)
         {
             Assert.Inconclusive("必需组件未初始化");
             yield break;
@@ -96,7 +94,7 @@ public class ReplaceFlowIntegrationTests
 
         yield return null;
 
-        // 创建第 5 个 Ability Pickup
+        // 创建第 5 个 Ability Pickup（用来提供 sourcePickup 参数）
         var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
         var pickup = pickupObj.GetComponent<ItemPickup>();
 
@@ -104,80 +102,31 @@ public class ReplaceFlowIntegrationTests
         var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
         var result = _inventory.TryPickup(request, out var ctx);
 
-        // 验证：应返回 RequireReplace
-        Assert.AreEqual(PickupResult.RequireReplace, result, "槽满拾取应返回 RequireReplace");
-        pickup.SetLocked(true);
-        _replaceController.BeginReplace(ctx);
-        yield return null;
+        // 0.5：槽满拾取应直接 Success（顺序覆盖某个槽位），不再 RequireReplace
+        Assert.AreEqual(PickupResult.Success, result, "0.5：槽满拾取应直接覆盖一个槽位，而不是 RequireReplace");
 
-        // 验证：pickup 应被锁定
-        Assert.IsTrue(pickup.IsLocked, "拾取物应被锁定");
+        // ctx 应保持默认值（因为不再需要 Replace 上下文）
+        Assert.IsTrue(string.IsNullOrEmpty(ctx.pendingItemId), "0.5：Success 时 pendingItemId 应为空");
+        Assert.AreEqual(0, ctx.pendingAmount, "0.5：Success 时 pendingAmount 应为 0");
+        Assert.IsNull(ctx.sourcePickup, "0.5：Success 时 sourcePickup 应为空");
 
-        // 验证：ReplaceController 应进入 Selecting 状态
-        Assert.IsTrue(_replaceController.IsSelecting, "ReplaceController 应进入 Selecting 状态");
-
-        // Cleanup
-        Object.Destroy(pickupObj);
-        yield return null;
-    }
-
-    /// <summary>
-    /// 测试：选择槽位后 HUD/AbilitySystem 状态正确
-    /// </summary>
-    [UnityTest]
-    public IEnumerator TestSlotSelectionUpdatesHudAndAbilitySystem()
-    {
-        if (_inventory == null || _replaceController == null || _equipmentController == null)
+        // 验证：ability_run 必然已被写入到某个槽位
+        bool found = false;
+        for (int i = 0; i < PlayerInventory.AbilitySlotCount; i++)
         {
-            Assert.Inconclusive("必需组件未初始化");
-            yield break;
+            if (_inventory.GetAbilityItemId(i) == "ability_run")
+            {
+                found = true;
+                break;
+            }
         }
+        Assert.IsTrue(found, "0.5：拾取后 ability_run 应直接入槽");
 
-        // 填满 4 个槽位
-        _inventory.EquipAbilityItemToSlot(0, "ability_arrow");
-        _inventory.EquipAbilityItemToSlot(1, "ability_walk");
-        _inventory.EquipAbilityItemToSlot(2, "ability_jump");
-        _inventory.EquipAbilityItemToSlot(3, "ability_attack");
-
-        yield return null;
-
-        // 创建第 5 个 Ability Pickup
-        var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
-        var pickup = pickupObj.GetComponent<ItemPickup>();
-
-        // 触发拾取（进入 Replace 流程）
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        _inventory.TryPickup(request, out var ctx);
-
-        yield return null;
-
-        // 模拟选择槽位 0（替换 ability_arrow）
-        // 注意：实际实现需要模拟输入，这里直接调用 API
-        bool confirmed = _inventory.EquipAbilityItemToSlot(0, "ability_run");
-
-        Assert.IsTrue(confirmed, "槽位替换应成功");
-
-        // 验证：槽位 0 现在应为 ability_run
-        Assert.AreEqual("ability_run", _inventory.GetAbilityItemId(0), "槽位 0 应更新为 ability_run");
-
-        // 验证：旧 Ability（ability_arrow）应被禁用
-        // 注意：需要访问 AbilitySystem，假设已集成
-        if (_abilitySystem != null)
+        // ReplaceController 不应进入 Selecting（此测试未调用 BeginReplace）
+        if (_replaceController != null)
         {
-            bool oldAbilityEnabled = _abilitySystem.IsAbilityEnabled("ability_dash_id");
-            Assert.IsFalse(oldAbilityEnabled, "旧 Ability 应被禁用");
+            Assert.IsFalse(_replaceController.IsSelecting, "0.5：拾取不应触发 ReplaceController 进入 Selecting");
         }
-
-        // 验证：新 Ability（ability_run）应被启用
-        if (_abilitySystem != null)
-        {
-            bool newAbilityEnabled = _abilitySystem.IsAbilityEnabled("ability_run_id");
-            Assert.IsTrue(newAbilityEnabled, "新 Ability 应被启用");
-        }
-
-        // 验证：HUD 应更新图标（需要访问 HudRefs）
-        // 此处简化：仅验证 HudPresenter 存在
-        Assert.IsNotNull(_hudPresenter, "HudPresenter 应存在");
 
         // Cleanup
         Object.Destroy(pickupObj);
@@ -204,29 +153,35 @@ public class ReplaceFlowIntegrationTests
 
         yield return null;
 
-        // 创建第 5 个 Ability Pickup
+        // 创建一个 Ability Pickup 作为 sourcePickup
         var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
         var pickup = pickupObj.GetComponent<ItemPickup>();
 
-        // 触发拾取（进入 Replace 流程）
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        _inventory.TryPickup(request, out var ctx);
+        // 构造 PendingReplaceContext（模拟进入 Replace 流程）
+        var ctx = new PendingReplaceContext("ability_run", 1, pickup);
+
+        // 锁定 pickup（模拟 ItemPickup 行为）
+        pickup.SetLocked(true);
+
+        // BeginReplace
+        _replaceController.BeginReplace(ctx);
 
         yield return null;
 
         // 验证：pickup 对象存在
         Assert.IsNotNull(pickupObj, "拾取物应存在");
 
-        // 模拟 Confirm（选择槽位 0）
-        _inventory.EquipAbilityItemToSlot(0, "ability_run");
+        // 反射调用 Confirm（选择槽位 0）
+        var confirmMethod = typeof(ReplaceController).GetMethod("Confirm", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(confirmMethod, "Confirm method not found");
+        confirmMethod.Invoke(_replaceController, new object[] { 0 });
 
         // 等待销毁完成
         yield return null;
 
-        // 验证：pickup 对象已被销毁
-        // 注意：实际销毁由 ReplaceController.Confirm 处理
-        // 此处假设 Confirm 内部调用 Destroy(sourcePickup.gameObject)
-        // 如果未集成，此断言会失败，提示需要实现销毁逻辑
+        // 验证：pickup 对象已被销毁（Unity Destroy 后下一帧变为 null）
+        Assert.IsTrue(pickupObj == null, "Confirm 后 sourcePickup.gameObject 应被销毁");
+        Assert.IsFalse(_replaceController.IsSelecting, "Confirm 后应退出 Selecting 状态");
 
         // Cleanup（如果未销毁，手动清理）
         if (pickupObj != null)
@@ -260,11 +215,13 @@ public class ReplaceFlowIntegrationTests
         var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
         var pickup = pickupObj.GetComponent<ItemPickup>();
 
-        // 触发拾取（进入 Replace 流程）
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        var result = _inventory.TryPickup(request, out var ctx);
-        Assert.AreEqual(PickupResult.RequireReplace, result, "槽满拾取应返回 RequireReplace");
+        // 构造 PendingReplaceContext（模拟进入 Replace 流程）
+        var ctx = new PendingReplaceContext("ability_run", 1, pickup);
+
+        // 锁定 pickup（模拟 ItemPickup 行为）
         pickup.SetLocked(true);
+
+        // BeginReplace
         _replaceController.BeginReplace(ctx);
         yield return null;
 
@@ -283,58 +240,6 @@ public class ReplaceFlowIntegrationTests
 
         // 验证：ReplaceController 回到 Idle 状态
         Assert.IsFalse(_replaceController.IsSelecting, "ReplaceController 应回到 Idle");
-
-        // Cleanup
-        Object.Destroy(pickupObj);
-        yield return null;
-    }
-
-    /// <summary>
-    /// 测试：缺失 ReplaceController 的容错处理
-    /// </summary>
-    [UnityTest]
-    public IEnumerator TestMissingReplaceControllerFallback()
-    {
-        if (_inventory == null)
-        {
-            Assert.Inconclusive("Inventory 未初始化");
-            yield break;
-        }
-
-        // 临时移除 ReplaceController
-        var originalController = _replaceController;
-        if (originalController != null)
-        {
-            Object.DestroyImmediate(originalController);
-            _replaceController = null;
-        }
-
-        yield return null;
-
-        // 填满 4 个槽位
-        _inventory.EquipAbilityItemToSlot(0, "ability_arrow");
-        _inventory.EquipAbilityItemToSlot(1, "ability_walk");
-        _inventory.EquipAbilityItemToSlot(2, "ability_jump");
-        _inventory.EquipAbilityItemToSlot(3, "ability_attack");
-
-        yield return null;
-
-        // 创建第 5 个 Ability Pickup
-        var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
-        var pickup = pickupObj.GetComponent<ItemPickup>();
-
-        // 触发拾取
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        var result = _inventory.TryPickup(request, out var ctx);
-
-        // 验证：应返回 RequireReplace
-        Assert.AreEqual(PickupResult.RequireReplace, result, "槽满拾取应返回 RequireReplace");
-
-        // 验证：由于缺失 ReplaceController，ItemPickup 应解锁 pickup
-        // 这是降级处理的预期行为
-        yield return null;
-
-        Assert.IsFalse(pickup.IsLocked, "缺失 ReplaceController 时 pickup 应自动解锁");
 
         // Cleanup
         Object.Destroy(pickupObj);
@@ -366,11 +271,8 @@ public class ReplaceFlowIntegrationTests
         var pickupObj = CreateAbilityPickup("ability_run", Vector3.zero);
         var pickup = pickupObj.GetComponent<ItemPickup>();
 
-        // 触发拾取（进入 Replace 流程）
-        var request = new PickupRequest(pickup.itemId, pickup.amount, pickup);
-        var result = _inventory.TryPickup(request, out var ctx);
-
-        Assert.AreEqual(PickupResult.RequireReplace, result, "槽满拾取应返回 RequireReplace");
+        // 构造 PendingReplaceContext（模拟进入 Replace 流程）
+        var ctx = new PendingReplaceContext("ability_run", 1, pickup);
 
         // 锁定 pickup
         pickup.SetLocked(true);

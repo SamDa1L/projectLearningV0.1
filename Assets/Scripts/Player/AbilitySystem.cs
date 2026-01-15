@@ -28,6 +28,11 @@ public class AbilitySystem
     private Dictionary<string, IPlayerAbility> abilityById;
 
     /// <summary>
+    /// abilityId → HookType 映射（用于按 abilityId 定向分发）
+    /// </summary>
+    private Dictionary<string, AbilityHookType> hookTypeByAbilityId;
+
+    /// <summary>
     /// 待处理队列（保留写入顺序）
     /// </summary>
     private List<(string abilityId, bool enabled)> pendingQueue;
@@ -49,6 +54,7 @@ public class AbilitySystem
     {
         abilityMap = new Dictionary<AbilityHookType, List<IPlayerAbility>>();
         abilityById = new Dictionary<string, IPlayerAbility>();
+        hookTypeByAbilityId = new Dictionary<string, AbilityHookType>();
         pendingQueue = new List<(string, bool)>();
         pendingLast = new Dictionary<string, bool>();
         loggedErrors = new HashSet<string>();
@@ -89,9 +95,69 @@ public class AbilitySystem
         if (!string.IsNullOrEmpty(ability.AbilityId))
         {
             abilityById[ability.AbilityId] = ability;
+            hookTypeByAbilityId[ability.AbilityId] = hookType;
         }
 
         Debug.Log($"[AbilitySystem] Registered ability to {hookType}, Priority={ability.Priority}, AbilityId={ability.AbilityId}");
+    }
+
+    /// <summary>
+    /// 按 abilityId 定向分发输入（用于“按槽位释放”）。
+    /// 注意：不会遍历同 HookType 的其他能力。
+    /// </summary>
+    /// <param name="abilityId">能力 ID</param>
+    /// <param name="input">输入快照</param>
+    /// <returns>是否消费了输入（handled）</returns>
+    public bool TryDispatchByAbilityId(string abilityId, AbilityInput input)
+    {
+        if (string.IsNullOrWhiteSpace(abilityId))
+        {
+            return false;
+        }
+
+        if (!abilityById.TryGetValue(abilityId, out IPlayerAbility ability) || ability == null)
+        {
+            string key = $"TryDispatchByAbilityId_NotFound_{abilityId}";
+            if (!loggedErrors.Contains(key))
+            {
+                Debug.LogError($"[AbilitySystem] TryDispatchByAbilityId 失败：abilityId 不存在 '{abilityId}'");
+                loggedErrors.Add(key);
+            }
+            return false;
+        }
+
+        if (!ability.Enabled)
+        {
+            return false;
+        }
+
+        if (!hookTypeByAbilityId.TryGetValue(abilityId, out AbilityHookType hookType))
+        {
+            string key = $"TryDispatchByAbilityId_NoHookType_{abilityId}";
+            if (!loggedErrors.Contains(key))
+            {
+                Debug.LogError($"[AbilitySystem] TryDispatchByAbilityId 失败：未找到 hookType (abilityId='{abilityId}')");
+                loggedErrors.Add(key);
+            }
+            return false;
+        }
+
+        switch (hookType)
+        {
+            case AbilityHookType.Move:
+                return ability.OnMove(input);
+            case AbilityHookType.Run:
+                return ability.OnRun(input);
+            case AbilityHookType.Jump:
+                return ability.OnJump(input);
+            case AbilityHookType.Attack:
+                return ability.OnAttack(input);
+            case AbilityHookType.RangedAttack:
+                return ability.OnRangedAttack(input);
+            default:
+                Debug.LogError($"[AbilitySystem] TryDispatchByAbilityId Unknown HookType: {hookType} (abilityId='{abilityId}')");
+                return false;
+        }
     }
 
     /// <summary>
@@ -283,6 +349,7 @@ public class AbilitySystem
             list.Clear();
         }
         abilityById.Clear();
+        hookTypeByAbilityId.Clear();
         pendingQueue.Clear();
         pendingLast.Clear();
         loggedErrors.Clear();

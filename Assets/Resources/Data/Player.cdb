@@ -50,7 +50,7 @@
 					"airWalkSpeed": 5,
 					"jumpImpulse": 10,
 					"climbSpeed": 5,
-					"baseAttackDamage": 10
+					"baseAttackDamage": 50
 				}
 			],
 			"separators": [],

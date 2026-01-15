@@ -23,7 +23,7 @@
 					"display": null
 				},
 				{
-					"typeStr": "5:BuiltinDefault,Projectile,StatModifier,Buff",
+					"typeStr": "5:BuiltinDefault,Projectile,StatModifier,Buff,Dash,Summon,AttackOverride",
 					"name": "kind",
 					"display": null
 				},
@@ -137,6 +137,54 @@
 					"buffId": "Attr_MoveSpeedUp_Buff",
 					"cooldown": 0,
 					"onHitSequenceId": ""
+				},
+				{
+					"id": "Dash_Player",
+					"hookType": 1,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "{\"distance\":3,\"speed\":12,\"invincibleWindow\":0.2}",
+					"kind": 4,
+					"projectileId": "",
+					"buffId": "",
+					"cooldown": 1,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Buff_AttackUp",
+					"hookType": 4,
+					"priority": 2,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 3,
+					"projectileId": "",
+					"buffId": "Active_AttackUp_Buff",
+					"cooldown": 5,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Summon_Test",
+					"hookType": 4,
+					"priority": 3,
+					"enabled": false,
+					"paramsJson": "{\"prefabPath\":\"Prefabs/Projectiles/Player/Arrow\",\"lifetime\":5,\"maxCount\":2,\"spawnRule\":\"ReplaceOldest\"}",
+					"kind": 5,
+					"projectileId": "",
+					"buffId": "",
+					"cooldown": 2,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "AttackOverride_Bow",
+					"hookType": 3,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "{\"damageMultiplier\":1}",
+					"kind": 6,
+					"projectileId": "Arrow_player",
+					"buffId": "",
+					"cooldown": 0.2,
+					"onHitSequenceId": ""
 				}
 			],
 			"separators": [],
@@ -214,6 +262,19 @@
 					"onExpireVfxPath": "",
 					"onExpireVfxDuration": 0.5,
 					"tags": "fire"
+				},
+				{
+					"id": "Arrow_player",
+					"prefabPath": "Prefabs/Projectiles/Player/Arrow",
+					"speed": 10,
+					"lifetime": 2,
+					"baseDamage": 8,
+					"hitMask": "",
+					"onHitVfxPath": "",
+					"onHitVfxDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"tags": "arrow"
 				}
 			],
 			"separators": [],
@@ -291,7 +352,21 @@
 					"maxStacks": 1,
 					"uniqueKey": "",
 					"modifiersJson": "{\"moveSpeedMultiplier\":5}",
-					"prefabPath": "Icons/UIs/Buffs/SpeedUpBuff",
+					"prefabPath": "Prefabs/Buff/SpeedUpBuff/SpeedUpBuffPrefab",
+					"prefabDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"attachPointPath": "",
+					"followTarget": true
+				},
+				{
+					"id": "Active_AttackUp_Buff",
+					"duration": 5,
+					"stackRule": 1,
+					"maxStacks": 3,
+					"uniqueKey": "AttackUp",
+					"modifiersJson": "{\"attackMultiplier\":1.5}",
+					"prefabPath": "Prefabs/Buff/AttackUpBuff/AttackUpBuffPrefab",
 					"prefabDuration": 0,
 					"onExpireVfxPath": "",
 					"onExpireVfxDuration": 0,

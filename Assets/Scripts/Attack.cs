@@ -62,7 +62,7 @@ public class Attack : MonoBehaviour
 
             if (gotHit)
             {
-                Debug.Log(collision.name + "����" + finalDamage);
+                Debug.Log($"{collision.name} took {finalDamage} damage");
             }
             
         }

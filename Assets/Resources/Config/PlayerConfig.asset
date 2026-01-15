@@ -21,7 +21,7 @@ MonoBehaviour:
   airWalkSpeed: 5
   jumpImpulse: 10
   climbSpeed: 5
-  baseAttackDamage: 10
+  baseAttackDamage: 50
   attackOverrides:
   - id: SwordAttack_1
     playerId: player

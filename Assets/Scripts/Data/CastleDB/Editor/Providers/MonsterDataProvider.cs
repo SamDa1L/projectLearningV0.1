@@ -594,9 +594,9 @@ namespace CastleDB.Editor.Providers
                     errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' paramsJson must be a JSON object");
                 }
 
-                if (ability.kind < 0 || ability.kind > (int)AbilityKind.Buff)
+                if (ability.kind < 0 || ability.kind > (int)AbilityKind.AttackOverride)
                 {
-                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind out of range (0-{(int)AbilityKind.Buff}): {ability.kind}");
+                    errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind out of range (0-{(int)AbilityKind.AttackOverride}): {ability.kind}");
                 }
                 else
                 {
@@ -785,7 +785,7 @@ namespace CastleDB.Editor.Providers
                     continue;
                 }
 
-                AbilityKind kind = ability.kind >= 0 && ability.kind <= (int)AbilityKind.Buff
+                AbilityKind kind = ability.kind >= 0 && ability.kind <= (int)AbilityKind.AttackOverride
                     ? (AbilityKind)ability.kind
                     : AbilityKind.BuiltinDefault;
 
@@ -801,6 +801,18 @@ namespace CastleDB.Editor.Providers
                     }
                 }
 
+                if (kind == AbilityKind.AttackOverride)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.projectileId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind=AttackOverride but projectileId is empty");
+                    }
+                    else if (!projectileIdSet.Contains(ability.projectileId))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind=AttackOverride references missing projectileId='{ability.projectileId}'");
+                    }
+                }
+
                 if (kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
                 {
                     if (string.IsNullOrWhiteSpace(ability.buffId))
@@ -810,6 +822,22 @@ namespace CastleDB.Editor.Providers
                     else if (!buffIdSet.Contains(ability.buffId))
                     {
                         errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' references missing buffId='{ability.buffId}'");
+                    }
+                }
+
+                if (kind == AbilityKind.Dash)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.paramsJson))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind=Dash but paramsJson is empty (needs distance/speed)");
+                    }
+                }
+
+                if (kind == AbilityKind.Summon)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.paramsJson))
+                    {
+                        errors.Add($"MonsterSystem/EnemyAbility '{ability.id}' kind=Summon but paramsJson is empty (needs prefabPath)");
                     }
                 }
 
@@ -881,7 +909,7 @@ namespace CastleDB.Editor.Providers
                 }
                 else if (enemyAbilityById.TryGetValue(binding.abilityId, out var enemyAbility) && enemyAbility != null)
                 {
-                    AbilityKind kind = enemyAbility.kind >= 0 && enemyAbility.kind <= (int)AbilityKind.Buff
+                    AbilityKind kind = enemyAbility.kind >= 0 && enemyAbility.kind <= (int)AbilityKind.AttackOverride
                         ? (AbilityKind)enemyAbility.kind
                         : AbilityKind.BuiltinDefault;
                     npcAbilityKindByBindingId[binding.id] = kind;

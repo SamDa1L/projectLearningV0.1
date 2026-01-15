@@ -277,9 +277,9 @@ namespace CastleDB.Editor.Providers
             // ===== 3. kind 校验（0.5：结构化字段） =====
             foreach (var ability in _abilities)
             {
-                if (ability.kind < 0 || ability.kind > (int)AbilityKind.Buff)
+                if (ability.kind < 0 || ability.kind > (int)AbilityKind.AttackOverride)
                 {
-                    errors.Add($"Ability '{ability.id}' 的 kind 超出范围 (0-{(int)AbilityKind.Buff}): {ability.kind}");
+                    errors.Add($"Ability '{ability.id}' 的 kind 超出范围 (0-{(int)AbilityKind.AttackOverride}): {ability.kind}");
                     continue;
                 }
 
@@ -493,7 +493,7 @@ namespace CastleDB.Editor.Providers
             // ===== 9. Ability -> 子表引用校验 =====
             foreach (var ability in _abilities)
             {
-                AbilityKind kind = ability.kind >= 0 && ability.kind <= (int)AbilityKind.Buff
+                AbilityKind kind = ability.kind >= 0 && ability.kind <= (int)AbilityKind.AttackOverride
                     ? (AbilityKind)ability.kind
                     : AbilityKind.BuiltinDefault;
 
@@ -509,9 +509,94 @@ namespace CastleDB.Editor.Providers
                     }
                 }
 
-                if ((kind == AbilityKind.Buff || kind == AbilityKind.StatModifier) && !string.IsNullOrWhiteSpace(ability.buffId) && !buffIdSet.Contains(ability.buffId))
+                if (kind == AbilityKind.Buff || kind == AbilityKind.StatModifier)
                 {
-                    errors.Add($"Ability '{ability.id}' 引用不存在的 buffId='{ability.buffId}'");
+                    if (string.IsNullOrWhiteSpace(ability.buffId))
+                    {
+                        errors.Add($"Ability '{ability.id}' kind={kind} 但 buffId 为空");
+                    }
+                    else if (!buffIdSet.Contains(ability.buffId))
+                    {
+                        errors.Add($"Ability '{ability.id}' 引用不存在的 buffId='{ability.buffId}'");
+                    }
+                }
+
+                if (kind == AbilityKind.AttackOverride)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.projectileId))
+                    {
+                        errors.Add($"Ability '{ability.id}' kind=AttackOverride 但 projectileId 为空");
+                    }
+                    else if (!projectileIdSet.Contains(ability.projectileId))
+                    {
+                        errors.Add($"Ability '{ability.id}' kind=AttackOverride 引用不存在的 projectileId='{ability.projectileId}'");
+                    }
+                }
+
+                if (kind == AbilityKind.Dash)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.paramsJson))
+                    {
+                        errors.Add($"Ability '{ability.id}' kind=Dash 但 paramsJson 为空（需要 distance/speed）");
+                    }
+                    else
+                    {
+                        var obj = CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson);
+                        if (obj == null)
+                        {
+                            errors.Add($"Ability '{ability.id}' kind=Dash 的 paramsJson 必须是 JSON 对象 ({{...}})");
+                        }
+                        else
+                        {
+                            if (!obj.ContainsKey("distance") || GetFloatValue(obj, "distance") <= 0f)
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Dash 缺少或非法 distance（必须 > 0）");
+                            }
+
+                            if (!obj.ContainsKey("speed") || GetFloatValue(obj, "speed") <= 0f)
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Dash 缺少或非法 speed（必须 > 0）");
+                            }
+
+                            if (obj.ContainsKey("invincibleWindow") && GetFloatValue(obj, "invincibleWindow") < 0f)
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Dash invincibleWindow 不能为负数");
+                            }
+                        }
+                    }
+                }
+
+                if (kind == AbilityKind.Summon)
+                {
+                    if (string.IsNullOrWhiteSpace(ability.paramsJson))
+                    {
+                        errors.Add($"Ability '{ability.id}' kind=Summon 但 paramsJson 为空（需要 prefabPath）");
+                    }
+                    else
+                    {
+                        var obj = CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson);
+                        if (obj == null)
+                        {
+                            errors.Add($"Ability '{ability.id}' kind=Summon 的 paramsJson 必须是 JSON 对象 ({{...}})");
+                        }
+                        else
+                        {
+                            if (!obj.ContainsKey("prefabPath") || string.IsNullOrWhiteSpace(GetStringValue(obj, "prefabPath")))
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Summon 缺少或非法 prefabPath（不能为空）");
+                            }
+
+                            if (obj.ContainsKey("lifetime") && GetFloatValue(obj, "lifetime") < 0f)
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Summon lifetime 不能为负数");
+                            }
+
+                            if (obj.ContainsKey("maxCount") && GetIntValue(obj, "maxCount") <= 0)
+                            {
+                                errors.Add($"Ability '{ability.id}' kind=Summon maxCount 必须 >= 1");
+                            }
+                        }
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(ability.onHitSequenceId) && !onHitSequenceIdSet.Contains(ability.onHitSequenceId))

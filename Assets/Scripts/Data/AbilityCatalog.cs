@@ -11,7 +11,12 @@ public enum AbilityKind
     BuiltinDefault = 0,
     Projectile = 1,
     StatModifier = 2,
-    Buff = 3
+    Buff = 3,
+
+    // Phase 6（0.5.x）：扩展主动技能类型（保持追加，避免破坏既有枚举值）
+    Dash = 4,
+    Summon = 5,
+    AttackOverride = 6
 }
 
 /// <summary>
@@ -258,7 +263,7 @@ public class AbilityCatalog : ScriptableObject
         foreach (var dto in abilityEntries)
         {
             AbilityKind kind = AbilityKind.BuiltinDefault;
-            if (dto.kind >= 0 && dto.kind <= (int)AbilityKind.Buff)
+            if (dto.kind >= 0 && dto.kind <= (int)AbilityKind.AttackOverride)
             {
                 kind = (AbilityKind)dto.kind;
             }

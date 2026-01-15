@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 0.45 方案 B 单 prefab 版本：统一管理所有浮动文字
@@ -41,6 +42,7 @@ public class UIManager : MonoBehaviour
     [Tooltip("世界坐标转换用相机（优先使用，空则回退到 Camera.main）")]
     public Camera worldCamera;
 
+    private InputAction _escapeAction;
 
     private void Awake()
     {
@@ -63,6 +65,8 @@ public class UIManager : MonoBehaviour
         CharacterEvents.characterDamaged += CharacterTookDamage;
         CharacterEvents.characterHealed += CharacterHealed;
 
+        EnsureEscapeAction();
+        _escapeAction.Enable();
     }
 
 
@@ -70,6 +74,11 @@ public class UIManager : MonoBehaviour
     {
         CharacterEvents.characterDamaged -= CharacterTookDamage;
         CharacterEvents.characterHealed -= CharacterHealed;
+
+        if (_escapeAction != null)
+        {
+            _escapeAction.Disable();
+        }
     }
 
 
@@ -84,6 +93,18 @@ public class UIManager : MonoBehaviour
     void Update()
     {
 
+    }
+
+    private void EnsureEscapeAction()
+    {
+        if (_escapeAction != null)
+        {
+            return;
+        }
+
+        // Local action avoids adding a second PlayerInput that would steal keyboard/mouse pairing.
+        _escapeAction = new InputAction("UIManager.Escape", InputActionType.Button, "<Keyboard>/escape");
+        _escapeAction.started += OnExitGame;
     }
 
 

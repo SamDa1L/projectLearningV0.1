@@ -124,6 +124,46 @@
 					"abilityId": "Fireball_Player",
 					"consumeEffectJson": "",
 					"uiTag": ""
+				},
+				{
+					"id": "ability_dash",
+					"displayName": "冲刺",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "Dash_Player",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_buff_attackup",
+					"displayName": "攻击增强",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "Buff_AttackUp",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_summon_test",
+					"displayName": "召唤测试",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "Summon_Test",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_attackoverride_bow",
+					"displayName": "弓（替换攻击）",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "AttackOverride_Bow",
+					"consumeEffectJson": "",
+					"uiTag": ""
 				}
 			],
 			"separators": [],

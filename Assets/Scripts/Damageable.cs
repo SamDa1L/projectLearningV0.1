@@ -114,13 +114,31 @@ public struct DamageableStats
     [SerializeField]
     public float knockbackMultiplier = 1f;
 
+    // Phase 6: 外部无敌窗口（例如 Dash invincibleWindow），不污染受击 invincibilityTime 配置。
+    private float _externalInvulnerableUntilTime = 0f;
+
     /// <summary>
     /// 无敌状态属性（符合C#命名规范）
     /// 用于查询当前是否处于无敌帧内
     /// </summary>
     public bool IsInvulnerable
     {
-        get { return isInvincible; }
+        get { return isInvincible || (Time.time < _externalInvulnerableUntilTime); }
+    }
+
+    /// <summary>
+    /// Phase 6: 授予一个“外部无敌窗口”（秒）。
+    /// - seconds<=0：忽略
+    /// - 多次调用：取更晚的结束时间（窗口可延长）
+    /// </summary>
+    public void GrantExternalInvulnerability(float seconds)
+    {
+        if (seconds <= 0f)
+        {
+            return;
+        }
+
+        _externalInvulnerableUntilTime = Mathf.Max(_externalInvulnerableUntilTime, Time.time + seconds);
     }
 
     private float timeSinceHit = 0;
@@ -203,7 +221,7 @@ public struct DamageableStats
     /// </summary>
     public bool Hit(int damage, Vector2 knockback, Vector2? hitPoint = null)
     {
-        if(IsAlive && !isInvincible)
+        if(IsAlive && !IsInvulnerable)
         {
             Health -= damage;
             if (invincibilityTime > 0f)
