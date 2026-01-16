@@ -20,15 +20,40 @@ public class HudQuickConfigWindow : EditorWindow
     // 资源路径（硬契约）
     private const string PREFAB_PATH = "Assets/Resources/Prefabs/UI/HUDCanvas.prefab";
     private const string BINDING_PATH = "Assets/Resources/Config/HudBinding.asset";
+    private const string TEMPLATE_DIR = "Assets/Editor/HUDTemplates";
+    private const string CURRENT_TEMPLATE_PATH = "Assets/Editor/HUDTemplates/HUDCanvas_Current.prefab";
+    private const string CURRENT_TEMPLATE_NAME = "当前HUDCanvas";
 
     // 日志前缀
     private const string LOG_PREFIX = "[HUDQuickConfig]";
+
+    private enum TemplateKind
+    {
+        CurrentSnapshot,
+        PrefabAsset,
+        CodeDefault
+    }
+
+    private struct TemplateOption
+    {
+        public TemplateKind kind;
+        public string displayName;
+        public string prefabPath;
+    }
+
+    private readonly System.Collections.Generic.List<TemplateOption> templateOptions = new System.Collections.Generic.List<TemplateOption>();
+    private int selectedTemplateIndex = 0;
 
     [MenuItem("Tools/UI/HUD Quick Config")]
     public static void ShowWindow()
     {
         var window = GetWindow<HudQuickConfigWindow>("HUD Quick Config");
         window.minSize = new Vector2(400, 300);
+    }
+
+    private void OnEnable()
+    {
+        RefreshTemplateOptions();
     }
 
     private void OnGUI()
@@ -47,6 +72,15 @@ public class HudQuickConfigWindow : EditorWindow
         GUILayout.Space(10);
 
         // Create Template 按钮
+        EditorGUILayout.LabelField("模板选择", EditorStyles.boldLabel);
+        selectedTemplateIndex = EditorGUILayout.Popup(selectedTemplateIndex, GetTemplateDisplayNames());
+        if (GUILayout.Button("刷新模板列表", GUILayout.Height(24)))
+        {
+            RefreshTemplateOptions();
+        }
+
+        GUILayout.Space(10);
+
         if (GUILayout.Button("Create Template", GUILayout.Height(40)))
         {
             CreateTemplate();
@@ -87,6 +121,28 @@ public class HudQuickConfigWindow : EditorWindow
     private void CreateTemplate()
     {
         Debug.Log($"{LOG_PREFIX} 开始 Create Template...");
+
+        TemplateOption option = GetSelectedTemplate();
+        if (option.kind != TemplateKind.CodeDefault)
+        {
+            try
+            {
+                GameObject prefabAsset = CreateTemplateFromPrefab(option);
+                HudBindingAsset binding = EnsureBindingAsset();
+                binding.hudPrefab = prefabAsset;
+                EditorUtility.SetDirty(binding);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log($"{LOG_PREFIX} Create Template done.");
+                EditorUtility.DisplayDialog("æˆåŠŸ", "HUD æ¨¡æ¿åˆ›å»ºå®Œæˆï¼\n\näº§ç‰©ï¼š\n- " + PREFAB_PATH + "\n- " + BINDING_PATH, "ç¡®å®š");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"{LOG_PREFIX} Create Template å¤±è´¥: {ex.Message}\n{ex.StackTrace}");
+                EditorUtility.DisplayDialog("å¤±è´¥", "Create Template å¤±è´¥ï¼Œè¯¦è§?Console", "ç¡®å®š");
+            }
+            return;
+        }
 
         try
         {
@@ -520,6 +576,179 @@ public class HudQuickConfigWindow : EditorWindow
         {
             Debug.LogError($"{LOG_PREFIX}[ERROR] Expected {typeof(T).Name} at {relativePath}, got {t.GetComponent<Component>()?.GetType().Name ?? "null"}");
             hasError = true;
+        }
+    }
+
+    // ===== 模板选项 =====
+
+    private void RefreshTemplateOptions()
+    {
+        templateOptions.Clear();
+
+        templateOptions.Add(new TemplateOption
+        {
+            kind = TemplateKind.CurrentSnapshot,
+            displayName = GetCurrentSnapshotDisplayName(),
+            prefabPath = CURRENT_TEMPLATE_PATH
+        });
+
+        if (Directory.Exists(TEMPLATE_DIR))
+        {
+            string[] prefabFiles = Directory.GetFiles(TEMPLATE_DIR, "*.prefab", SearchOption.TopDirectoryOnly);
+            System.Array.Sort(prefabFiles);
+            foreach (string path in prefabFiles)
+            {
+                if (path.Replace("\\", "/").Equals(CURRENT_TEMPLATE_PATH))
+                {
+                    continue;
+                }
+
+                templateOptions.Add(new TemplateOption
+                {
+                    kind = TemplateKind.PrefabAsset,
+                    displayName = Path.GetFileNameWithoutExtension(path),
+                    prefabPath = path.Replace("\\", "/")
+                });
+            }
+        }
+
+        templateOptions.Add(new TemplateOption
+        {
+            kind = TemplateKind.CodeDefault,
+            displayName = "默认代码模板",
+            prefabPath = string.Empty
+        });
+
+        if (selectedTemplateIndex < 0 || selectedTemplateIndex >= templateOptions.Count)
+        {
+            selectedTemplateIndex = 0;
+        }
+    }
+
+    private string GetCurrentSnapshotDisplayName()
+    {
+        bool exists = AssetDatabase.LoadAssetAtPath<GameObject>(CURRENT_TEMPLATE_PATH) != null;
+        if (exists)
+        {
+            return CURRENT_TEMPLATE_NAME;
+        }
+
+        return $"{CURRENT_TEMPLATE_NAME}（未保存）";
+    }
+
+    private string[] GetTemplateDisplayNames()
+    {
+        if (templateOptions.Count == 0)
+        {
+            return new[] { "默认代码模板" };
+        }
+
+        string[] names = new string[templateOptions.Count];
+        for (int i = 0; i < templateOptions.Count; i++)
+        {
+            names[i] = templateOptions[i].displayName;
+        }
+        return names;
+    }
+
+    private TemplateOption GetSelectedTemplate()
+    {
+        if (templateOptions.Count == 0)
+        {
+            return new TemplateOption
+            {
+                kind = TemplateKind.CodeDefault,
+                displayName = "默认代码模板",
+                prefabPath = string.Empty
+            };
+        }
+
+        int index = Mathf.Clamp(selectedTemplateIndex, 0, templateOptions.Count - 1);
+        return templateOptions[index];
+    }
+
+    private void EnsureCurrentSnapshotTemplate()
+    {
+        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_PATH);
+        if (source == null)
+        {
+            throw new System.Exception("HUDCanvas.prefab ä¸å­˜åœ¨ï¼Œæ— æ³•ä¿å­˜æ¨¡æ¿");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(CURRENT_TEMPLATE_PATH));
+
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(CURRENT_TEMPLATE_PATH) != null)
+        {
+            AssetDatabase.DeleteAsset(CURRENT_TEMPLATE_PATH);
+        }
+
+        if (!AssetDatabase.CopyAsset(PREFAB_PATH, CURRENT_TEMPLATE_PATH))
+        {
+            throw new System.Exception("å¤åˆ¶ HUDCanvas å¿«ç…§æ¨¡æ¿å¤±è´¥");
+        }
+
+        AssetDatabase.Refresh();
+    }
+
+    private HudBindingAsset EnsureBindingAsset()
+    {
+        HudBindingAsset binding = AssetDatabase.LoadAssetAtPath<HudBindingAsset>(BINDING_PATH);
+        if (binding == null)
+        {
+            binding = CreateInstance<HudBindingAsset>();
+            AssetDatabase.CreateAsset(binding, BINDING_PATH);
+            Debug.Log($"{LOG_PREFIX} HudBinding.asset åˆ›å»ºæˆåŠŸ: {BINDING_PATH}");
+        }
+
+        return binding;
+    }
+
+    private GameObject CreateTemplateFromPrefab(TemplateOption option)
+    {
+        if (option.kind == TemplateKind.CurrentSnapshot)
+        {
+            EnsureCurrentSnapshotTemplate();
+            RefreshTemplateOptions();
+        }
+
+        if (string.IsNullOrEmpty(option.prefabPath))
+        {
+            throw new System.Exception("æ¨¡æ¿è·¯å¾„ä¸ºç©º");
+        }
+
+        GameObject templateAsset = AssetDatabase.LoadAssetAtPath<GameObject>(option.prefabPath);
+        if (templateAsset == null)
+        {
+            throw new System.Exception($"æ¨¡æ¿ prefab ä¸å­˜åœ? {option.prefabPath}");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(PREFAB_PATH));
+        GameObject instance = PrefabUtility.InstantiatePrefab(templateAsset) as GameObject;
+        if (instance == null)
+        {
+            instance = Object.Instantiate(templateAsset);
+        }
+
+        try
+        {
+            HudRefs hudRefs = instance.GetComponent<HudRefs>();
+            if (hudRefs == null)
+            {
+                throw new System.Exception("æ¨¡æ¿ prefab ç¼ºå°‘ HudRefs ç»„ä»¶");
+            }
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(instance, PREFAB_PATH);
+            if (prefabAsset == null)
+            {
+                throw new System.Exception("ç”Ÿæˆ HUDCanvas prefab å¤±è´¥");
+            }
+
+            Debug.Log($"{LOG_PREFIX} HUDCanvas.prefab å·²ç”±æ¨¡æ¿ç”Ÿæˆ: {option.displayName}");
+            return prefabAsset;
+        }
+        finally
+        {
+            DestroyImmediate(instance);
         }
     }
 }
