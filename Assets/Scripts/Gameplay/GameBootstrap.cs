@@ -206,6 +206,28 @@ public class GameBootstrap : MonoBehaviour
             return false;
         }
 
+        var keyIconPresenter = _hudRoot.GetComponentInChildren<HudSlotKeyIconPresenter>(true);
+        if (keyIconPresenter == null)
+        {
+            keyIconPresenter = _hudRoot.AddComponent<HudSlotKeyIconPresenter>();
+        }
+
+        var inputIconCatalog = Resources.Load<InputIconCatalog>("Config/InputIconCatalog");
+        if (inputIconCatalog == null)
+        {
+            Debug.LogWarning("[GameBootstrap] 未找到 InputIconCatalog（Resources/Config/InputIconCatalog.asset），按键图标不会更新", this);
+        }
+        else
+        {
+            InputModeSwitcher switcher = null;
+            if (player.PlayerInput != null)
+            {
+                switcher = player.PlayerInput.GetComponent<InputModeSwitcher>();
+            }
+
+            keyIconPresenter.Initialize(hudRefs, player.PlayerInput, switcher, inputIconCatalog);
+        }
+
         // 统一初始化入口（Inventory/HUD/Replace/Equipment）
         if (!player.InitializeModules(_castleDbService, _gameplayConfig, hudPresenter, hudRefs))
         {

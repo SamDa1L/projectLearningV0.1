@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 using System.IO;
 
 /// <summary>
@@ -20,15 +21,41 @@ public class HudQuickConfigWindow : EditorWindow
     // 资源路径（硬契约）
     private const string PREFAB_PATH = "Assets/Resources/Prefabs/UI/HUDCanvas.prefab";
     private const string BINDING_PATH = "Assets/Resources/Config/HudBinding.asset";
+    private const string TEMPLATE_DIR = "Assets/Editor/HUDTemplates";
+    private const string CURRENT_TEMPLATE_PATH = TEMPLATE_DIR + "/HUDCanvas_Current.prefab";
+    private const string CURRENT_TEMPLATE_NAME = "当前 HUDCanvas（快照）";
+    private const string DEFAULT_TEMPLATE_NAME = "默认模板（代码生成）";
 
     // 日志前缀
     private const string LOG_PREFIX = "[HUDQuickConfig]";
+
+    private enum TemplateKind
+    {
+        CurrentSnapshot,
+        CodeDefault,
+        PrefabAsset
+    }
+
+    private struct TemplateOption
+    {
+        public string displayName;
+        public string prefabPath;
+        public TemplateKind kind;
+    }
+
+    private readonly List<TemplateOption> templateOptions = new List<TemplateOption>();
+    private int selectedTemplateIndex;
 
     [MenuItem("Tools/UI/HUD Quick Config")]
     public static void ShowWindow()
     {
         var window = GetWindow<HudQuickConfigWindow>("HUD Quick Config");
         window.minSize = new Vector2(400, 300);
+    }
+
+    private void OnEnable()
+    {
+        RefreshTemplateOptions();
     }
 
     private void OnGUI()
@@ -47,6 +74,31 @@ public class HudQuickConfigWindow : EditorWindow
         GUILayout.Space(10);
 
         // Create Template 按钮
+        GUILayout.Label("模板选择", EditorStyles.boldLabel);
+
+        string[] templateNames = GetTemplateDisplayNames();
+        selectedTemplateIndex = EditorGUILayout.Popup("Create Template 模板", selectedTemplateIndex, templateNames);
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("保存当前 HUDCanvas 为模板", GUILayout.Height(28)))
+        {
+            CaptureCurrentHudTemplate();
+        }
+
+        if (GUILayout.Button("刷新模板列表", GUILayout.Height(28)))
+        {
+            RefreshTemplateOptions();
+        }
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.HelpBox(
+            "模板目录：" + TEMPLATE_DIR + "\n" +
+            "当前 HUDCanvas 快照会保存到模板目录，供 Create Template 选择使用。",
+            MessageType.None
+        );
+
+        GUILayout.Space(10);
+
         if (GUILayout.Button("Create Template", GUILayout.Height(40)))
         {
             CreateTemplate();
@@ -88,6 +140,28 @@ public class HudQuickConfigWindow : EditorWindow
     {
         Debug.Log($"{LOG_PREFIX} 开始 Create Template...");
 
+        TemplateOption option = GetSelectedTemplate();
+        if (option.kind != TemplateKind.CodeDefault)
+        {
+            try
+            {
+                GameObject prefabAsset = CreateTemplateFromPrefab(option);
+                HudBindingAsset binding = EnsureBindingAsset();
+                binding.hudPrefab = prefabAsset;
+                EditorUtility.SetDirty(binding);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log($"{LOG_PREFIX} ✅ Create Template 完成！");
+                EditorUtility.DisplayDialog("成功", "HUD 模板创建完成！\n\n产物：\n- " + PREFAB_PATH + "\n- " + BINDING_PATH, "确定");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"{LOG_PREFIX} Create Template 失败: {ex.Message}\n{ex.StackTrace}");
+                EditorUtility.DisplayDialog("失败", "Create Template 失败，详见 Console", "确定");
+            }
+            return;
+        }
+
         try
         {
             // 确保目录存在
@@ -118,6 +192,7 @@ public class HudQuickConfigWindow : EditorWindow
             SetRectTransform(abilityBar, new Vector2(10, 10), new Vector2(0, 0), new Vector2(0, 0));
 
             Image[] slotIcons = new Image[4];
+            Image[] slotKeyIcons = new Image[4];
             // 根据报告，每个槽位的 Icon/background AnchoredPosition
             Vector2[] iconPositions = new Vector2[]
             {
@@ -126,6 +201,7 @@ public class HudQuickConfigWindow : EditorWindow
                 new Vector2(1330.0f, 116.0f), // Slot_2
                 new Vector2(1419.0f, 116.0f)  // Slot_3
             };
+            Vector2 keyIconOffset = new Vector2(0f, -60f);
 
             for (int i = 0; i < 4; i++)
             {
@@ -146,6 +222,12 @@ public class HudQuickConfigWindow : EditorWindow
                 slotIcons[i].enabled = false; // 默认禁用（空槽）
                 SetRectTransform(iconObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(50, 50));
                 iconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+
+                GameObject keyIconObj = CreateChild(slot, "KeyIcon");
+                slotKeyIcons[i] = keyIconObj.AddComponent<Image>();
+                slotKeyIcons[i].enabled = false;
+                SetRectTransform(keyIconObj, iconPositions[i] + keyIconOffset, new Vector2(0.5f, 0.5f), new Vector2(30, 30));
+                keyIconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
             }
 
             // 创建 PotionWidget
@@ -205,6 +287,7 @@ public class HudQuickConfigWindow : EditorWindow
 
             // 绑定 HudRefs 字段
             hudRefs.abilitySlotIcons = slotIcons;
+            hudRefs.abilitySlotKeyIcons = slotKeyIcons;
             hudRefs.potionCountText = potionCountText;
             hudRefs.healthFill = healthFill;
             hudRefs.energyFill = energyFill;
@@ -361,6 +444,24 @@ public class HudQuickConfigWindow : EditorWindow
                 }
             }
 
+            hudRefs.abilitySlotKeyIcons = new Image[4];
+            for (int i = 0; i < 4; i++)
+            {
+                string path = $"BottomLeft/AbilityBar/Slot_{i}/KeyIcon";
+                Transform t = prefab.transform.Find(path);
+                if (t == null)
+                {
+                    Debug.LogError($"{LOG_PREFIX} Missing node: {path}");
+                    throw new System.Exception($"ç¼ºå°‘èŠ‚ç‚¹: {path}");
+                }
+                hudRefs.abilitySlotKeyIcons[i] = t.GetComponent<Image>();
+                if (hudRefs.abilitySlotKeyIcons[i] == null)
+                {
+                    Debug.LogError($"{LOG_PREFIX} Expected Image at {path}, got null");
+                    throw new System.Exception($"èŠ‚ç‚¹ç±»åž‹é”™è¯¯: {path} åº”ä¸º Image");
+                }
+            }
+
             hudRefs.potionCountText = FindAndGetComponent<TMP_Text>(prefab.transform, "BottomLeft/PotionWidget/CountText");
             hudRefs.healthFill = FindAndGetComponent<Image>(prefab.transform, "BottomCenter/HealthBar/Fill");
             hudRefs.energyFill = FindAndGetComponent<Image>(prefab.transform, "BottomCenter/EnergyBar/Fill");
@@ -411,6 +512,23 @@ public class HudQuickConfigWindow : EditorWindow
             hasError = true;
         }
 
+        if (hudRefs.abilitySlotKeyIcons == null || hudRefs.abilitySlotKeyIcons.Length != 4)
+        {
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Ability slot key icon count must be 4, got {hudRefs.abilitySlotKeyIcons?.Length ?? 0}");
+            hasError = true;
+        }
+        else
+        {
+            for (int i = 0; i < hudRefs.abilitySlotKeyIcons.Length; i++)
+            {
+                if (hudRefs.abilitySlotKeyIcons[i] == null)
+                {
+                    Debug.LogError($"{LOG_PREFIX}[ERROR] Missing node: BottomLeft/AbilityBar/Slot_{i}/KeyIcon");
+                    hasError = true;
+                }
+            }
+        }
+
         // 校验必需字段
         if (hudRefs.potionCountText == null)
         {
@@ -455,6 +573,257 @@ public class HudQuickConfigWindow : EditorWindow
     }
 
     // ===== 辅助方法 =====
+
+    private string[] GetTemplateDisplayNames()
+    {
+        if (templateOptions.Count == 0)
+        {
+            RefreshTemplateOptions();
+        }
+
+        string[] names = new string[templateOptions.Count];
+        for (int i = 0; i < templateOptions.Count; i++)
+        {
+            names[i] = templateOptions[i].displayName;
+        }
+
+        return names;
+    }
+
+    private TemplateOption GetSelectedTemplate()
+    {
+        if (templateOptions.Count == 0)
+        {
+            RefreshTemplateOptions();
+        }
+
+        if (selectedTemplateIndex < 0 || selectedTemplateIndex >= templateOptions.Count)
+        {
+            selectedTemplateIndex = 0;
+        }
+
+        return templateOptions[selectedTemplateIndex];
+    }
+
+    private void RefreshTemplateOptions()
+    {
+        templateOptions.Clear();
+
+        templateOptions.Add(new TemplateOption
+        {
+            displayName = GetCurrentTemplateDisplayName(),
+            prefabPath = CURRENT_TEMPLATE_PATH,
+            kind = TemplateKind.CurrentSnapshot
+        });
+
+        templateOptions.Add(new TemplateOption
+        {
+            displayName = DEFAULT_TEMPLATE_NAME,
+            prefabPath = string.Empty,
+            kind = TemplateKind.CodeDefault
+        });
+
+        if (Directory.Exists(TEMPLATE_DIR))
+        {
+            string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { TEMPLATE_DIR });
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                if (string.Equals(path, CURRENT_TEMPLATE_PATH, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string name = Path.GetFileNameWithoutExtension(path);
+                templateOptions.Add(new TemplateOption
+                {
+                    displayName = $"模板: {name}",
+                    prefabPath = path,
+                    kind = TemplateKind.PrefabAsset
+                });
+            }
+        }
+
+        if (selectedTemplateIndex < 0 || selectedTemplateIndex >= templateOptions.Count)
+        {
+            selectedTemplateIndex = 0;
+        }
+
+        Repaint();
+    }
+
+    private string GetCurrentTemplateDisplayName()
+    {
+        bool exists = AssetDatabase.LoadAssetAtPath<GameObject>(CURRENT_TEMPLATE_PATH) != null;
+        if (exists)
+        {
+            return CURRENT_TEMPLATE_NAME;
+        }
+
+        return $"{CURRENT_TEMPLATE_NAME}（未保存）";
+    }
+
+    private void CaptureCurrentHudTemplate()
+    {
+        try
+        {
+            EnsureCurrentSnapshotTemplate();
+            RefreshTemplateOptions();
+            Debug.Log($"{LOG_PREFIX} 当前 HUDCanvas 已保存为模板: {CURRENT_TEMPLATE_PATH}");
+            EditorUtility.DisplayDialog("成功", "已保存当前 HUDCanvas 为模板", "确定");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"{LOG_PREFIX} 保存当前 HUDCanvas 模板失败: {ex.Message}");
+            EditorUtility.DisplayDialog("失败", "保存当前 HUDCanvas 模板失败，详见 Console", "确定");
+        }
+    }
+
+    private void EnsureCurrentSnapshotTemplate()
+    {
+        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_PATH);
+        if (source == null)
+        {
+            throw new System.Exception("HUDCanvas.prefab 不存在，无法保存模板");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(CURRENT_TEMPLATE_PATH));
+
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(CURRENT_TEMPLATE_PATH) != null)
+        {
+            AssetDatabase.DeleteAsset(CURRENT_TEMPLATE_PATH);
+        }
+
+        if (!AssetDatabase.CopyAsset(PREFAB_PATH, CURRENT_TEMPLATE_PATH))
+        {
+            throw new System.Exception("复制 HUDCanvas 快照模板失败");
+        }
+
+        AssetDatabase.Refresh();
+    }
+
+    private GameObject CreateTemplateFromPrefab(TemplateOption option)
+    {
+        if (option.kind == TemplateKind.CurrentSnapshot)
+        {
+            EnsureCurrentSnapshotTemplate();
+            RefreshTemplateOptions();
+        }
+
+        if (string.IsNullOrEmpty(option.prefabPath))
+        {
+            throw new System.Exception("模板路径为空");
+        }
+
+        GameObject templateAsset = AssetDatabase.LoadAssetAtPath<GameObject>(option.prefabPath);
+        if (templateAsset == null)
+        {
+            throw new System.Exception($"模板 prefab 不存在: {option.prefabPath}");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(PREFAB_PATH));
+        GameObject instance = PrefabUtility.InstantiatePrefab(templateAsset) as GameObject;
+        if (instance == null)
+        {
+            instance = Object.Instantiate(templateAsset);
+        }
+
+        try
+        {
+            HudRefs hudRefs = instance.GetComponent<HudRefs>();
+            if (hudRefs == null)
+            {
+                throw new System.Exception("模板 prefab 缺少 HudRefs 组件");
+            }
+
+            hudRefs.abilitySlotKeyIcons = EnsureAbilitySlotKeyIcons(instance);
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(instance, PREFAB_PATH);
+            if (prefabAsset == null)
+            {
+                throw new System.Exception("生成 HUDCanvas prefab 失败");
+            }
+
+            Debug.Log($"{LOG_PREFIX} HUDCanvas.prefab 已由模板生成: {option.displayName}");
+            return prefabAsset;
+        }
+        finally
+        {
+            DestroyImmediate(instance);
+        }
+    }
+
+    private HudBindingAsset EnsureBindingAsset()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(BINDING_PATH));
+
+        HudBindingAsset binding = AssetDatabase.LoadAssetAtPath<HudBindingAsset>(BINDING_PATH);
+        if (binding == null)
+        {
+            binding = CreateInstance<HudBindingAsset>();
+            AssetDatabase.CreateAsset(binding, BINDING_PATH);
+            Debug.Log($"{LOG_PREFIX} HudBinding.asset 创建成功: {BINDING_PATH}");
+        }
+
+        return binding;
+    }
+
+    private Image[] EnsureAbilitySlotKeyIcons(GameObject hudRoot)
+    {
+        Image[] keyIcons = new Image[4];
+
+        for (int i = 0; i < 4; i++)
+        {
+            string slotPath = $"BottomLeft/AbilityBar/Slot_{i}";
+            Transform slot = hudRoot.transform.Find(slotPath);
+            if (slot == null)
+            {
+                throw new System.Exception($"ç¼ºå°‘èŠ‚ç‚¹: {slotPath}");
+            }
+
+            Transform keyIcon = slot.Find("KeyIcon");
+            if (keyIcon == null)
+            {
+                GameObject keyIconObj = new GameObject("KeyIcon");
+                keyIconObj.transform.SetParent(slot, false);
+
+                RectTransform keyRt = keyIconObj.AddComponent<RectTransform>();
+                RectTransform iconRt = slot.Find("Icon")?.GetComponent<RectTransform>();
+                if (iconRt != null)
+                {
+                    keyRt.anchorMin = iconRt.anchorMin;
+                    keyRt.anchorMax = iconRt.anchorMax;
+                    keyRt.pivot = iconRt.pivot;
+                    keyRt.sizeDelta = iconRt.sizeDelta * 0.6f;
+                    keyRt.anchoredPosition = iconRt.anchoredPosition + new Vector2(0f, -Mathf.Max(30f, iconRt.sizeDelta.y + 10f));
+                    keyIconObj.transform.localScale = iconRt.localScale;
+                }
+                else
+                {
+                    keyRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    keyRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    keyRt.pivot = new Vector2(0.5f, 0.5f);
+                    keyRt.sizeDelta = new Vector2(30f, 30f);
+                    keyRt.anchoredPosition = new Vector2(0f, -40f);
+                }
+
+                Image image = keyIconObj.AddComponent<Image>();
+                image.enabled = false;
+                keyIcons[i] = image;
+            }
+            else
+            {
+                Image image = keyIcon.GetComponent<Image>();
+                if (image == null)
+                {
+                    image = keyIcon.gameObject.AddComponent<Image>();
+                }
+                keyIcons[i] = image;
+            }
+        }
+
+        return keyIcons;
+    }
 
     private GameObject CreateChild(GameObject parent, string name)
     {
