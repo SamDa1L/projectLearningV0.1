@@ -23,7 +23,7 @@ public class HudQuickConfigWindow : EditorWindow
     private const string PREFAB_PATH = "Assets/Resources/Prefabs/UI/HUDCanvas.prefab";
     private const string BINDING_PATH = "Assets/Resources/Config/HudBinding.asset";
     private const string TEMPLATE_DIR = "Assets/Editor/HUDTemplates";
-    private const string CURRENT_TEMPLATE_PATH = "Assets/Editor/HUDTemplates/HUDCanvas_Current.prefab";
+    private const string CURRENT_TEMPLATE_PATH = "Assets/Editor/HUDTemplates/HUDCanvas_Snapshot.prefab";
     private const string CURRENT_TEMPLATE_NAME = "当前HUDCanvas";
     private const string TEMPLATE_OUTPUT_DIR = "Assets/Resources/Prefabs/UI/UITemplates";
 
@@ -73,20 +73,29 @@ public class HudQuickConfigWindow : EditorWindow
 
         GUILayout.Space(10);
 
-        // 创建模板按钮
+        // 模板选择（Create Template 使用）
         EditorGUILayout.LabelField("模板选择", EditorStyles.boldLabel);
-        selectedTemplateIndex = EditorGUILayout.Popup(selectedTemplateIndex, GetTemplateDisplayNames());
-        if (GUILayout.Button("刷新模板列表", GUILayout.Height(24)))
-        {
-            RefreshTemplateOptions();
-        }
+        selectedTemplateIndex = EditorGUILayout.Popup("Create Template 模板", selectedTemplateIndex, GetTemplateDisplayNames());
 
-        if (GUILayout.Button("保存当前HUDCanvas为模板", GUILayout.Height(32)))
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("保存当前HUDCanvas为模板", GUILayout.Height(28)))
         {
             SaveCurrentTemplate();
         }
 
-        GUILayout.Space(5);
+        if (GUILayout.Button("刷新模板列表", GUILayout.Height(28)))
+        {
+            RefreshTemplateOptions();
+        }
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.HelpBox(
+            "模板目录：\n" +
+            "- " + TEMPLATE_DIR + "\n" +
+            "当前HUDCanvas快照（保存后生成）：\n" +
+            "- " + CURRENT_TEMPLATE_PATH + "\n",
+            MessageType.None
+        );
 
         GUILayout.Space(10);
 
@@ -184,6 +193,7 @@ public class HudQuickConfigWindow : EditorWindow
             SetRectTransform(abilityBar, new Vector2(10, 10), new Vector2(0, 0), new Vector2(0, 0));
 
             Image[] slotIcons = new Image[4];
+            Image[] slotKeyIcons = new Image[4];
             // 根据报告，每个槽位的 Icon/background AnchoredPosition
             Vector2[] iconPositions = new Vector2[]
             {
@@ -192,6 +202,7 @@ public class HudQuickConfigWindow : EditorWindow
                 new Vector2(1330.0f, 116.0f), // Slot_2
                 new Vector2(1419.0f, 116.0f)  // Slot_3
             };
+            Vector2 keyIconOffset = new Vector2(0f, -60f);
 
             for (int i = 0; i < 4; i++)
             {
@@ -212,6 +223,12 @@ public class HudQuickConfigWindow : EditorWindow
                 slotIcons[i].enabled = false; // 默认禁用（空槽）
                 SetRectTransform(iconObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(50, 50));
                 iconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+
+                GameObject keyIconObj = CreateChild(slot, "KeyIcon");
+                slotKeyIcons[i] = keyIconObj.AddComponent<Image>();
+                slotKeyIcons[i].enabled = false;
+                SetRectTransform(keyIconObj, iconPositions[i] + keyIconOffset, new Vector2(0.5f, 0.5f), new Vector2(30, 30));
+                keyIconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
             }
 
             // 创建 PotionWidget
@@ -271,6 +288,7 @@ public class HudQuickConfigWindow : EditorWindow
 
             // 绑定 HudRefs 字段
             hudRefs.abilitySlotIcons = slotIcons;
+            hudRefs.abilitySlotKeyIcons = slotKeyIcons;
             hudRefs.potionCountText = potionCountText;
             hudRefs.healthFill = healthFill;
             hudRefs.energyFill = energyFill;
@@ -419,6 +437,9 @@ public class HudQuickConfigWindow : EditorWindow
                     throw new System.Exception($"节点类型错误: {path} 应为 Image");
                 }
             }
+            // 确保 KeyIcon 节点存在，并绑定引用（避免旧模板缺失导致报错）
+            hudRefs.abilitySlotKeyIcons = EnsureAbilitySlotKeyIcons(prefab);
+
 
             hudRefs.potionCountText = FindAndGetComponent<TMP_Text>(prefab.transform, "BottomLeft/PotionWidget/CountText");
             hudRefs.healthFill = FindAndGetComponent<Image>(prefab.transform, "BottomCenter/HealthBar/Fill");
@@ -471,6 +492,23 @@ public class HudQuickConfigWindow : EditorWindow
             hasError = true;
         }
 
+        if (hudRefs.abilitySlotKeyIcons == null || hudRefs.abilitySlotKeyIcons.Length != 4)
+        {
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Ability slot key icon count must be 4, got {hudRefs.abilitySlotKeyIcons?.Length ?? 0}");
+            hasError = true;
+        }
+        else
+        {
+            for (int i = 0; i < hudRefs.abilitySlotKeyIcons.Length; i++)
+            {
+                if (hudRefs.abilitySlotKeyIcons[i] == null)
+                {
+                    Debug.LogError($"{LOG_PREFIX}[ERROR] Missing node: BottomLeft/AbilityBar/Slot_{i}/KeyIcon");
+                    hasError = true;
+                }
+            }
+        }
+
         // 校验必需字段
         if (hudRefs.potionCountText == null)
         {
@@ -514,6 +552,63 @@ public class HudQuickConfigWindow : EditorWindow
         }
     }
     // ===== 辅助方法 =====
+
+    private Image[] EnsureAbilitySlotKeyIcons(GameObject hudRoot)
+    {
+        Image[] keyIcons = new Image[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+                string slotPath = $"BottomLeft/AbilityBar/Slot_{i}";
+            Transform slot = hudRoot.transform.Find(slotPath);
+            if (slot == null)
+            {
+                throw new System.Exception($"缺少节点: {slotPath}");
+            }
+
+            Transform keyIcon = slot.Find("KeyIcon");
+            if (keyIcon == null)
+            {
+                GameObject keyIconObj = new GameObject("KeyIcon");
+                keyIconObj.transform.SetParent(slot, false);
+
+                RectTransform keyRt = keyIconObj.AddComponent<RectTransform>();
+                RectTransform iconRt = slot.Find("Icon")?.GetComponent<RectTransform>();
+                if (iconRt != null)
+                {
+                    keyRt.anchorMin = iconRt.anchorMin;
+                    keyRt.anchorMax = iconRt.anchorMax;
+                    keyRt.pivot = iconRt.pivot;
+                    keyRt.sizeDelta = iconRt.sizeDelta * 0.6f;
+                    keyRt.anchoredPosition = iconRt.anchoredPosition + new Vector2(0f, -Mathf.Max(30f, iconRt.sizeDelta.y + 10f));
+                    keyIconObj.transform.localScale = iconRt.localScale;
+                }
+                else
+                {
+                    keyRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    keyRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    keyRt.pivot = new Vector2(0.5f, 0.5f);
+                    keyRt.sizeDelta = new Vector2(30f, 30f);
+                    keyRt.anchoredPosition = new Vector2(0f, -40f);
+                }
+
+                Image image = keyIconObj.AddComponent<Image>();
+                image.enabled = false;
+                keyIcons[i] = image;
+            }
+            else
+            {
+                Image image = keyIcon.GetComponent<Image>();
+                if (image == null)
+                {
+                    image = keyIcon.gameObject.AddComponent<Image>();
+                }
+                keyIcons[i] = image;
+            }
+        }
+
+        return keyIcons;
+    }
 
     private GameObject CreateChild(GameObject parent, string name)
     {

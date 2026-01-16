@@ -36,6 +36,10 @@ public class HudRefs : MonoBehaviour
     [Tooltip("能力槽图标数组（长度必须为 4，索引 0~3）")]
     public Image[] abilitySlotIcons = new Image[4];
 
+    [Header("能力槽按键图标")]
+    [Tooltip("能力槽按键图标数组（长度必须为 4，索引 0~3）")]
+    public Image[] abilitySlotKeyIcons = new Image[4];
+
     [Header("Potion Widget")]
     [Tooltip("血瓶计数文本（TMPro）")]
     public TMP_Text potionCountText;
@@ -64,6 +68,11 @@ public class HudRefs : MonoBehaviour
         if (abilitySlotIcons == null || abilitySlotIcons.Length != 4)
         {
             Debug.LogError("[HudRefs] abilitySlotIcons 长度必须为 4", this);
+        }
+
+        if (abilitySlotKeyIcons == null || abilitySlotKeyIcons.Length != 4)
+        {
+            Debug.LogError("[HudRefs] abilitySlotKeyIcons 长度必须为 4", this);
         }
 
         // 校验必需字段
