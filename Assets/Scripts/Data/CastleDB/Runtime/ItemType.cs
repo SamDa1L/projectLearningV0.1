@@ -13,6 +13,7 @@ namespace CastleDB.Runtime
     {
         Ability = 0,
         Consumable = 1,
-        Material = 2
+        Material = 2,
+        Relic = 3
     }
 }

@@ -223,8 +223,28 @@ public struct DamageableStats
     {
         if(IsAlive && !IsInvulnerable)
         {
-            Health -= damage;
-            if (invincibilityTime > 0f)
+            // Phase 7：扣血前允许拦截器改写伤害（护盾优先扣等）
+            Vector2 worldPos = hitPoint ?? (Vector2)transform.position;
+            int incomingDamage = Mathf.Max(damage, 0);
+            int healthDamage = incomingDamage;
+
+            var interceptors = GetComponents<IDamageInterceptor>();
+            for (int i = 0; i < interceptors.Length && healthDamage > 0; i++)
+            {
+                interceptors[i]?.BeforeDamage(ref healthDamage, worldPos);
+                if (healthDamage < 0)
+                {
+                    healthDamage = 0;
+                }
+            }
+
+            if (healthDamage > 0)
+            {
+                Health -= healthDamage;
+            }
+
+            // 只有真正扣血时才进入受击无敌窗口
+            if (healthDamage > 0 && invincibilityTime > 0f)
             {
                 isInvincible = true;
                 timeSinceHit = 0f;
@@ -237,12 +257,13 @@ public struct DamageableStats
                 LockVelocity = true;
             }
             Vector2 scaledKnockback = knockback * knockbackMultiplier;
-            damageableHit?.Invoke(damage, scaledKnockback);
+            damageableHit?.Invoke(incomingDamage, scaledKnockback);
 
-            // 0.45 修正：计算 worldPos（契约 P0-2）
-            // 优先使用 hitPoint，否则使用 transform.position（不使用 offset，简化版本）
-            Vector2 worldPos = hitPoint ?? (Vector2)transform.position;
-            CharacterEvents.characterDamaged?.Invoke(this, damage, worldPos);
+            // 只上报真实扣血量，避免“护盾吸收也刷伤害数字”
+            if (healthDamage > 0)
+            {
+                CharacterEvents.characterDamaged?.Invoke(this, healthDamage, worldPos);
+            }
 
             return true;
         }

@@ -139,6 +139,18 @@ public class ItemPickup : MonoBehaviour
         // 构造 PickupRequest
         PickupRequest req = new PickupRequest(itemId, amount, this);
 
+        // Phase 7：遗物拾取优先走 PlayerRelicController（不走 Inventory.TryPickup）
+        // 规则：若返回非 Failed_NotSupported，则视为“已处理”（成功或失败）并直接进入结果处理。
+        if (playerCtx.RelicController != null)
+        {
+            PickupResult relicResult = playerCtx.RelicController.TryPickupRelic(req);
+            if (relicResult != PickupResult.Failed_NotSupported)
+            {
+                HandlePickupResult(relicResult, default, playerCtx);
+                return;
+            }
+        }
+
         // 调用 TryPickup
         PickupResult result = playerCtx.Inventory.TryPickup(req, out PendingReplaceContext ctx);
 
@@ -289,13 +301,13 @@ public class ItemPickup : MonoBehaviour
             amount = 1;
         }
 
-        // 2) 若 itemType=Ability，强制 amount=1
+        // 2) 若 itemType=Ability/Relic，强制 amount=1
         ItemCatalog catalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
         if (catalog != null && catalog.TryGetItem(itemId, out ItemDefinition def))
         {
-            if (def.itemType == ItemType.Ability && amount != 1)
+            if ((def.itemType == ItemType.Ability || def.itemType == ItemType.Relic) && amount != 1)
             {
-                Debug.LogWarning($"[ItemPickup] itemType=Ability 时 amount 必须为 1，已自动修正。itemId={itemId}", this);
+                Debug.LogWarning($"[ItemPickup] itemType=Ability/Relic 时 amount 必须为 1，已自动修正。itemId={itemId}", this);
                 amount = 1;
             }
 

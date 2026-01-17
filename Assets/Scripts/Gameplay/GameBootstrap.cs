@@ -7,12 +7,12 @@ using CastleDB.Runtime;
 /// 核心职责：
 /// - 场景启动时统一完成依赖注入与资源装配
 /// - 确保各 Runtime 模块在使用前已完成初始化
-/// - 按硬契约顺序装配（ItemCatalog → HUD → PlayerModules）
+/// - 按硬契约顺序装配（ItemCatalog(+RelicCatalog) → HUD → PlayerModules）
 ///
 /// 装配顺序（硬契约 [C-Runtime-0]）：
 /// 1. 加载 ItemCatalog.asset 并初始化 CastleDbService
 /// 2. 加载 HudBinding.asset 并实例化/定位 HUD
-/// 3. 统一初始化玩家模块：player.InitializeModules(items, cfg, hudPresenter, hudRefs)
+/// 3. 统一初始化玩家模块：player.InitializeModules(items, cfg, relicCatalog, hudPresenter, hudRefs)
 ///    - 内部顺序保持不变：Inventory → HUD → Replace(可选) → Equipment(可选)
 /// 4. Start：player.SyncInitialAbilities()（初次同步）
 ///
@@ -34,6 +34,7 @@ public class GameBootstrap : MonoBehaviour
     // ===== 运行时状态 =====
     private CastleDbService _castleDbService;
     private GameplayConfig _gameplayConfig;
+    private RelicCatalog _relicCatalog;
     private GameObject _hudRoot;  // Phase 7: HUD 实例根节点
 
     // ===== 生命周期 =====
@@ -128,6 +129,18 @@ public class GameBootstrap : MonoBehaviour
             Debug.LogWarning("[GameBootstrap] GameplayConfig 未找到，Inventory 将使用默认配置", this);
         }
 
+        // Phase 7：加载 RelicCatalog（可选，缺失则禁用遗物系统）
+        _relicCatalog = Resources.Load<RelicCatalog>("Config/RelicCatalog");
+        if (_relicCatalog == null)
+        {
+            Debug.LogWarning("[GameBootstrap] 未找到 RelicCatalog（Resources/Config/RelicCatalog.asset），遗物功能将被禁用", this);
+        }
+        else if (!_relicCatalog.IsValid)
+        {
+            Debug.LogError("[GameBootstrap] RelicCatalog 数据无效（ID 重复等），遗物功能将被禁用", this);
+            _relicCatalog = null;
+        }
+
         return true;
     }
 
@@ -178,7 +191,7 @@ public class GameBootstrap : MonoBehaviour
     /// Step 3: 统一初始化玩家模块（Phase 3）
     /// 契约 [C-Runtime-0]：
     /// - 从 HUD 实例获取 HudPresenter 和 HudRefs
-    /// - 调用 player.InitializeModules(items, cfg, hudPresenter, hudRefs)
+    /// - 调用 player.InitializeModules(items, cfg, relicCatalog, hudPresenter, hudRefs)
     /// </summary>
     private bool InitializePlayerModules()
     {
@@ -229,7 +242,7 @@ public class GameBootstrap : MonoBehaviour
         }
 
         // 统一初始化入口（Inventory/HUD/Replace/Equipment）
-        if (!player.InitializeModules(_castleDbService, _gameplayConfig, hudPresenter, hudRefs))
+        if (!player.InitializeModules(_castleDbService, _gameplayConfig, _relicCatalog, hudPresenter, hudRefs))
         {
             Debug.LogError("[GameBootstrap] PlayerContext.InitializeModules 执行失败，中止装配", this);
             return false;

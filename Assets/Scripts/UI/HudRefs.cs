@@ -14,12 +14,14 @@ using TMPro;
 /// - healthFill: 血条 fillAmount Image
 /// - energyFill: 能量条 fillAmount Image（可选，0.4 版本隐藏）
 /// - abilityReplacePanelRoot: 替换面板根节点（必需，默认 inactive）
+/// - relicIcon: 遗物图标（Phase 7：拾取遗物后在 HUD 左上角显示；可选，但建议配置）
 ///
 /// 索引-路径映射（硬契约）：
 /// - abilitySlotIcons[0] → BottomLeft/AbilityBar/Slot_0/Icon
 /// - abilitySlotIcons[1] → BottomLeft/AbilityBar/Slot_1/Icon
 /// - abilitySlotIcons[2] → BottomLeft/AbilityBar/Slot_2/Icon
 /// - abilitySlotIcons[3] → BottomLeft/AbilityBar/Slot_3/Icon
+/// - relicIcon → TopLeft/RelicWidget/Icon
 ///
 /// 绑定方式：
 /// - 由 HUD Quick Config 工具（Phase 10）自动绑定（AutoBind 功能）
@@ -56,6 +58,10 @@ public class HudRefs : MonoBehaviour
     [Tooltip("替换面板根节点（必需，默认 inactive）")]
     public GameObject abilityReplacePanelRoot;
 
+    [Header("Relic Widget (Phase 7)")]
+    [Tooltip("遗物图标（拾取遗物后显示在左上角；无遗物时隐藏）")]
+    public Image relicIcon;
+
     /// <summary>
     /// OnValidate: 校验引用完整性（Editor-only）
     /// - abilitySlotIcons 长度必须为 4
@@ -89,6 +95,11 @@ public class HudRefs : MonoBehaviour
         if (abilityReplacePanelRoot == null)
         {
             Debug.LogWarning("[HudRefs] abilityReplacePanelRoot 未设置", this);
+        }
+
+        if (relicIcon == null)
+        {
+            Debug.LogWarning("[HudRefs] relicIcon 未设置（Phase 7：遗物图标将不会显示）", this);
         }
         #endif
     }

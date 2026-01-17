@@ -10,11 +10,12 @@ using CastleDB.Runtime;
 /// 职责：
 /// - 订阅 PlayerInventory.OnAbilitySlotChanged / OnPotionCountChanged
 /// - 订阅 Damageable.OnHealthChanged
+/// - 订阅 PlayerRelicController.OnRelicChanged（Phase 7：遗物图标）
 /// - 管理 Sprite 图标缓存（GetSprite 对外接口，复用于 ReplaceController）
-/// - 更新 HUD 节点（Ability 槽图标、血瓶计数、血条）
+/// - 更新 HUD 节点（Ability 槽图标、血瓶计数、血条、遗物图标）
 ///
 /// 初始化流程（硬契约）：
-/// 1. GameBootstrap.Awake() 调用 Initialize(items, refs, inv, dmg)
+/// 1. GameBootstrap.Awake() 调用 Initialize(items, refs, inv, dmg, relicCtrl)
 /// 2. Initialize 内完成事件订阅
 /// 3. Initialize 内立即执行 RefreshAll()（初始刷新）
 ///
@@ -30,6 +31,7 @@ public class HudPresenter : MonoBehaviour
     private HudRefs _refs;
     private PlayerInventory _inv;
     private Damageable _dmg;
+    private PlayerRelicController _relicCtrl;
 
     private bool _initialized = false;
 
@@ -46,6 +48,9 @@ public class HudPresenter : MonoBehaviour
     /// </summary>
     private HashSet<string> _missingSpriteWarned = new HashSet<string>();
 
+    // HudRefs.relicIcon 缺失警告去重
+    private bool _relicIconWarned = false;
+
     // ========== 初始化（契约 [C-Runtime-6]）==========
     /// <summary>
     /// 初始化 HudPresenter（由 GameBootstrap.Awake 调用）
@@ -57,7 +62,8 @@ public class HudPresenter : MonoBehaviour
     /// <param name="refs">HudRefs（UI 节点引用）</param>
     /// <param name="inv">PlayerInventory（监听槽位/血瓶变化）</param>
     /// <param name="dmg">Damageable（监听生命值变化）</param>
-    public void Initialize(ICastleDbService items, HudRefs refs, PlayerInventory inv, Damageable dmg)
+    /// <param name="relicCtrl">PlayerRelicController（可选，监听遗物变更以更新图标）</param>
+    public void Initialize(ICastleDbService items, HudRefs refs, PlayerInventory inv, Damageable dmg, PlayerRelicController relicCtrl)
     {
         // 重复初始化检查
         if (_initialized)
@@ -96,12 +102,18 @@ public class HudPresenter : MonoBehaviour
         _refs = refs;
         _inv = inv;
         _dmg = dmg;
+        _relicCtrl = relicCtrl;
         _initialized = true;
 
         // 订阅事件
         _inv.OnAbilitySlotChanged += OnAbilitySlotChanged;
         _inv.OnPotionCountChanged += OnPotionCountChanged;
         _dmg.OnHealthChanged += OnHealthChanged;
+
+        if (_relicCtrl != null)
+        {
+            _relicCtrl.OnRelicChanged += OnRelicChanged;
+        }
 
         Debug.Log("[HudPresenter] 初始化完成，已订阅 Inventory/Damageable 事件");
 
@@ -121,6 +133,11 @@ public class HudPresenter : MonoBehaviour
         if (_dmg != null)
         {
             _dmg.OnHealthChanged -= OnHealthChanged;
+        }
+
+        if (_relicCtrl != null)
+        {
+            _relicCtrl.OnRelicChanged -= OnRelicChanged;
         }
     }
 
@@ -188,6 +205,10 @@ public class HudPresenter : MonoBehaviour
 
         // 3) 刷新血条
         UpdateHealthInternal(_dmg.CurrentHealth, Mathf.RoundToInt(_dmg.MaxHealth));
+
+        // 4) 刷新遗物图标（Phase 7）
+        string relicItemId = _relicCtrl != null ? _relicCtrl.EquippedRelicItemId : null;
+        UpdateRelicIconInternal(relicItemId);
     }
 
     // ========== 事件处理（私有）==========
@@ -204,6 +225,11 @@ public class HudPresenter : MonoBehaviour
     private void OnHealthChanged(int current, int max)
     {
         UpdateHealthInternal(current, max);
+    }
+
+    private void OnRelicChanged(string oldItemId, string newItemId)
+    {
+        UpdateRelicIconInternal(newItemId);
     }
 
     // ========== HUD 更新逻辑（私有）==========
@@ -303,5 +329,53 @@ public class HudPresenter : MonoBehaviour
         }
 
         _refs.healthFill.fillAmount = fillAmount;
+    }
+
+    /// <summary>
+    /// 更新遗物图标（Phase 7）
+    /// - itemId 为空：隐藏图标
+    /// - itemId 非空：读取 Item.icon，加载 Sprite 并显示
+    /// </summary>
+    private void UpdateRelicIconInternal(string itemId)
+    {
+        if (_refs.relicIcon == null)
+        {
+            if (!_relicIconWarned)
+            {
+                Debug.LogWarning("[HudPresenter] HudRefs.relicIcon 为空，遗物图标将不会显示（可通过 HUD Quick Config 绑定 TopLeft/RelicWidget/Icon）", this);
+                _relicIconWarned = true;
+            }
+            return;
+        }
+
+        // 无遗物：隐藏
+        if (string.IsNullOrEmpty(itemId))
+        {
+            _refs.relicIcon.enabled = false;
+            _refs.relicIcon.sprite = null;
+            return;
+        }
+
+        // 查询 Item 定义
+        if (!_items.TryGetItem(itemId, out ItemDefinition def) || def == null)
+        {
+            Debug.LogWarning($"[HudPresenter] 遗物 itemId 不存在：{itemId}，将隐藏图标");
+            _refs.relicIcon.enabled = false;
+            _refs.relicIcon.sprite = null;
+            return;
+        }
+
+        // 加载 icon Sprite（复用内部缓存）
+        Sprite sprite = GetSprite(def.icon);
+        if (sprite == null)
+        {
+            Debug.LogWarning($"[HudPresenter] 遗物无法加载 icon: {def.icon}，将隐藏图标");
+            _refs.relicIcon.enabled = false;
+            _refs.relicIcon.sprite = null;
+            return;
+        }
+
+        _refs.relicIcon.sprite = sprite;
+        _refs.relicIcon.enabled = true;
     }
 }

@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: InputIconCatalog
   m_EditorClassIdentifier: 
   keyboard:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 1881280002, guid: 31f24505c766b8d4cbbfeaaa7335e3f6, type: 3}
+  - {fileID: -862653562, guid: 31f24505c766b8d4cbbfeaaa7335e3f6, type: 3}
+  - {fileID: 1064207806, guid: 31f24505c766b8d4cbbfeaaa7335e3f6, type: 3}
+  - {fileID: -808729883, guid: 31f24505c766b8d4cbbfeaaa7335e3f6, type: 3}
   playStation:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 1083043372, guid: 655f601cb744e7f4c87a7c907b32e70b, type: 3}
+  - {fileID: 703728111, guid: 655f601cb744e7f4c87a7c907b32e70b, type: 3}
+  - {fileID: -1033347205, guid: 655f601cb744e7f4c87a7c907b32e70b, type: 3}
+  - {fileID: -1172439416, guid: 655f601cb744e7f4c87a7c907b32e70b, type: 3}
   xbox:
   - {fileID: 0}
   - {fileID: 0}

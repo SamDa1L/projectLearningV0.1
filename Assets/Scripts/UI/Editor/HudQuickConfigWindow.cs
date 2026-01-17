@@ -184,9 +184,28 @@ public class HudQuickConfigWindow : EditorWindow
             HudRefs hudRefs = hudRoot.AddComponent<HudRefs>();
 
             // 创建节点结构（符合 [C-UI-1]/[C-UI-2]）
+            GameObject topLeft = CreateChild(hudRoot, "TopLeft");
             GameObject bottomLeft = CreateChild(hudRoot, "BottomLeft");
             GameObject bottomCenter = CreateChild(hudRoot, "BottomCenter");
             GameObject overlay = CreateChild(hudRoot, "Overlay");
+
+            RectTransform topLeftRt = topLeft.GetComponent<RectTransform>();
+            topLeftRt.anchorMin = new Vector2(0, 1);
+            topLeftRt.anchorMax = new Vector2(0, 1);
+            topLeftRt.pivot = new Vector2(0, 1);
+            topLeftRt.anchoredPosition = Vector2.zero;
+            topLeftRt.sizeDelta = Vector2.zero;
+
+            // 创建 RelicWidget（Phase 7：拾取遗物后显示在左上角）
+            GameObject relicWidget = CreateChild(topLeft, "RelicWidget");
+            SetRectTransform(relicWidget, new Vector2(30, -30), new Vector2(0, 1), new Vector2(80, 80));
+            RectTransform relicWidgetRt = relicWidget.GetComponent<RectTransform>();
+            relicWidgetRt.pivot = new Vector2(0, 1);
+
+            GameObject relicIconObj = CreateChild(relicWidget, "Icon");
+            Image relicIcon = relicIconObj.AddComponent<Image>();
+            relicIcon.enabled = false; // 默认隐藏
+            SetRectTransform(relicIconObj, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(64, 64));
 
             // 创建 AbilityBar（4 槽）
             GameObject abilityBar = CreateChild(bottomLeft, "AbilityBar");
@@ -293,6 +312,7 @@ public class HudQuickConfigWindow : EditorWindow
             hudRefs.healthFill = healthFill;
             hudRefs.energyFill = energyFill;
             hudRefs.abilityReplacePanelRoot = replacePanel;
+            hudRefs.relicIcon = relicIcon;
 
             // 保存 Prefab
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(hudRoot, outputPath);
@@ -407,24 +427,34 @@ public class HudQuickConfigWindow : EditorWindow
             return;
         }
 
-        GameObject prefab = binding.hudPrefab;
-
-        HudRefs hudRefs = prefab.GetComponent<HudRefs>();
-        if (hudRefs == null)
+        // 必须使用 PrefabContents 工作流修改 Prefab（避免直接改 Prefab Asset 层级导致报错/潜在损坏）
+        string prefabPath = AssetDatabase.GetAssetPath(binding.hudPrefab);
+        if (string.IsNullOrEmpty(prefabPath))
         {
-            Debug.LogError($"{LOG_PREFIX} HUD Prefab 缺少 HudRefs 组件");
-            EditorUtility.DisplayDialog("失败", "HUD Prefab 缺少 HudRefs 组件", "确定");
+            Debug.LogError($"{LOG_PREFIX} hudPrefab 不是有效的 Prefab Asset（无法获取路径）");
+            EditorUtility.DisplayDialog("失败", "hudPrefab 不是有效的 Prefab Asset（无法获取路径）", "确定");
             return;
         }
 
+        GameObject prefabRoot = null;
         // 按固定路径绑定（符合 [C-UI-1]）
         try
         {
+            prefabRoot = PrefabUtility.LoadPrefabContents(prefabPath);
+
+            HudRefs hudRefs = prefabRoot.GetComponent<HudRefs>();
+            if (hudRefs == null)
+            {
+                Debug.LogError($"{LOG_PREFIX} HUD Prefab 缺少 HudRefs 组件");
+                EditorUtility.DisplayDialog("失败", "HUD Prefab 缺少 HudRefs 组件", "确定");
+                return;
+            }
+
             hudRefs.abilitySlotIcons = new Image[4];
             for (int i = 0; i < 4; i++)
             {
                 string path = $"BottomLeft/AbilityBar/Slot_{i}/Icon";
-                Transform t = prefab.transform.Find(path);
+                Transform t = prefabRoot.transform.Find(path);
                 if (t == null)
                 {
                     Debug.LogError($"{LOG_PREFIX} Missing node: {path}");
@@ -438,15 +468,16 @@ public class HudQuickConfigWindow : EditorWindow
                 }
             }
             // 确保 KeyIcon 节点存在，并绑定引用（避免旧模板缺失导致报错）
-            hudRefs.abilitySlotKeyIcons = EnsureAbilitySlotKeyIcons(prefab);
+            hudRefs.abilitySlotKeyIcons = EnsureAbilitySlotKeyIcons(prefabRoot);
+            hudRefs.relicIcon = EnsureRelicIcon(prefabRoot);
 
 
-            hudRefs.potionCountText = FindAndGetComponent<TMP_Text>(prefab.transform, "BottomLeft/PotionWidget/CountText");
-            hudRefs.healthFill = FindAndGetComponent<Image>(prefab.transform, "BottomCenter/HealthBar/Fill");
-            hudRefs.energyFill = FindAndGetComponent<Image>(prefab.transform, "BottomCenter/EnergyBar/Fill");
-            hudRefs.abilityReplacePanelRoot = FindAndGetComponent<Transform>(prefab.transform, "Overlay/AbilityReplacePanel").gameObject;
+            hudRefs.potionCountText = FindAndGetComponent<TMP_Text>(prefabRoot.transform, "BottomLeft/PotionWidget/CountText");
+            hudRefs.healthFill = FindAndGetComponent<Image>(prefabRoot.transform, "BottomCenter/HealthBar/Fill");
+            hudRefs.energyFill = FindAndGetComponent<Image>(prefabRoot.transform, "BottomCenter/EnergyBar/Fill");
+            hudRefs.abilityReplacePanelRoot = FindAndGetComponent<Transform>(prefabRoot.transform, "Overlay/AbilityReplacePanel").gameObject;
 
-            EditorUtility.SetDirty(prefab);
+            PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
             AssetDatabase.SaveAssets();
 
             Debug.Log($"{LOG_PREFIX} AutoBind 完成！");
@@ -456,6 +487,13 @@ public class HudQuickConfigWindow : EditorWindow
         {
             Debug.LogError($"{LOG_PREFIX} AutoBind 失败: {ex.Message}");
             EditorUtility.DisplayDialog("失败", "AutoBind 失败，详见 Console", "确定");
+        }
+        finally
+        {
+            if (prefabRoot != null)
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
         }
     }
 
@@ -540,6 +578,12 @@ public class HudQuickConfigWindow : EditorWindow
             }
         }
 
+        if (hudRefs.relicIcon == null)
+        {
+            Debug.LogError($"{LOG_PREFIX}[ERROR] Missing node: TopLeft/RelicWidget/Icon");
+            hasError = true;
+        }
+
         if (!hasError)
         {
             Debug.Log($"{LOG_PREFIX} Validate 通过！所有节点完整。");
@@ -608,6 +652,85 @@ public class HudQuickConfigWindow : EditorWindow
         }
 
         return keyIcons;
+    }
+
+    private Image EnsureRelicIcon(GameObject hudRoot)
+    {
+        if (hudRoot == null)
+        {
+            throw new System.Exception("hudRoot 为空");
+        }
+
+        Transform topLeft = hudRoot.transform.Find("TopLeft");
+        if (topLeft == null)
+        {
+            GameObject topLeftObj = new GameObject("TopLeft");
+            topLeftObj.transform.SetParent(hudRoot.transform, false);
+
+            RectTransform rt = topLeftObj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = Vector2.zero;
+
+            topLeft = topLeftObj.transform;
+        }
+        else
+        {
+            RectTransform rt = topLeft.GetComponent<RectTransform>();
+            if (rt == null)
+            {
+                rt = topLeft.gameObject.AddComponent<RectTransform>();
+            }
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = Vector2.zero;
+        }
+
+        Transform relicWidget = topLeft.Find("RelicWidget");
+        if (relicWidget == null)
+        {
+            GameObject widgetObj = new GameObject("RelicWidget");
+            widgetObj.transform.SetParent(topLeft, false);
+
+            RectTransform rt = widgetObj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(30f, -30f);
+            rt.sizeDelta = new Vector2(80f, 80f);
+
+            relicWidget = widgetObj.transform;
+        }
+
+        Transform relicIcon = relicWidget.Find("Icon");
+        if (relicIcon == null)
+        {
+            GameObject iconObj = new GameObject("Icon");
+            iconObj.transform.SetParent(relicWidget, false);
+
+            RectTransform rt = iconObj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(64f, 64f);
+
+            relicIcon = iconObj.transform;
+        }
+
+        Image image = relicIcon.GetComponent<Image>();
+        if (image == null)
+        {
+            image = relicIcon.gameObject.AddComponent<Image>();
+        }
+
+        // 默认隐藏，交由运行时按“是否装备遗物”控制显示
+        image.enabled = false;
+        return image;
     }
 
     private GameObject CreateChild(GameObject parent, string name)

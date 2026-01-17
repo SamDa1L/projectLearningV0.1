@@ -12,7 +12,7 @@ using UnityEngine.InputSystem;
 /// - 装配时机：Awake/OnEnable 完成自身引用缓存（仅 GetComponent，不查询 CastleDbService）
 /// - 必需依赖：Inventory、Damageable、AbilitySystem（缺失则 Error 并设置 InteractionEnabled=false）
 /// - 建议依赖：ReplaceController（缺失则 Error 一次性，仅禁用 Replace 功能）
-/// - 可选依赖：EquipmentController、PlayerInput
+/// - 可选依赖：EquipmentController、PlayerInput、PlayerRelicController（Phase 7）
 /// - HudRefs/HudPresenter 由 GameBootstrap 负责加载/实例化，并通过 InitializeModules 注入
 /// </summary>
 public class PlayerContext : MonoBehaviour
@@ -50,6 +50,12 @@ public class PlayerContext : MonoBehaviour
     /// </summary>
     public PlayerInput PlayerInput { get; private set; }
 
+    /// <summary>
+    /// 遗物控制器（可选，Phase 7）
+    /// 负责遗物拾取后的常驻被动效果（例如护盾）
+    /// </summary>
+    public PlayerRelicController RelicController { get; private set; }
+
     // ===== 状态标记 =====
     /// <summary>
     /// 交互是否启用
@@ -86,6 +92,7 @@ public class PlayerContext : MonoBehaviour
         // 可选依赖
         EquipmentController = FindSingleInHierarchy<PlayerEquipmentController>();
         PlayerInput = FindSingleInHierarchy<PlayerInput>();
+        RelicController = FindSingleInHierarchy<PlayerRelicController>();
 
         // 校验必需依赖
         ValidateDependencies();
@@ -220,11 +227,12 @@ public class PlayerContext : MonoBehaviour
     ///
     /// 装配顺序（硬契约 [C-Runtime-0]）：
     /// 1) Inventory.Initialize(items, cfg)
-    /// 2) hudPresenter.Initialize(items, hudRefs, inv, dmg)
-    /// 3) ReplaceController.Initialize(items, hudRefs, ctx, hudPresenter)（可选）
-    /// 4) EquipmentController.Initialize(items, abilitySystem, inv)（可选）
+    /// 2) RelicController.Initialize(items, relicCatalog, dmg)（可选，Phase 7）
+    /// 3) hudPresenter.Initialize(items, hudRefs, inv, dmg, relicCtrl)
+    /// 4) ReplaceController.Initialize(items, hudRefs, ctx, hudPresenter)（可选）
+    /// 5) EquipmentController.Initialize(items, abilitySystem, inv)（可选）
     /// </summary>
-    public bool InitializeModules(ICastleDbService items, GameplayConfig cfg, HudPresenter hudPresenter, HudRefs hudRefs)
+    public bool InitializeModules(ICastleDbService items, GameplayConfig cfg, RelicCatalog relicCatalog, HudPresenter hudPresenter, HudRefs hudRefs)
     {
         if (_runtimeModulesInitialized)
         {
@@ -267,16 +275,33 @@ public class PlayerContext : MonoBehaviour
         // 1) Inventory
         Inventory.Initialize(items, cfg);
 
-        // 2) HUD
-        hudPresenter.Initialize(items, hudRefs, Inventory, Damageable);
+        // 2) Relic（Phase 7，可选）
+        // 为了确保护盾等拦截器能被 Damageable.Hit 命中（GetComponents<IDamageInterceptor>），优先挂在 Damageable 同一 GameObject 上。
+        if (RelicController == null && relicCatalog != null)
+        {
+            RelicController = Damageable.GetComponent<PlayerRelicController>();
+            if (RelicController == null)
+            {
+                RelicController = Damageable.gameObject.AddComponent<PlayerRelicController>();
+                Debug.LogWarning("[PlayerContext] 未找到 PlayerRelicController，已在运行时自动添加（Phase 7）", this);
+            }
+        }
 
-        // 3) Replace（建议依赖）
+        if (RelicController != null)
+        {
+            RelicController.Initialize(items, relicCatalog, Damageable);
+        }
+
+        // 3) HUD
+        hudPresenter.Initialize(items, hudRefs, Inventory, Damageable, RelicController);
+
+        // 4) Replace（建议依赖）
         if (ReplaceController != null)
         {
             ReplaceController.Initialize(items, hudRefs, this, hudPresenter);
         }
 
-        // 4) Equipment（可选）
+        // 5) Equipment（可选）
         if (EquipmentController != null)
         {
             EquipmentController.Initialize(items, AbilitySystem, Inventory);

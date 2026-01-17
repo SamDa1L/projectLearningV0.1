@@ -189,12 +189,12 @@ public class ItemPickupEditor : Editor
                 // Auto-bind sprite
                 AutoBindSprite(pickup, selectedItem);
 
-                // Auto-correct amount for Ability
-                if (selectedItem.itemType == ItemType.Ability)
+                // 自动修正：Ability/Relic 的 amount 固定为 1
+                if (selectedItem.itemType == ItemType.Ability || selectedItem.itemType == ItemType.Relic)
                 {
                     if (pickup.amount != 1)
                     {
-                        Debug.LogWarning($"[ItemPickupEditor] Ability item '{selectedItem.id}' amount auto-corrected to 1 (was {pickup.amount})");
+                        Debug.LogWarning($"[ItemPickupEditor] Ability/Relic 类型物品 '{selectedItem.id}' 的 amount 自动修正为 1（原值={pickup.amount}）");
                         pickup.amount = 1;
                     }
                 }
@@ -252,14 +252,14 @@ public class ItemPickupEditor : Editor
                 newAmount = 1;
             }
 
-            // Auto-correct: Ability -> amount = 1
+            // 自动修正：Ability/Relic 的 amount 固定为 1
             if (_catalogLoaded && !string.IsNullOrWhiteSpace(pickup.itemId))
             {
                 if (_itemCatalog.TryGetItem(pickup.itemId, out ItemDefinition itemDef))
                 {
-                    if (itemDef.itemType == ItemType.Ability && newAmount != 1)
+                    if ((itemDef.itemType == ItemType.Ability || itemDef.itemType == ItemType.Relic) && newAmount != 1)
                     {
-                        Debug.LogWarning($"[ItemPickupEditor] Ability item amount must be 1, auto-corrected");
+                        Debug.LogWarning($"[ItemPickupEditor] Ability/Relic 类型物品的 amount 必须为 1，已自动修正");
                         newAmount = 1;
                     }
                 }

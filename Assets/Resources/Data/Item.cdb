@@ -35,6 +35,11 @@
 				},
 				{
 					"typeStr": "1",
+					"name": "relicId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
 					"name": "consumeEffectJson",
 					"display": null
 				},
@@ -52,6 +57,7 @@
 					"icon": "Icons/Items/Food/Sprite/Food/DragonFruit",
 					"maxStack": 99,
 					"abilityId": "",
+					"relicId": "",
 					"consumeEffectJson": "{\"heal\":50}",
 					"uiTag": ""
 				},
@@ -62,6 +68,7 @@
 					"icon": "Icons/Items/Food/Sprite/Food/Beer",
 					"maxStack": 1,
 					"abilityId": "BasicRangedAttack",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -72,6 +79,7 @@
 					"icon": "Icons/Items/Food/Sprite/Food/Bug",
 					"maxStack": 1,
 					"abilityId": "BasicMove",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -82,6 +90,7 @@
 					"icon": "Icons/Items/Potions/Icons/icon4",
 					"maxStack": 1,
 					"abilityId": "Attr_MoveSpeedUp",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -92,6 +101,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "BasicAttack",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -102,6 +112,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "BasicRun",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -112,6 +123,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "BasicJump",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -122,6 +134,7 @@
 					"icon": "Icons/Items/Effects/FireBall",
 					"maxStack": 1,
 					"abilityId": "Fireball_Player",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -132,6 +145,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "Dash_Player",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -142,6 +156,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "Buff_AttackUp",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -152,6 +167,7 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "Summon_Test",
+					"relicId": "",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				},
@@ -162,6 +178,18 @@
 					"icon": "",
 					"maxStack": 1,
 					"abilityId": "AttackOverride_Bow",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "relic_shield_test_item",
+					"displayName": "护盾遗物（测试）",
+					"itemType": "Relic",
+					"icon": "Icons/Items/Potions/Icons/icon4",
+					"maxStack": 1,
+					"abilityId": "",
+					"relicId": "relic_shield_test",
 					"consumeEffectJson": "",
 					"uiTag": ""
 				}
@@ -198,7 +226,7 @@
 				},
 				{
 					"key": "dependencies",
-					"value": "PlayerAbility"
+					"value": "PlayerAbility,Relic"
 				},
 				{
 					"key": "resourcePath",

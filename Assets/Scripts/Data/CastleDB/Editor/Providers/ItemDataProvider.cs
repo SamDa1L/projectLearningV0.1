@@ -91,6 +91,7 @@ namespace CastleDB.Editor.Providers
                         icon = GetStringValue(dict, "icon"),
                         maxStack = GetIntValue(dict, "maxStack"),
                         abilityId = GetStringValue(dict, "abilityId"),
+                        relicId = GetStringValue(dict, "relicId"),
                         consumeEffectJson = GetStringValue(dict, "consumeEffectJson"),
                         uiTag = GetStringValue(dict, "uiTag")
                     });
@@ -134,7 +135,7 @@ namespace CastleDB.Editor.Providers
             }
 
             // ===== 2. itemType 枚举校验（大小写敏感） =====
-            var validTypes = new HashSet<string> { "Ability", "Consumable", "Material" };
+            var validTypes = new HashSet<string> { "Ability", "Consumable", "Material", "Relic" };
             foreach (var item in _items)
             {
                 if (string.IsNullOrWhiteSpace(item.itemType))
@@ -178,6 +179,57 @@ namespace CastleDB.Editor.Providers
                         // PlayerAbility Provider 未初始化，记录 Warning（不阻断导入）
                         Debug.LogWarning($"[ItemDataProvider] PlayerAbility Provider 未初始化，跳过 Item '{item.id}' 的 abilityId 引用校验");
                     }
+                }
+            }
+
+            // ===== 3.5 relicId 必填性与跨文件引用校验（itemType=Relic 时） =====
+            var relicProvider = CdbDataProviderRegistry.Instance.GetProvider("Relic") as RelicDataProvider;
+
+            foreach (var item in _items)
+            {
+                if (item.itemType != "Relic")
+                {
+                    // 允许旧数据/非遗物物品不填写 relicId（如填写则给 Warning）
+                    if (!string.IsNullOrWhiteSpace(item.relicId))
+                    {
+                        Debug.LogWarning($"[ItemDataProvider] Item '{item.id}' 的 relicId 将被忽略（itemType={item.itemType}）");
+                    }
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.relicId))
+                {
+                    errors.Add($"Item '{item.id}' 的 itemType=Relic，但 relicId 为空");
+                    continue;
+                }
+
+                if (relicProvider != null && relicProvider.IsInitialized)
+                {
+                    var relic = relicProvider.GetEntryById<RelicDefinition>(item.relicId);
+                    if (relic == null)
+                    {
+                        errors.Add($"Item '{item.id}' 的 relicId '{item.relicId}' 在 Relic 中不存在");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[ItemDataProvider] Relic Provider 未初始化，跳过 Item '{item.id}' 的 relicId 引用校验");
+                }
+
+                // 0.5 最小约束：遗物不堆叠
+                if (item.maxStack != 1)
+                {
+                    errors.Add($"Item '{item.id}' 的 itemType=Relic 时 maxStack 必须为 1（当前={item.maxStack}）");
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.abilityId))
+                {
+                    errors.Add($"Item '{item.id}' 的 itemType=Relic 时 abilityId 必须为空（当前='{item.abilityId}'）");
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.consumeEffectJson))
+                {
+                    errors.Add($"Item '{item.id}' 的 itemType=Relic 时 consumeEffectJson 必须为空");
                 }
             }
 
@@ -312,7 +364,8 @@ namespace CastleDB.Editor.Providers
                 foreach (var item in _items)
                 {
                     string abilityStr = !string.IsNullOrEmpty(item.abilityId) ? $", abilityId={item.abilityId}" : "";
-                    builder.AddInfo($"    • {item.id}: {item.itemType}, maxStack={item.maxStack}{abilityStr}");
+                    string relicStr = !string.IsNullOrEmpty(item.relicId) ? $", relicId={item.relicId}" : "";
+                    builder.AddInfo($"    • {item.id}: {item.itemType}, maxStack={item.maxStack}{abilityStr}{relicStr}");
                 }
 
                 // 标记为 dirty
@@ -339,6 +392,7 @@ namespace CastleDB.Editor.Providers
                 itemType = ParseItemType(entry.itemType),
                 icon = entry.icon,
                 abilityId = entry.abilityId,
+                relicId = entry.relicId,
                 maxStack = entry.maxStack,
                 consumeEffect = new ItemConsumeEffect(0), // 默认值
                 consumeEffectRawJson = entry.consumeEffectJson,
@@ -379,6 +433,7 @@ namespace CastleDB.Editor.Providers
                 "Ability" => ItemType.Ability,
                 "Consumable" => ItemType.Consumable,
                 "Material" => ItemType.Material,
+                "Relic" => ItemType.Relic,
                 _ => ItemType.Material // 默认值（不应该到达这里，Validate 已校验）
             };
         }

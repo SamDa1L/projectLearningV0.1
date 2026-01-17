@@ -75,7 +75,7 @@ public class HudDetailedAssertionTests
         // 初始化 HudPresenter
         if (_hudPresenter != null && _hudRefs != null)
         {
-            _hudPresenter.Initialize(_castleDbService, _hudRefs, _inventory, _damageable); // initial setup
+            _hudPresenter.Initialize(_castleDbService, _hudRefs, _inventory, _damageable, null); // initial setup
         }
     }
 

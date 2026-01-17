@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dac3827b41c58d149afb75bbd83da032, type: 3}
   m_Name: HudBinding
   m_EditorClassIdentifier: 
-  hudPrefab: {fileID: 8483376551232265725, guid: 1983d39be607a824b8b8c705e615c7bc, type: 3}
+  hudPrefab: {fileID: 5215112072690301011, guid: 20ba1c96f62ddbb46bde296359d0835d, type: 3}

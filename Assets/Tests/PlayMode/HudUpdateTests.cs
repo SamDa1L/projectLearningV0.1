@@ -101,7 +101,7 @@ public class HudUpdateTests
         _hudRefs.healthFill = healthFillObj.AddComponent<Image>();
 
         // 初始化 HudPresenter
-        _hudPresenter.Initialize(_castleDbService, _hudRefs, _inventory, _damageable);
+        _hudPresenter.Initialize(_castleDbService, _hudRefs, _inventory, _damageable, null);
     }
 
     /// <summary>

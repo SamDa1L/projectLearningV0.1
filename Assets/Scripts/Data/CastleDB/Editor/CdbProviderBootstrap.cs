@@ -64,6 +64,13 @@ namespace CastleDB.Editor
                 Debug.Log("[CdbProviderBootstrap] 注册 ItemDataProvider");
             }
 
+            // 0.5 阶段7：遗物 Provider
+            if (!registry.IsRegistered("Relic"))
+            {
+                registry.Register(new RelicDataProvider());
+                Debug.Log("[CdbProviderBootstrap] 注册 RelicDataProvider");
+            }
+
             // 0.5 Phase 1-4: Status Provider
             if (!registry.IsRegistered("Status"))
             {

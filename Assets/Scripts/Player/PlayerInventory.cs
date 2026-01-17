@@ -271,6 +271,10 @@ public class PlayerInventory : MonoBehaviour
                 // 0.4 不支持 Material 拾取
                 return PickupResult.Failed_NotSupported;
 
+            case ItemType.Relic:
+                // Phase 7：遗物拾取由 PlayerRelicController 处理；Inventory 侧默认不处理
+                return PickupResult.Failed_NotSupported;
+
             default:
                 Debug.LogError($"[PlayerInventory] 未知 itemType: {def.itemType}, itemId={req.itemId}");
                 return PickupResult.Failed_NotSupported;

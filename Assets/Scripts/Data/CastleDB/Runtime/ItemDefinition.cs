@@ -77,6 +77,12 @@ namespace CastleDB.Runtime
         public string abilityId;
 
         /// <summary>
+        /// 遗物 ID（itemType=Relic 时必填，引用 Relic.id）
+        /// </summary>
+        [SerializeField]
+        public string relicId;
+
+        /// <summary>
         /// 最大堆叠数量
         /// </summary>
         [SerializeField]
@@ -104,7 +110,8 @@ namespace CastleDB.Runtime
         public override string ToString()
         {
             string abilityStr = !string.IsNullOrEmpty(abilityId) ? $", abilityId={abilityId}" : "";
-            return $"Item[id={id}, displayName={displayName}, type={itemType}, icon={icon}{abilityStr}, maxStack={maxStack}]";
+            string relicStr = !string.IsNullOrEmpty(relicId) ? $", relicId={relicId}" : "";
+            return $"Item[id={id}, displayName={displayName}, type={itemType}, icon={icon}{abilityStr}{relicStr}, maxStack={maxStack}]";
         }
     }
 
@@ -115,10 +122,11 @@ namespace CastleDB.Runtime
     /// 规范（[C-Data-2]）：
     /// - id: Identifier（非空唯一）
     /// - displayName: string
-    /// - itemType: "Ability"|"Consumable"|"Material"（字符串，导入时转换为枚举）
+    /// - itemType: "Ability"|"Consumable"|"Material"|"Relic"（字符串，导入时转换为枚举）
     /// - icon: Resources 相对路径（无扩展名）
     /// - maxStack: int
     /// - abilityId: string（itemType=Ability 必填）
+    /// - relicId: string（itemType=Relic 必填）
     /// - consumeEffectJson: string（JSON 对象）
     /// - uiTag: string（可选）
     /// </summary>
@@ -132,7 +140,7 @@ namespace CastleDB.Runtime
         public string displayName;
 
         /// <summary>
-        /// CastleDB 中存储为字符串："Ability"|"Consumable"|"Material"
+        /// CastleDB 中存储为字符串："Ability"|"Consumable"|"Material"|"Relic"
         /// 导入时会转换为 ItemType 枚举
         /// </summary>
         [SerializeField]
@@ -146,6 +154,9 @@ namespace CastleDB.Runtime
 
         [SerializeField]
         public string abilityId;
+
+        [SerializeField]
+        public string relicId;
 
         [SerializeField]
         public string consumeEffectJson;
