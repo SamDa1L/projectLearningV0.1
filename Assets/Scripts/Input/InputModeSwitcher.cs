@@ -7,10 +7,10 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.InputSystem.Users;
 
 /// <summary>
-/// Phase 9: "Last Input Wins" control scheme switcher.
-/// - Listens to unpaired device activity and switches PlayerInput control schemes.
-/// - Filters gamepad stick/trigger noise with a threshold and debounces scheme switches.
-/// - Persists the last scheme in PlayerPrefs under the key "lastControlScheme".
+/// Phase 9："最后输入设备优先（Last Input Wins）"控制方案切换器。
+/// - 监听未配对设备的输入，并切换 PlayerInput 控制方案。
+/// - 通过阈值过滤手柄摇杆/扳机漂移，并做切换防抖。
+/// - 将最后一次控制方案写入 PlayerPrefs（key="lastControlScheme"）。
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class InputModeSwitcher : MonoBehaviour
@@ -58,7 +58,7 @@ public sealed class InputModeSwitcher : MonoBehaviour
             return;
         }
 
-        // Disable built-in auto switching; this component implements a filtered version.
+        // 关闭 InputSystem 内置的自动切换，本组件实现带过滤的版本。
         _playerInput.neverAutoSwitchControlSchemes = true;
     }
 
@@ -102,7 +102,7 @@ public sealed class InputModeSwitcher : MonoBehaviour
 
     private void ApplyInitialScheme()
     {
-        // Priority: PlayerPrefs -> current PlayerInput scheme -> default Keyboard&Mouse.
+        // 优先级：PlayerPrefs -> PlayerInput 当前方案 -> 默认键鼠。
         ControlScheme desired = ParseScheme(PlayerPrefs.GetString(PlayerPrefsKey_LastControlScheme, string.Empty));
         if (desired == ControlScheme.Unknown)
         {
@@ -270,7 +270,7 @@ public sealed class InputModeSwitcher : MonoBehaviour
             return Mathf.Abs(v) >= threshold;
         }
 
-        // Fallback for Vector2Control/DpadControl etc.
+        // 兜底：处理 Vector2Control/DpadControl 等类型。
         try
         {
             if (control.valueType == typeof(Vector2))
@@ -287,7 +287,7 @@ public sealed class InputModeSwitcher : MonoBehaviour
         }
         catch
         {
-            // Ignore; treat as meaningful.
+            // 兜底策略：读取失败则视为“有效输入”（避免误判导致无法切换）。
         }
 
         return true;
@@ -314,4 +314,3 @@ public sealed class InputModeSwitcher : MonoBehaviour
         return ControlScheme.Unknown;
     }
 }
-

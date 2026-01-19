@@ -56,6 +56,9 @@ public class DashAbility : IPlayerAbility
         }
     }
 
+    public float CooldownSeconds => _cooldownSeconds;
+    public float CooldownRemaining => _cooldownSeconds > 0f ? Mathf.Max(0f, _nextReadyTime - Time.time) : 0f;
+
     public DashAbility(
         PlayerController playerController,
         string abilityId,
@@ -322,4 +325,3 @@ public class DashAbility : IPlayerAbility
     public bool OnAttack(AbilityInput input) => false;
     public bool OnRangedAttack(AbilityInput input) => false;
 }
-

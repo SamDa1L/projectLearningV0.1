@@ -54,6 +54,9 @@ public class StatModifierPassiveAbility : IPlayerAbility
         }
     }
 
+    public float CooldownSeconds => 0f;
+    public float CooldownRemaining => 0f;
+
     public StatModifierPassiveAbility(
         PlayerController playerController,
         string abilityId,

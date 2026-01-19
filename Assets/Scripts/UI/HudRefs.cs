@@ -42,6 +42,16 @@ public class HudRefs : MonoBehaviour
     [Tooltip("能力槽按键图标数组（长度必须为 4，索引 0~3）")]
     public Image[] abilitySlotKeyIcons = new Image[4];
 
+    [Header("Ability Cooldown (Phase 8)")]
+    public Image[] abilitySlotCooldownFills = new Image[4];
+    public TMP_Text[] abilitySlotCooldownTexts = new TMP_Text[4];
+
+    [Header("Debug Overlay (Phase 8, Optional)")]
+    public TMP_Text debugOverlayText;
+
+    [Header("Status (Phase 8, Optional)")]
+    public TMP_Text statusText;
+
     [Header("Potion Widget")]
     [Tooltip("血瓶计数文本（TMPro）")]
     public TMP_Text potionCountText;
@@ -82,6 +92,16 @@ public class HudRefs : MonoBehaviour
         }
 
         // 校验必需字段
+        if (abilitySlotCooldownFills != null && abilitySlotCooldownFills.Length != 4)
+        {
+            Debug.LogWarning("[HudRefs] abilitySlotCooldownFills length must be 4", this);
+        }
+
+        if (abilitySlotCooldownTexts != null && abilitySlotCooldownTexts.Length != 4)
+        {
+            Debug.LogWarning("[HudRefs] abilitySlotCooldownTexts length must be 4", this);
+        }
+
         if (potionCountText == null)
         {
             Debug.LogWarning("[HudRefs] potionCountText 未设置", this);

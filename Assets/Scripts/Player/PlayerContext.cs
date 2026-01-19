@@ -293,7 +293,7 @@ public class PlayerContext : MonoBehaviour
         }
 
         // 3) HUD
-        hudPresenter.Initialize(items, hudRefs, Inventory, Damageable, RelicController);
+        hudPresenter.Initialize(items, hudRefs, Inventory, Damageable, RelicController, AbilitySystem);
 
         // 4) Replace（建议依赖）
         if (ReplaceController != null)

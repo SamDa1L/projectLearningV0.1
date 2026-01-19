@@ -15,6 +15,8 @@ public class DefaultMoveAbility : IPlayerAbility
     public string AbilityId { get; private set; }
     public int Priority { get; private set; }
     public bool Enabled { get; set; }
+    public float CooldownSeconds => 0f;
+    public float CooldownRemaining => 0f;
 
     public DefaultMoveAbility(PlayerController playerController, string abilityId, int priority, bool enabled)
     {

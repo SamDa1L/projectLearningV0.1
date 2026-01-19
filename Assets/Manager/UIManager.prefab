@@ -98,7 +98,7 @@ MonoBehaviour:
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: dff0e133-3832-42b3-8e66-0075d0b827d1
-    m_ActionName: Player/RangedAttack[/Keyboard/f]
+    m_ActionName: Player/Ability2[/Mouse/rightButton]
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: be8ec56b-3d13-48ac-9581-b8fe9eaa731a

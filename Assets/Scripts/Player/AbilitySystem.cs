@@ -289,6 +289,25 @@ public class AbilitySystem
     /// LateUpdate flush 机制（由外部调用，如 PlayerController.LateUpdate）
     /// 按 pendingQueue 顺序遍历，仅应用最后一次写入
     /// </summary>
+    // Phase 8：供 HUD/调试查询能力（只读）。
+    public bool TryGetAbility(string abilityId, out IPlayerAbility ability)
+    {
+        ability = null;
+
+        if (string.IsNullOrWhiteSpace(abilityId))
+        {
+            return false;
+        }
+
+        return abilityById.TryGetValue(abilityId, out ability) && ability != null;
+    }
+
+    // Phase 8：枚举所有已注册能力（只读；枚举期间不要修改集合）。
+    public IEnumerable<IPlayerAbility> EnumerateAllAbilities()
+    {
+        return abilityById.Values;
+    }
+
     public void FlushPendingChanges()
     {
         if (pendingQueue.Count == 0)

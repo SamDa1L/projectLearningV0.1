@@ -414,7 +414,7 @@ public class PlayerController : MonoBehaviour
             gameObject.AddComponent<StatusEffectController>();
         }
 
-        // Phase 9: Last Input Wins control scheme switcher (no Find/Tag/singleton).
+        // Phase 9：最后输入设备优先的控制方案切换器（不使用 Find/Tag/单例）。
         EnsureInputModeSwitcher();
 
         // 阶段 3A: 从 PlayerConfig 加载配置
@@ -1009,6 +1009,12 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void OnRangedAttack(InputAction.CallbackContext context)
     {
+        // 兼容旧 Action 名（Phase 9 将输入动作命名为 Ability2/Ability3/Ability4）。
+        OnAbility2(context);
+    }
+
+    public void OnAbility2(InputAction.CallbackContext context)
+    {
         // 阶段 3B: 适配器模式分支
         if (usePlayerConfigFromCastleDb && abilitySystem != null)
         {
@@ -1017,28 +1023,65 @@ public class PlayerController : MonoBehaviour
             {
                 AbilityInput input = AbilityInput.Started(isPressed: true);
 
-                // 0.5：按槽位释放（圆圈/RangedAttack 固定触发 slot1 当前装备的能力）
+                // 0.5 Phase 9：按槽位释放（Ability2 固定触发 slot1 当前装备的能力）
                 if (_playerContext != null
                     && _playerContext.Inventory != null
                     && _playerContext.Inventory.TryGetAbilityIdInSlot(1, out string abilityId)
                     && !string.IsNullOrWhiteSpace(abilityId))
                 {
                     abilitySystem.TryDispatchByAbilityId(abilityId, input);
-                }
-                else
-                {
-                    // 兜底：保持旧逻辑，避免配置缺失导致输入完全无效
-                    abilitySystem.Dispatch(AbilityHookType.RangedAttack, input);
+                    return;
                 }
             }
             return;
         }
 
-        // 回退模式：执行原有业务逻辑
+        // 回退模式：执行原有业务逻辑（与旧远程攻击动画保持一致）
         if (context.started)
         {
-            // 触发Animator的攻击动画
             animator.SetTrigger(AnimationStrings.rangedAttackTrigger);
+        }
+    }
+
+    public void OnAbility3(InputAction.CallbackContext context)
+    {
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            if (context.started)
+            {
+                AbilityInput input = AbilityInput.Started(isPressed: true);
+
+                // 0.5 Phase 9：按槽位释放（Ability3 固定触发 slot2 当前装备的能力）
+                if (_playerContext != null
+                    && _playerContext.Inventory != null
+                    && _playerContext.Inventory.TryGetAbilityIdInSlot(2, out string abilityId)
+                    && !string.IsNullOrWhiteSpace(abilityId))
+                {
+                    abilitySystem.TryDispatchByAbilityId(abilityId, input);
+                }
+            }
+            return;
+        }
+    }
+
+    public void OnAbility4(InputAction.CallbackContext context)
+    {
+        if (usePlayerConfigFromCastleDb && abilitySystem != null)
+        {
+            if (context.started)
+            {
+                AbilityInput input = AbilityInput.Started(isPressed: true);
+
+                // 0.5 Phase 9：按槽位释放（Ability4 固定触发 slot3 当前装备的能力）
+                if (_playerContext != null
+                    && _playerContext.Inventory != null
+                    && _playerContext.Inventory.TryGetAbilityIdInSlot(3, out string abilityId)
+                    && !string.IsNullOrWhiteSpace(abilityId))
+                {
+                    abilitySystem.TryDispatchByAbilityId(abilityId, input);
+                }
+            }
+            return;
         }
     }
 

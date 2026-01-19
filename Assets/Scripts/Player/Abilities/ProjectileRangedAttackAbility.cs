@@ -24,6 +24,8 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
     public string AbilityId { get; private set; }
     public int Priority { get; private set; }
     public bool Enabled { get; set; }
+    public float CooldownSeconds => cooldownSeconds;
+    public float CooldownRemaining => cooldownSeconds > 0f ? Mathf.Max(0f, nextReadyTime - Time.time) : 0f;
 
     /// <summary>
     /// 兼容构造：仅使用 prefabPath（旧数据/旧产物）

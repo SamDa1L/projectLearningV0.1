@@ -104,3 +104,6 @@ Assets/Logs/
 AGENTS.md
 CLAUDE.md
 *.md
+
+# 本地密钥（Notion token 等）
+.secrets/

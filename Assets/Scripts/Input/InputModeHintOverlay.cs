@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Minimal on-screen hints for Phase 9 acceptance.
-/// Displays current control scheme + binding display strings for key actions.
+/// Phase 9：用于验收/排查的最小提示面板。
+/// 显示当前控制方案 + 关键 Action 的绑定显示字符串。
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class InputModeHintOverlay : MonoBehaviour
@@ -95,7 +95,9 @@ public sealed class InputModeHintOverlay : MonoBehaviour
         AppendAction(sb, "Player/Run", group);
         AppendAction(sb, "Player/Jump", group);
         AppendAction(sb, "Player/Attack", group);
-        AppendAction(sb, "Player/RangedAttack", group);
+        AppendAction(sb, "Player/Ability2", group);
+        AppendAction(sb, "Player/Ability3", group);
+        AppendAction(sb, "Player/Ability4", group);
         AppendAction(sb, "UI/Escape", group);
 
         _cached = sb.ToString();
@@ -134,4 +136,3 @@ public sealed class InputModeHintOverlay : MonoBehaviour
         sb.Append(label).Append(": ").Append(display).AppendLine();
     }
 }
-

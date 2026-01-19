@@ -5,8 +5,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 
 /// <summary>
-/// Phase 9: PlayMode coverage for InputModeSwitcher (Last Input Wins).
-/// The test focuses on the scheme state + PlayerInput scheme changes (not UI pixels).
+/// Phase 9：InputModeSwitcher（最后输入设备优先）PlayMode 覆盖。
+/// 重点断言：切换器状态 + PlayerInput 的控制方案变化（不做 UI 像素断言）。
 /// </summary>
 public class InputModeSwitcherPlayModeTests : InputTestFixture
 {
@@ -32,8 +32,8 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
         Assert.IsNotNull(playerPrefab, "Player Prefab not found at Resources/Prefabs/Player/Player");
 
         _playerInstance = Object.Instantiate(playerPrefab);
-        yield return null; // Awake/OnEnable
-        yield return null; // Start
+        yield return null; // 等待 Awake/OnEnable
+        yield return null; // 等待 Start
 
         _playerInput = _playerInstance.GetComponent<PlayerInput>();
         Assert.IsNotNull(_playerInput, "PlayerInput component missing");
@@ -57,21 +57,21 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator SwitchesBetweenKeyboardMouseAndGamepad()
     {
-        // Initial scheme should be keyboard&mouse (forced via PlayerPrefs in setup).
+        // 初始方案应为键鼠（由 Setup 中的 PlayerPrefs 强制指定）。
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
         Assert.AreEqual(InputModeSwitcher.SchemeNameKeyboardMouse, _playerInput.currentControlScheme);
 
-        // Use gamepad -> should switch.
+        // 使用手柄输入 -> 应切到手柄方案。
         Press(_gamepad.buttonSouth);
         yield return null;
 
         Assert.AreEqual(InputModeSwitcher.ControlScheme.Gamepad, _switcher.CurrentScheme);
         Assert.AreEqual(InputModeSwitcher.SchemeNameGamepad, _playerInput.currentControlScheme);
 
-        // Wait for debounce window to pass.
+        // 等待防抖窗口过去。
         yield return new WaitForSecondsRealtime(0.25f);
 
-        // Use keyboard -> should switch back.
+        // 使用键盘输入 -> 应切回键鼠方案。
         Press(_keyboard.spaceKey);
         yield return null;
 
@@ -84,17 +84,16 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
     {
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
 
-        // Small drift: below default threshold 0.2.
+        // 轻微漂移：低于默认阈值 0.2，不应触发切换。
         Set(_gamepad.leftStick, new Vector2(0.1f, 0f));
         yield return null;
 
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
 
-        // Above threshold.
+        // 明显输入：高于阈值，应触发切换。
         Set(_gamepad.leftStick, new Vector2(0.5f, 0f));
         yield return null;
 
         Assert.AreEqual(InputModeSwitcher.ControlScheme.Gamepad, _switcher.CurrentScheme);
     }
 }
-

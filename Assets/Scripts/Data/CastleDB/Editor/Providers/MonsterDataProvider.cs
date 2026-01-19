@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -946,14 +946,7 @@ namespace CastleDB.Editor.Providers
                     errors.Add($"NpcAbility '{binding.id}' paramsJson must be a JSON object");
                 }
 
-                if (binding.enabled && binding.triggerRole == 1)
-                {
-                    bool hasSecondaryZone = _detectionZones.Any(z => z != null && z.npcId == binding.npcId && z.role == 1);
-                    if (!hasSecondaryZone)
-                    {
-                        errors.Add($"NpcAbility '{binding.id}' uses triggerRole=SecondaryAttack, but DetectionZone missing role=SecondaryAttack for npcId='{binding.npcId}' (suggest childId='DZ_Ability')");
-                    }
-                }
+
             }
 
             // ===== NpcPassiveAbility validation (0.5 Phase 5) =====
@@ -1017,6 +1010,7 @@ namespace CastleDB.Editor.Providers
             }
 
             var hasTargetConditionByBindingId = new HashSet<string>();
+            var hasSecondaryTargetConditionByBindingId = new HashSet<string>(); // 阶段10：用于 SecondaryAttack【按需必填】判定
             var orderSetByBindingId = new Dictionary<string, HashSet<int>>();
             foreach (var cond in _npcPassiveAbilityConditions)
             {
@@ -1079,6 +1073,12 @@ namespace CastleDB.Editor.Providers
                                 $"NpcPassiveAbilityCondition '{cond.bindingId}' HasTargetInRole role out of range (0-5): {cond.role}");
                         }
                         hasTargetConditionByBindingId.Add(cond.bindingId);
+
+                        // 阶段10：SecondaryAttack 仅在【被需求使用】时才作为必填检测区
+                        if (cond.role == 1)
+                        {
+                            hasSecondaryTargetConditionByBindingId.Add(cond.bindingId);
+                        }
                         break;
                 }
             }
@@ -1107,6 +1107,61 @@ namespace CastleDB.Editor.Providers
                 {
                     errors.Add(
                         $"NpcPassiveAbilityBinding '{bindingId}' targetMode=CurrentTarget but NpcAbility.triggerRole=Custom and no HasTargetInRole condition configured");
+                }
+            }
+
+
+            // ===== SecondaryAttack 检测区校验（0.5 阶段10） =====
+            // 目标：SecondaryAttack 改为【按需必填】——只有当配置确实依赖 SecondaryAttack 时才报错。
+            foreach (var kvp in npcAbilityById)
+            {
+                var binding = kvp.Value;
+                if (binding == null || !binding.enabled)
+                {
+                    continue;
+                }
+
+                bool requiresSecondaryZone = false;
+                string reason = null;
+
+                // 1) 投射物/施法：NpcAbility(triggerRole=SecondaryAttack) 且 EnemyAbility.kind=Projectile
+                if (binding.triggerRole == 1
+                    && npcAbilityKindByBindingId.TryGetValue(binding.id, out var kind)
+                    && kind == AbilityKind.Projectile)
+                {
+                    requiresSecondaryZone = true;
+                    reason = "NpcAbility(triggerRole=SecondaryAttack) + EnemyAbility.kind=Projectile";
+                }
+
+                // 2) 被动能力条件：HasTargetInRole(role=SecondaryAttack)
+                if (!requiresSecondaryZone && hasSecondaryTargetConditionByBindingId.Contains(binding.id))
+                {
+                    requiresSecondaryZone = true;
+                    reason = "NpcPassiveAbilityCondition.HasTargetInRole(role=SecondaryAttack)";
+                }
+
+                // 3) 被动能力目标为 CurrentTarget 且无 HasTargetInRole 条件时，会回退到 triggerRole 找目标
+                if (!requiresSecondaryZone
+                    && passiveBindingByBindingId.TryGetValue(binding.id, out var passiveBinding)
+                    && passiveBinding != null
+                    && passiveBinding.targetMode == (int)NpcPassiveAbilityTargetMode.CurrentTarget
+                    && binding.triggerRole == 1
+                    && !hasTargetConditionByBindingId.Contains(binding.id))
+                {
+                    requiresSecondaryZone = true;
+                    reason = "Passive targetMode=CurrentTarget fallback to triggerRole=SecondaryAttack (no HasTargetInRole)";
+                }
+
+                if (!requiresSecondaryZone)
+                {
+                    continue;
+                }
+
+                bool hasSecondaryZone = _detectionZones.Any(z => z != null && z.npcId == binding.npcId && z.role == 1);
+                if (!hasSecondaryZone)
+                {
+                    errors.Add(
+                        $"NpcAbility '{binding.id}' requires SecondaryAttack DetectionZone ({reason}), but DetectionZone missing role=SecondaryAttack for npcId='{binding.npcId}' (suggest childId='DZ_Ability')");
                 }
             }
 

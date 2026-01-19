@@ -30,6 +30,8 @@ public class AttackOverrideAbility : IPlayerAbility
     public string AbilityId { get; }
     public int Priority { get; }
     public bool Enabled { get; set; }
+    public float CooldownSeconds => _cooldownSeconds;
+    public float CooldownRemaining => _cooldownSeconds > 0f ? Mathf.Max(0f, _nextReadyTime - Time.time) : 0f;
 
     public AttackOverrideAbility(
         PlayerController playerController,
@@ -304,4 +306,3 @@ public class AttackOverrideAbility : IPlayerAbility
     public bool OnAttack(AbilityInput input) => TryCast(input);
     public bool OnRangedAttack(AbilityInput input) => TryCast(input);
 }
-

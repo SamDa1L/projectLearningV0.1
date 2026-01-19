@@ -213,6 +213,8 @@ public class HudQuickConfigWindow : EditorWindow
 
             Image[] slotIcons = new Image[4];
             Image[] slotKeyIcons = new Image[4];
+            Image[] slotCooldownFills = new Image[4];
+            TMP_Text[] slotCooldownTexts = new TMP_Text[4];
             // 根据报告，每个槽位的 Icon/background AnchoredPosition
             Vector2[] iconPositions = new Vector2[]
             {
@@ -248,6 +250,29 @@ public class HudQuickConfigWindow : EditorWindow
                 slotKeyIcons[i].enabled = false;
                 SetRectTransform(keyIconObj, iconPositions[i] + keyIconOffset, new Vector2(0.5f, 0.5f), new Vector2(30, 30));
                 keyIconObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+
+                // Cooldown overlay (Phase 8): mask + countdown text
+                GameObject cooldownMaskObj = CreateChild(slot, "CooldownMask");
+                slotCooldownFills[i] = cooldownMaskObj.AddComponent<Image>();
+                slotCooldownFills[i].enabled = false;
+                slotCooldownFills[i].color = new Color(0f, 0f, 0f, 0.65f);
+                slotCooldownFills[i].type = Image.Type.Filled;
+                slotCooldownFills[i].fillMethod = Image.FillMethod.Radial360;
+                slotCooldownFills[i].fillAmount = 0f;
+                slotCooldownFills[i].raycastTarget = false;
+                SetRectTransform(cooldownMaskObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(70, 70));
+                cooldownMaskObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+
+                GameObject cooldownTextObj = CreateChild(slot, "CooldownText");
+                TextMeshProUGUI cooldownText = cooldownTextObj.AddComponent<TextMeshProUGUI>();
+                cooldownText.text = "";
+                cooldownText.fontSize = 22;
+                cooldownText.alignment = TextAlignmentOptions.Center;
+                cooldownText.enabled = false;
+                cooldownText.raycastTarget = false;
+                slotCooldownTexts[i] = cooldownText;
+                SetRectTransform(cooldownTextObj, iconPositions[i], new Vector2(0.5f, 0.5f), new Vector2(70, 70));
+                cooldownTextObj.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
             }
 
             // 创建 PotionWidget
@@ -305,14 +330,48 @@ public class HudQuickConfigWindow : EditorWindow
             // 创建 AbilityReplacePanel（Phase 8，默认隐藏）
             GameObject replacePanel = CreateAbilityReplacePanel(overlay);
 
+            // DebugOverlay (Phase 8, optional)
+            GameObject debugOverlay = CreateChild(overlay, "DebugOverlay");
+            TextMeshProUGUI debugOverlayText = debugOverlay.AddComponent<TextMeshProUGUI>();
+            debugOverlayText.text = "";
+            debugOverlayText.fontSize = 18;
+            debugOverlayText.alignment = TextAlignmentOptions.TopLeft;
+            debugOverlayText.enabled = false;
+            debugOverlayText.raycastTarget = false;
+            RectTransform debugRt = debugOverlay.GetComponent<RectTransform>();
+            debugRt.anchorMin = new Vector2(0f, 1f);
+            debugRt.anchorMax = new Vector2(0f, 1f);
+            debugRt.pivot = new Vector2(0f, 1f);
+            debugRt.anchoredPosition = new Vector2(10f, -10f);
+            debugRt.sizeDelta = new Vector2(600f, 400f);
+
+            // StatusText (Phase 8, optional)
+            GameObject statusTextObj = CreateChild(overlay, "StatusText");
+            TextMeshProUGUI statusText = statusTextObj.AddComponent<TextMeshProUGUI>();
+            statusText.text = "";
+            statusText.fontSize = 22;
+            statusText.alignment = TextAlignmentOptions.Top;
+            statusText.enabled = false;
+            statusText.raycastTarget = false;
+            RectTransform statusRt = statusTextObj.GetComponent<RectTransform>();
+            statusRt.anchorMin = new Vector2(0.5f, 1f);
+            statusRt.anchorMax = new Vector2(0.5f, 1f);
+            statusRt.pivot = new Vector2(0.5f, 1f);
+            statusRt.anchoredPosition = new Vector2(0f, -10f);
+            statusRt.sizeDelta = new Vector2(500f, 60f);
+
             // 绑定 HudRefs 字段
             hudRefs.abilitySlotIcons = slotIcons;
             hudRefs.abilitySlotKeyIcons = slotKeyIcons;
+            hudRefs.abilitySlotCooldownFills = slotCooldownFills;
+            hudRefs.abilitySlotCooldownTexts = slotCooldownTexts;
             hudRefs.potionCountText = potionCountText;
             hudRefs.healthFill = healthFill;
             hudRefs.energyFill = energyFill;
             hudRefs.abilityReplacePanelRoot = replacePanel;
             hudRefs.relicIcon = relicIcon;
+            hudRefs.debugOverlayText = debugOverlayText;
+            hudRefs.statusText = statusText;
 
             // 保存 Prefab
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(hudRoot, outputPath);
@@ -470,6 +529,9 @@ public class HudQuickConfigWindow : EditorWindow
             // 确保 KeyIcon 节点存在，并绑定引用（避免旧模板缺失导致报错）
             hudRefs.abilitySlotKeyIcons = EnsureAbilitySlotKeyIcons(prefabRoot);
             hudRefs.relicIcon = EnsureRelicIcon(prefabRoot);
+            EnsureAbilitySlotCooldownUi(prefabRoot, out hudRefs.abilitySlotCooldownFills, out hudRefs.abilitySlotCooldownTexts);
+            hudRefs.debugOverlayText = EnsureDebugOverlayText(prefabRoot);
+            hudRefs.statusText = EnsureStatusText(prefabRoot);
 
 
             hudRefs.potionCountText = FindAndGetComponent<TMP_Text>(prefabRoot.transform, "BottomLeft/PotionWidget/CountText");
@@ -733,6 +795,220 @@ public class HudQuickConfigWindow : EditorWindow
         return image;
     }
 
+
+    // Phase 8: optional cooldown widgets (mask + countdown text) for each ability slot.
+    private void EnsureAbilitySlotCooldownUi(GameObject hudRoot, out Image[] cooldownFills, out TMP_Text[] cooldownTexts)
+    {
+        cooldownFills = new Image[4];
+        cooldownTexts = new TMP_Text[4];
+
+        if (hudRoot == null)
+        {
+            throw new System.Exception("hudRoot is null");
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            string slotPath = $"BottomLeft/AbilityBar/Slot_{i}";
+            Transform slot = hudRoot.transform.Find(slotPath);
+            if (slot == null)
+            {
+                throw new System.Exception($"Missing node: {slotPath}");
+            }
+
+            RectTransform iconRt = slot.Find("Icon")?.GetComponent<RectTransform>();
+
+            // Cooldown mask
+            Transform maskTf = slot.Find("CooldownMask");
+            Image maskImg;
+            if (maskTf == null)
+            {
+                GameObject maskObj = new GameObject("CooldownMask");
+                maskObj.transform.SetParent(slot, false);
+
+                RectTransform rt = maskObj.AddComponent<RectTransform>();
+                if (iconRt != null)
+                {
+                    rt.anchorMin = iconRt.anchorMin;
+                    rt.anchorMax = iconRt.anchorMax;
+                    rt.pivot = iconRt.pivot;
+                    rt.anchoredPosition = iconRt.anchoredPosition;
+                    rt.sizeDelta = iconRt.sizeDelta;
+                    maskObj.transform.localScale = iconRt.localScale;
+                }
+                else
+                {
+                    rt.anchorMin = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax = new Vector2(0.5f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = Vector2.zero;
+                    rt.sizeDelta = new Vector2(70f, 70f);
+                }
+
+                maskImg = maskObj.AddComponent<Image>();
+                maskImg.enabled = false;
+            }
+            else
+            {
+                maskImg = maskTf.GetComponent<Image>();
+                if (maskImg == null)
+                {
+                    maskImg = maskTf.gameObject.AddComponent<Image>();
+                }
+            }
+
+            maskImg.raycastTarget = false;
+            maskImg.color = new Color(0f, 0f, 0f, 0.65f);
+            maskImg.type = Image.Type.Filled;
+            maskImg.fillMethod = Image.FillMethod.Radial360;
+            maskImg.fillAmount = 0f;
+            cooldownFills[i] = maskImg;
+
+            // Cooldown countdown text
+            Transform textTf = slot.Find("CooldownText");
+            TMP_Text tmpText;
+            if (textTf == null)
+            {
+                GameObject textObj = new GameObject("CooldownText");
+                textObj.transform.SetParent(slot, false);
+
+                RectTransform rt = textObj.AddComponent<RectTransform>();
+                if (iconRt != null)
+                {
+                    rt.anchorMin = iconRt.anchorMin;
+                    rt.anchorMax = iconRt.anchorMax;
+                    rt.pivot = iconRt.pivot;
+                    rt.anchoredPosition = iconRt.anchoredPosition;
+                    rt.sizeDelta = iconRt.sizeDelta;
+                    textObj.transform.localScale = iconRt.localScale;
+                }
+                else
+                {
+                    rt.anchorMin = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax = new Vector2(0.5f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = Vector2.zero;
+                    rt.sizeDelta = new Vector2(70f, 70f);
+                }
+
+                TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+                text.text = string.Empty;
+                text.fontSize = 22;
+                text.alignment = TextAlignmentOptions.Center;
+                text.enabled = false;
+                text.raycastTarget = false;
+                tmpText = text;
+            }
+            else
+            {
+                tmpText = textTf.GetComponent<TMP_Text>();
+                if (tmpText == null)
+                {
+                    TextMeshProUGUI text = textTf.gameObject.AddComponent<TextMeshProUGUI>();
+                    text.text = string.Empty;
+                    text.fontSize = 22;
+                    text.alignment = TextAlignmentOptions.Center;
+                    text.enabled = false;
+                    text.raycastTarget = false;
+                    tmpText = text;
+                }
+                else
+                {
+                    tmpText.alignment = TextAlignmentOptions.Center;
+                    tmpText.raycastTarget = false;
+                }
+            }
+
+            cooldownTexts[i] = tmpText;
+        }
+    }
+
+
+    private TMP_Text EnsureDebugOverlayText(GameObject hudRoot)
+    {
+        if (hudRoot == null)
+        {
+            throw new System.Exception("hudRoot is null");
+        }
+
+        Transform overlay = hudRoot.transform.Find("Overlay");
+        if (overlay == null)
+        {
+            throw new System.Exception("Missing node: Overlay");
+        }
+
+        Transform node = overlay.Find("DebugOverlay");
+        if (node == null)
+        {
+            GameObject obj = new GameObject("DebugOverlay");
+            obj.transform.SetParent(overlay, false);
+            RectTransform rt = obj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(10f, -10f);
+            rt.sizeDelta = new Vector2(600f, 400f);
+            node = obj.transform;
+        }
+
+        TMP_Text text = node.GetComponent<TMP_Text>();
+        if (text == null)
+        {
+            text = node.gameObject.AddComponent<TextMeshProUGUI>();
+        }
+
+        text.alignment = TextAlignmentOptions.TopLeft;
+        text.raycastTarget = false;
+        if (text.fontSize <= 0f)
+        {
+            text.fontSize = 18;
+        }
+        text.enabled = false;
+        return text;
+    }
+
+    private TMP_Text EnsureStatusText(GameObject hudRoot)
+    {
+        if (hudRoot == null)
+        {
+            throw new System.Exception("hudRoot is null");
+        }
+
+        Transform overlay = hudRoot.transform.Find("Overlay");
+        if (overlay == null)
+        {
+            throw new System.Exception("Missing node: Overlay");
+        }
+
+        Transform node = overlay.Find("StatusText");
+        if (node == null)
+        {
+            GameObject obj = new GameObject("StatusText");
+            obj.transform.SetParent(overlay, false);
+            RectTransform rt = obj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -10f);
+            rt.sizeDelta = new Vector2(500f, 60f);
+            node = obj.transform;
+        }
+
+        TMP_Text text = node.GetComponent<TMP_Text>();
+        if (text == null)
+        {
+            text = node.gameObject.AddComponent<TextMeshProUGUI>();
+        }
+
+        text.alignment = TextAlignmentOptions.Top;
+        text.raycastTarget = false;
+        if (text.fontSize <= 0f)
+        {
+            text.fontSize = 22;
+        }
+        text.enabled = false;
+        return text;
+    }
     private GameObject CreateChild(GameObject parent, string name)
     {
         GameObject child = new GameObject(name);
@@ -957,17 +1233,22 @@ public class HudQuickConfigWindow : EditorWindow
 
         Directory.CreateDirectory(Path.GetDirectoryName(CURRENT_TEMPLATE_PATH));
 
-        if (AssetDatabase.LoadAssetAtPath<GameObject>(CURRENT_TEMPLATE_PATH) != null)
+        // IMPORTANT: Do not delete HUDCanvas_Snapshot.prefab. Deleting regenerates its .meta GUID,
+        // which will break any Prefab Variants that use it as their parent.
+        if (!File.Exists(CURRENT_TEMPLATE_PATH))
         {
-            AssetDatabase.DeleteAsset(CURRENT_TEMPLATE_PATH);
+            if (!AssetDatabase.CopyAsset(PREFAB_PATH, CURRENT_TEMPLATE_PATH))
+            {
+                throw new System.Exception("复制 HUDCanvas 模板失败");
+            }
+
+            AssetDatabase.Refresh();
+            return;
         }
 
-        if (!AssetDatabase.CopyAsset(PREFAB_PATH, CURRENT_TEMPLATE_PATH))
-        {
-            throw new System.Exception("复制 HUDCanvas 模板失败");
-        }
-
-        AssetDatabase.Refresh();
+        string src = File.ReadAllText(PREFAB_PATH, Encoding.UTF8);
+        File.WriteAllText(CURRENT_TEMPLATE_PATH, src, Encoding.UTF8);
+        AssetDatabase.ImportAsset(CURRENT_TEMPLATE_PATH, ImportAssetOptions.ForceUpdate);
     }
 
     private HudBindingAsset EnsureBindingAsset()
@@ -1001,6 +1282,13 @@ public class HudQuickConfigWindow : EditorWindow
         if (instance == null)
         {
             instance = UnityEngine.Object.Instantiate(templateAsset);
+        }
+
+        // Save as a regular prefab (not a variant) to avoid depending on a parent prefab.
+        // This prevents issues when templates are created from snapshot prefabs.
+        if (PrefabUtility.IsPartOfPrefabInstance(instance))
+        {
+            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
         }
 
         try

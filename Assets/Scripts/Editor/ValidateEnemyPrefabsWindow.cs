@@ -55,6 +55,12 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     // ===== CastleDB 检测区缓存 =====
     private Dictionary<string, List<DetectionZoneEntry>> _castleDbZonesCache = null;
 
+    // ===== 0.5 阶段10：SecondaryAttack「按需必填」判定缓存 =====
+    private const string EnemyAbilityCatalogResourcePath = "Config/EnemyAbilityCatalog";
+    private const string EnemyAbilityCatalogAssetPath = "Assets/Resources/Config/EnemyAbilityCatalog.asset";
+    private AbilityCatalog _enemyAbilityCatalogCache = null;
+    private Dictionary<string, AbilityKind> _enemyAbilityKindByIdCache = null;
+
     // ===== 窗口菜单 =====
 
     [MenuItem("Tools/Stage1/Validate Enemy Prefabs")]
@@ -130,6 +136,8 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
         validSceneEnemyCount = 0;
         castleDbZoneMismatchCount = 0;
         _castleDbZonesCache = null;
+        _enemyAbilityCatalogCache = null;
+        _enemyAbilityKindByIdCache = null;
 
         Debug.Log("\n========== Stage1 敌人迁移验证开始 ==========\n");
 
@@ -571,6 +579,8 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             return;
         }
 
+        bool requiresSecondaryZone = IsSecondaryAttackZoneRequired(profile, out _);
+
         // 构建 Prefab 的 zoneBindings 映射：role → (childName, zone)
         var prefabBindings = new Dictionary<DetectionZoneBinding.Role, (string childName, DetectionZone zone)>();
 
@@ -600,6 +610,12 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             var expectedRole = RoleIndexToBindingRole(castleDbZone.role);
             string expectedChildId = castleDbZone.childId;
 
+            if (expectedRole == DetectionZoneBinding.Role.SecondaryAttack && !requiresSecondaryZone)
+            {
+                // SecondaryAttack 检测区按需必填：未被需求使用时，忽略 CastleDB 对 SecondaryAttack 的一致性校验，避免误报。
+                continue;
+            }
+
             if (!prefabBindings.TryGetValue(expectedRole, out var prefabBinding))
             {
                 // Prefab 中缺少该 role 的 binding
@@ -628,6 +644,188 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             {
                 Debug.Log($"  ✓ {prefabPath}: CastleDB 检测区 role={expectedRole} childId='{expectedChildId}' 匹配成功");
             }
+        }
+    }
+
+    /// <summary>
+    /// 0.5 阶段10：判断 SecondaryAttack 检测区是否为「按需必填」。
+    /// 口径与导入校验保持一致：只有当配置确实依赖 SecondaryAttack 时，才要求 SecondaryAttack 检测区存在。
+    /// </summary>
+    private bool IsSecondaryAttackZoneRequired(EnemyTuningProfile profile, out string reason)
+    {
+        reason = string.Empty;
+        if (profile == null)
+        {
+            return false;
+        }
+
+        // 收集启用的 NpcAbility（以 bindingId 作为主键）
+        var enabledAbilitiesById = new Dictionary<string, NpcAbilityEntry>();
+        if (profile.npcAbilities != null)
+        {
+            foreach (var a in profile.npcAbilities)
+            {
+                if (a == null || !a.enabled || string.IsNullOrWhiteSpace(a.id))
+                {
+                    continue;
+                }
+
+                enabledAbilitiesById[a.id] = a;
+            }
+        }
+
+        if (enabledAbilitiesById.Count == 0)
+        {
+            return false;
+        }
+
+        // 收集被动绑定（用于 targetMode=CurrentTarget 的回退判定）
+        var passiveBindingsById = new Dictionary<string, NpcPassiveAbilityBindingEntry>();
+        if (profile.npcPassiveAbilityBindings != null)
+        {
+            foreach (var pb in profile.npcPassiveAbilityBindings)
+            {
+                if (pb == null || string.IsNullOrWhiteSpace(pb.bindingId))
+                {
+                    continue;
+                }
+
+                passiveBindingsById[pb.bindingId] = pb;
+            }
+        }
+
+        // 收集 HasTargetInRole 条件（用于 SecondaryAttack 直接依赖与“无条件回退”判定）
+        var hasTargetInRoleByBindingId = new HashSet<string>();
+        var hasSecondaryTargetInRoleByBindingId = new HashSet<string>();
+        if (profile.npcPassiveAbilityConditions != null)
+        {
+            foreach (var cond in profile.npcPassiveAbilityConditions)
+            {
+                if (cond == null
+                    || cond.conditionType != (int)NpcPassiveAbilityConditionType.HasTargetInRole
+                    || string.IsNullOrWhiteSpace(cond.bindingId))
+                {
+                    continue;
+                }
+
+                // 只关注“启用能力”的条件，避免禁用配置导致误报
+                if (!enabledAbilitiesById.ContainsKey(cond.bindingId))
+                {
+                    continue;
+                }
+
+                hasTargetInRoleByBindingId.Add(cond.bindingId);
+
+                if (cond.role == (int)DetectionZoneBinding.Role.SecondaryAttack)
+                {
+                    hasSecondaryTargetInRoleByBindingId.Add(cond.bindingId);
+                }
+            }
+        }
+
+        // 规则1：投射物/施法：NpcAbility(triggerRole=SecondaryAttack) 且 EnemyAbility.kind=Projectile
+        foreach (var a in enabledAbilitiesById.Values)
+        {
+            if (a.triggerRole != (int)DetectionZoneBinding.Role.SecondaryAttack)
+            {
+                continue;
+            }
+
+            if (!TryGetEnemyAbilityKind(a.abilityId, out var kind))
+            {
+                // kind 无法解析时保守处理为必填，避免漏报（正常情况下导入会生成 EnemyAbilityCatalog）
+                reason = $"NpcAbility '{a.id}' triggerRole=SecondaryAttack，但无法解析 EnemyAbility.kind（abilityId='{a.abilityId}'）";
+                return true;
+            }
+
+            if (kind == AbilityKind.Projectile)
+            {
+                reason = $"存在投射物类 NpcAbility(triggerRole=SecondaryAttack)：{a.id}";
+                return true;
+            }
+        }
+
+        // 规则2：被动能力条件：HasTargetInRole(role=SecondaryAttack)
+        if (hasSecondaryTargetInRoleByBindingId.Count > 0)
+        {
+            string bindingId = hasSecondaryTargetInRoleByBindingId.First();
+            reason = $"存在被动条件 HasTargetInRole(role=SecondaryAttack)：bindingId={bindingId}";
+            return true;
+        }
+
+        // 规则3：被动能力 targetMode=CurrentTarget 且没有任何 HasTargetInRole 条件时，会回退到 triggerRole 找目标
+        foreach (var a in enabledAbilitiesById.Values)
+        {
+            if (!passiveBindingsById.TryGetValue(a.id, out var pb) || pb == null)
+            {
+                continue;
+            }
+
+            if (pb.targetMode != (int)NpcPassiveAbilityTargetMode.CurrentTarget)
+            {
+                continue;
+            }
+
+            if (hasTargetInRoleByBindingId.Contains(a.id))
+            {
+                continue;
+            }
+
+            if (a.triggerRole == (int)DetectionZoneBinding.Role.SecondaryAttack)
+            {
+                reason = $"被动能力 targetMode=CurrentTarget 且无 HasTargetInRole 条件，会回退到 triggerRole=SecondaryAttack：bindingId={a.id}";
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryGetEnemyAbilityKind(string abilityId, out AbilityKind kind)
+    {
+        kind = default;
+
+        if (string.IsNullOrWhiteSpace(abilityId))
+        {
+            return false;
+        }
+
+        EnsureEnemyAbilityCatalogCache();
+        if (_enemyAbilityKindByIdCache == null)
+        {
+            return false;
+        }
+
+        return _enemyAbilityKindByIdCache.TryGetValue(abilityId, out kind);
+    }
+
+    private void EnsureEnemyAbilityCatalogCache()
+    {
+        if (_enemyAbilityKindByIdCache != null)
+        {
+            return;
+        }
+
+        _enemyAbilityCatalogCache = Resources.Load<AbilityCatalog>(EnemyAbilityCatalogResourcePath);
+        if (_enemyAbilityCatalogCache == null)
+        {
+            _enemyAbilityCatalogCache = AssetDatabase.LoadAssetAtPath<AbilityCatalog>(EnemyAbilityCatalogAssetPath);
+        }
+
+        _enemyAbilityKindByIdCache = new Dictionary<string, AbilityKind>();
+        if (_enemyAbilityCatalogCache == null || _enemyAbilityCatalogCache.entries == null)
+        {
+            return;
+        }
+
+        foreach (var entry in _enemyAbilityCatalogCache.entries)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.id))
+            {
+                continue;
+            }
+
+            _enemyAbilityKindByIdCache[entry.id] = entry.kind;
         }
     }
 

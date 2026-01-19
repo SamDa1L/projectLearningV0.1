@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using CastleDB.Runtime;
 
 /// <summary>
@@ -32,6 +34,18 @@ public class HudPresenter : MonoBehaviour
     private PlayerInventory _inv;
     private Damageable _dmg;
     private PlayerRelicController _relicCtrl;
+    private AbilitySystem _abilitySystem;
+
+    // Phase 8: DebugOverlay (optional)
+    private StatusEffectController _statusCtrl;
+    private StatModifierLayer _stats;
+    private readonly StringBuilder _debugSb = new StringBuilder(512);
+    private readonly StringBuilder _statusSb = new StringBuilder(128);
+    private float _nextDebugOverlayUpdateTime = 0f;
+
+    // Phase 8: cooldown UI throttling (avoid per-frame string churn)
+    private readonly int[] _cooldownLastSeconds = new int[PlayerInventory.AbilitySlotCount];
+    private readonly bool[] _cooldownWasVisible = new bool[PlayerInventory.AbilitySlotCount];
 
     private bool _initialized = false;
 
@@ -63,7 +77,7 @@ public class HudPresenter : MonoBehaviour
     /// <param name="inv">PlayerInventory（监听槽位/血瓶变化）</param>
     /// <param name="dmg">Damageable（监听生命值变化）</param>
     /// <param name="relicCtrl">PlayerRelicController（可选，监听遗物变更以更新图标）</param>
-    public void Initialize(ICastleDbService items, HudRefs refs, PlayerInventory inv, Damageable dmg, PlayerRelicController relicCtrl)
+    public void Initialize(ICastleDbService items, HudRefs refs, PlayerInventory inv, Damageable dmg, PlayerRelicController relicCtrl, AbilitySystem abilitySystem = null)
     {
         // 重复初始化检查
         if (_initialized)
@@ -103,6 +117,26 @@ public class HudPresenter : MonoBehaviour
         _inv = inv;
         _dmg = dmg;
         _relicCtrl = relicCtrl;
+        _abilitySystem = abilitySystem;
+
+        // Optional: resolve extra runtime components for Phase 8 debug overlay (no Find/Tag/singleton).
+        _statusCtrl = _dmg != null ? _dmg.GetComponent<StatusEffectController>() : null;
+        if (_statusCtrl == null && _dmg != null)
+        {
+            _statusCtrl = _dmg.GetComponentInParent<StatusEffectController>();
+        }
+
+        _stats = _dmg != null ? _dmg.GetComponent<StatModifierLayer>() : null;
+        if (_stats == null && _dmg != null)
+        {
+            _stats = _dmg.GetComponentInParent<StatModifierLayer>();
+        }
+
+        for (int i = 0; i < _cooldownLastSeconds.Length; i++)
+        {
+            _cooldownLastSeconds[i] = -1;
+            _cooldownWasVisible[i] = false;
+        }
         _initialized = true;
 
         // 订阅事件
@@ -115,6 +149,13 @@ public class HudPresenter : MonoBehaviour
             _relicCtrl.OnRelicChanged += OnRelicChanged;
         }
 
+
+        if (_statusCtrl != null)
+        {
+            _statusCtrl.OnStatusApplied += OnStatusApplied;
+            _statusCtrl.OnStatusRemoved += OnStatusRemoved;
+            _statusCtrl.OnStatusExpired += OnStatusExpired;
+        }
         Debug.Log("[HudPresenter] 初始化完成，已订阅 Inventory/Damageable 事件");
 
         // 立即执行初始刷新（契约 [C-Runtime-6]）
@@ -139,6 +180,29 @@ public class HudPresenter : MonoBehaviour
         {
             _relicCtrl.OnRelicChanged -= OnRelicChanged;
         }
+
+
+        if (_statusCtrl != null)
+        {
+            _statusCtrl.OnStatusApplied -= OnStatusApplied;
+            _statusCtrl.OnStatusRemoved -= OnStatusRemoved;
+            _statusCtrl.OnStatusExpired -= OnStatusExpired;
+        }
+    }
+
+    private void Update()
+    {
+        if (!_initialized)
+        {
+            return;
+        }
+
+        if (_abilitySystem != null)
+        {
+            UpdateAbilityCooldownUiAll();
+        }
+
+        UpdateDebugOverlay();
     }
 
     // ========== Sprite 图标缓存（对外接口）==========
@@ -201,6 +265,8 @@ public class HudPresenter : MonoBehaviour
         }
 
         // 2) 刷新血瓶计数
+        UpdateAbilityCooldownUiAll();
+
         UpdatePotionCountInternal(_inv.PotionCount);
 
         // 3) 刷新血条
@@ -209,12 +275,15 @@ public class HudPresenter : MonoBehaviour
         // 4) 刷新遗物图标（Phase 7）
         string relicItemId = _relicCtrl != null ? _relicCtrl.EquippedRelicItemId : null;
         UpdateRelicIconInternal(relicItemId);
+
+        UpdateStatusTextInternal();
     }
 
     // ========== 事件处理（私有）==========
     private void OnAbilitySlotChanged(int slot, string oldItemId, string newItemId)
     {
         UpdateAbilitySlot(slot, newItemId);
+        UpdateAbilityCooldownUiSlot(slot);
     }
 
     private void OnPotionCountChanged(int newCount)
@@ -230,6 +299,58 @@ public class HudPresenter : MonoBehaviour
     private void OnRelicChanged(string oldItemId, string newItemId)
     {
         UpdateRelicIconInternal(newItemId);
+    }
+
+    private void OnStatusApplied(string statusId, int stacks)
+    {
+        UpdateStatusTextInternal();
+    }
+
+    private void OnStatusRemoved(string statusId)
+    {
+        UpdateStatusTextInternal();
+    }
+
+    private void OnStatusExpired(string statusId)
+    {
+        UpdateStatusTextInternal();
+    }
+
+    private void UpdateStatusTextInternal()
+    {
+        if (_refs == null || _refs.statusText == null || _statusCtrl == null)
+        {
+            return;
+        }
+
+        var ids = _statusCtrl.ActiveStatusIds;
+        if (ids == null || ids.Count == 0)
+        {
+            _refs.statusText.text = string.Empty;
+            _refs.statusText.enabled = false;
+            return;
+        }
+
+        _statusSb.Clear();
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (i > 0)
+            {
+                _statusSb.Append("  ");
+            }
+
+            string id = ids[i];
+            _statusSb.Append(id);
+            int s = _statusCtrl.GetStacks(id);
+            if (s > 1)
+            {
+                _statusSb.Append(" x");
+                _statusSb.Append(s);
+            }
+        }
+
+        _refs.statusText.text = _statusSb.ToString();
+        _refs.statusText.enabled = true;
     }
 
     // ========== HUD 更新逻辑（私有）==========
@@ -288,6 +409,277 @@ public class HudPresenter : MonoBehaviour
     /// <summary>
     /// 更新血瓶计数文本
     /// </summary>
+    private void UpdateAbilityCooldownUiAll()
+    {
+        if (!_initialized || _abilitySystem == null || _refs == null)
+        {
+            return;
+        }
+
+        bool hasAnyWidget =
+            (_refs.abilitySlotCooldownFills != null && _refs.abilitySlotCooldownFills.Length == PlayerInventory.AbilitySlotCount) ||
+            (_refs.abilitySlotCooldownTexts != null && _refs.abilitySlotCooldownTexts.Length == PlayerInventory.AbilitySlotCount);
+
+        if (!hasAnyWidget)
+        {
+            return;
+        }
+
+        for (int i = 0; i < PlayerInventory.AbilitySlotCount; i++)
+        {
+            UpdateAbilityCooldownUiSlot(i);
+        }
+    }
+
+    private void UpdateAbilityCooldownUiSlot(int slot)
+    {
+        if (!_initialized || _abilitySystem == null || _refs == null || _inv == null)
+        {
+            return;
+        }
+
+        if (slot < 0 || slot >= PlayerInventory.AbilitySlotCount)
+        {
+            return;
+        }
+
+        Image fill = (_refs.abilitySlotCooldownFills != null && _refs.abilitySlotCooldownFills.Length == PlayerInventory.AbilitySlotCount)
+            ? _refs.abilitySlotCooldownFills[slot]
+            : null;
+
+        TMP_Text text = (_refs.abilitySlotCooldownTexts != null && _refs.abilitySlotCooldownTexts.Length == PlayerInventory.AbilitySlotCount)
+            ? _refs.abilitySlotCooldownTexts[slot]
+            : null;
+
+        // Prefab 未提供冷却 UI（Phase 8 可选）：直接跳过
+        if (fill == null && text == null)
+        {
+            return;
+        }
+
+        // 无能力：隐藏
+        if (!_inv.TryGetAbilityIdInSlot(slot, out string abilityId) || string.IsNullOrWhiteSpace(abilityId))
+        {
+            SetCooldownUiVisible(slot, visible: false);
+            return;
+        }
+
+        if (!_abilitySystem.TryGetAbility(abilityId, out IPlayerAbility ability) || ability == null)
+        {
+            SetCooldownUiVisible(slot, visible: false);
+            return;
+        }
+
+        float duration = Mathf.Max(0f, ability.CooldownSeconds);
+        float remaining = Mathf.Max(0f, ability.CooldownRemaining);
+
+        // 无冷却/已就绪：隐藏
+        if (duration <= 0f || remaining <= 0f)
+        {
+            SetCooldownUiVisible(slot, visible: false);
+            return;
+        }
+
+        // Fill: 1 -> 刚释放，0 -> 就绪
+        if (fill != null)
+        {
+            fill.enabled = true;
+            fill.fillAmount = Mathf.Clamp01(remaining / duration);
+        }
+
+        if (text != null)
+        {
+            int seconds = Mathf.CeilToInt(remaining);
+            if (!_cooldownWasVisible[slot] || seconds != _cooldownLastSeconds[slot])
+            {
+                text.text = seconds.ToString();
+                _cooldownLastSeconds[slot] = seconds;
+            }
+            text.enabled = true;
+        }
+
+        _cooldownWasVisible[slot] = true;
+    }
+
+    private void SetCooldownUiVisible(int slot, bool visible)
+    {
+        if (_refs == null || slot < 0 || slot >= PlayerInventory.AbilitySlotCount)
+        {
+            return;
+        }
+
+        Image fill = (_refs.abilitySlotCooldownFills != null && _refs.abilitySlotCooldownFills.Length == PlayerInventory.AbilitySlotCount)
+            ? _refs.abilitySlotCooldownFills[slot]
+            : null;
+
+        TMP_Text text = (_refs.abilitySlotCooldownTexts != null && _refs.abilitySlotCooldownTexts.Length == PlayerInventory.AbilitySlotCount)
+            ? _refs.abilitySlotCooldownTexts[slot]
+            : null;
+
+        if (fill != null)
+        {
+            fill.enabled = visible;
+            if (!visible)
+            {
+                fill.fillAmount = 0f;
+            }
+        }
+
+        if (text != null)
+        {
+            text.enabled = visible;
+            if (!visible)
+            {
+                text.text = string.Empty;
+            }
+        }
+
+        if (!visible)
+        {
+            _cooldownWasVisible[slot] = false;
+            _cooldownLastSeconds[slot] = -1;
+        }
+    }
+
+    private void UpdateDebugOverlay()
+    {
+        if (_refs == null || _refs.debugOverlayText == null)
+        {
+            return;
+        }
+
+        // Only update when the widget is enabled & active (keeps this cheap in production).
+        if (!_refs.debugOverlayText.isActiveAndEnabled)
+        {
+            return;
+        }
+
+        float now = Time.time;
+        if (now < _nextDebugOverlayUpdateTime)
+        {
+            return;
+        }
+        _nextDebugOverlayUpdateTime = now + 0.25f;
+
+        _debugSb.Clear();
+        _debugSb.AppendLine("HUD DEBUG");
+
+        if (_dmg != null)
+        {
+            _debugSb.Append("HP: ");
+            _debugSb.Append(_dmg.CurrentHealth);
+            _debugSb.Append('/');
+            _debugSb.Append(Mathf.RoundToInt(_dmg.MaxHealth));
+            _debugSb.AppendLine();
+        }
+
+        if (_stats != null)
+        {
+            _debugSb.Append("MoveSpeedMult: ");
+            _debugSb.Append(_stats.MoveSpeedMultiplier.ToString("0.##"));
+            _debugSb.Append("  AttackMult: ");
+            _debugSb.Append(_stats.AttackMultiplier.ToString("0.##"));
+            _debugSb.AppendLine();
+        }
+
+        if (_relicCtrl != null)
+        {
+            _debugSb.Append("Relic: ");
+            _debugSb.Append(string.IsNullOrWhiteSpace(_relicCtrl.EquippedRelicItemId) ? "<none>" : _relicCtrl.EquippedRelicItemId);
+            _debugSb.Append("  Shield: ");
+            _debugSb.Append(_relicCtrl.ShieldHp);
+            _debugSb.Append('/');
+            _debugSb.Append(_relicCtrl.ShieldMaxHp);
+            _debugSb.AppendLine();
+        }
+
+        if (_inv != null)
+        {
+            _debugSb.AppendLine("Slots:");
+            for (int i = 0; i < PlayerInventory.AbilitySlotCount; i++)
+            {
+                _debugSb.Append(i);
+                _debugSb.Append(": ");
+                if (_inv.TryGetAbilityIdInSlot(i, out string abilityId) && !string.IsNullOrWhiteSpace(abilityId))
+                {
+                    _debugSb.Append(abilityId);
+                }
+                else
+                {
+                    _debugSb.Append("<empty>");
+                }
+                _debugSb.AppendLine();
+            }
+        }
+
+        _debugSb.AppendLine("Abilities:");
+        if (_abilitySystem != null)
+        {
+            foreach (var ability in _abilitySystem.EnumerateAllAbilities())
+            {
+                if (ability == null)
+                {
+                    continue;
+                }
+
+                _debugSb.Append(ability.AbilityId);
+                _debugSb.Append(" enabled=");
+                _debugSb.Append(ability.Enabled ? "1" : "0");
+
+                float duration = Mathf.Max(0f, ability.CooldownSeconds);
+                if (duration > 0f)
+                {
+                    float remaining = Mathf.Max(0f, ability.CooldownRemaining);
+                    _debugSb.Append(" cd=");
+                    _debugSb.Append(remaining.ToString("0.0"));
+                    _debugSb.Append('/');
+                    _debugSb.Append(duration.ToString("0.0"));
+                }
+
+                _debugSb.AppendLine();
+            }
+        }
+        else
+        {
+            _debugSb.AppendLine("<no AbilitySystem>");
+        }
+
+        if (_statusCtrl != null)
+        {
+            _debugSb.AppendLine("Statuses:");
+            var ids = _statusCtrl.ActiveStatusIds;
+            if (ids != null && ids.Count > 0)
+            {
+                for (int i = 0; i < ids.Count; i++)
+                {
+                    string id = ids[i];
+                    _debugSb.Append(id);
+                    int stacks = _statusCtrl.GetStacks(id);
+                    if (stacks > 1)
+                    {
+                        _debugSb.Append(" x");
+                        _debugSb.Append(stacks);
+                    }
+
+                    float remaining = _statusCtrl.GetRemainingSeconds(id);
+                    if (!float.IsPositiveInfinity(remaining))
+                    {
+                        _debugSb.Append(" (");
+                        _debugSb.Append(remaining.ToString("0.0"));
+                        _debugSb.Append("s)");
+                    }
+                    _debugSb.AppendLine();
+                }
+            }
+            else
+            {
+                _debugSb.AppendLine("<none>");
+            }
+        }
+
+        _refs.debugOverlayText.text = _debugSb.ToString();
+    }
+
     private void UpdatePotionCountInternal(int count)
     {
         if (_refs.potionCountText == null)

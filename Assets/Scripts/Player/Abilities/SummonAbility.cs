@@ -60,6 +60,9 @@ public class SummonAbility : IPlayerAbility
         }
     }
 
+    public float CooldownSeconds => _cooldownSeconds;
+    public float CooldownRemaining => _cooldownSeconds > 0f ? Mathf.Max(0f, _nextReadyTime - Time.time) : 0f;
+
     public SummonAbility(
         PlayerController playerController,
         string abilityId,
@@ -355,4 +358,3 @@ public class SummonAbility : IPlayerAbility
     public bool OnAttack(AbilityInput input) => TryCast(input);
     public bool OnRangedAttack(AbilityInput input) => TryCast(input);
 }
-

@@ -61,4 +61,8 @@ public interface IPlayerAbility
     /// <param name="input">输入快照</param>
     /// <returns>是否消费输入（true 则中止后续能力）</returns>
     bool OnRangedAttack(AbilityInput input);
+
+    // Phase 8: expose cooldown for HUD/debug (0 = no cooldown)
+    float CooldownSeconds { get; }
+    float CooldownRemaining { get; }
 }

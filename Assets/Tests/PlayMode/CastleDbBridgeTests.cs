@@ -529,11 +529,26 @@ public class CastleDbBridgeTests
         public string AbilityId { get; private set; }
         public int Priority { get; private set; }
         public bool Enabled { get; set; } // Phase 5: 改为 public set 以满足接口要求
+
+        // Phase 8: cooldown (HUD/debug). Test helpers support configuring and advancing cooldown.
+        public float CooldownSeconds => cooldownSeconds;
+        public float CooldownRemaining => cooldownSeconds > 0f ? Mathf.Max(0f, nextReadyTime - Time.time) : 0f;
+
         public bool WasCalled { get; private set; }
         private bool returnsHandled;
         private string name;
+        private float cooldownSeconds;
+        private float nextReadyTime;
+        private bool startCooldownOnCall;
 
-        public MockAbility(int priority, bool returnsHandled, string name, bool enabled = true)
+        public MockAbility(
+            int priority,
+            bool returnsHandled,
+            string name,
+            bool enabled = true,
+            float cooldownSeconds = 0f,
+            float cooldownRemaining = 0f,
+            bool startCooldownOnCall = false)
         {
             this.AbilityId = name; // 使用 name 作为 AbilityId
             this.Priority = priority;
@@ -541,6 +556,10 @@ public class CastleDbBridgeTests
             this.name = name;
             this.Enabled = enabled;
             this.WasCalled = false;
+
+            this.cooldownSeconds = Mathf.Max(0f, cooldownSeconds);
+            nextReadyTime = Time.time + Mathf.Max(0f, cooldownRemaining);
+            this.startCooldownOnCall = startCooldownOnCall;
         }
 
         public void Reset()
@@ -548,10 +567,46 @@ public class CastleDbBridgeTests
             WasCalled = false;
         }
 
+        public void SetCooldown(float cooldownSeconds, float cooldownRemaining = 0f)
+        {
+            this.cooldownSeconds = Mathf.Max(0f, cooldownSeconds);
+            nextReadyTime = Time.time + Mathf.Max(0f, cooldownRemaining);
+        }
+
+        public void StartCooldownNow()
+        {
+            if (cooldownSeconds <= 0f)
+            {
+                nextReadyTime = 0f;
+                return;
+            }
+
+            nextReadyTime = Time.time + cooldownSeconds;
+        }
+
+        public void ClearCooldown()
+        {
+            nextReadyTime = 0f;
+        }
+
+        public void AdvanceCooldown(float seconds)
+        {
+            if (cooldownSeconds <= 0f || seconds <= 0f)
+            {
+                return;
+            }
+
+            nextReadyTime = Mathf.Max(Time.time, nextReadyTime - seconds);
+        }
+
         public bool OnMove(AbilityInput input)
         {
             WasCalled = true;
             Debug.Log($"[MockAbility] {name} OnMove called (priority={Priority}, handled={returnsHandled})");
+            if (startCooldownOnCall && returnsHandled)
+            {
+                StartCooldownNow();
+            }
             return returnsHandled;
         }
 
@@ -559,6 +614,10 @@ public class CastleDbBridgeTests
         {
             WasCalled = true;
             Debug.Log($"[MockAbility] {name} OnRun called (priority={Priority}, handled={returnsHandled})");
+            if (startCooldownOnCall && returnsHandled)
+            {
+                StartCooldownNow();
+            }
             return returnsHandled;
         }
 
@@ -566,6 +625,10 @@ public class CastleDbBridgeTests
         {
             WasCalled = true;
             Debug.Log($"[MockAbility] {name} OnJump called (priority={Priority}, handled={returnsHandled})");
+            if (startCooldownOnCall && returnsHandled)
+            {
+                StartCooldownNow();
+            }
             return returnsHandled;
         }
 
@@ -573,6 +636,10 @@ public class CastleDbBridgeTests
         {
             WasCalled = true;
             Debug.Log($"[MockAbility] {name} OnAttack called (priority={Priority}, handled={returnsHandled})");
+            if (startCooldownOnCall && returnsHandled)
+            {
+                StartCooldownNow();
+            }
             return returnsHandled;
         }
 
@@ -580,6 +647,10 @@ public class CastleDbBridgeTests
         {
             WasCalled = true;
             Debug.Log($"[MockAbility] {name} OnRangedAttack called (priority={Priority}, handled={returnsHandled})");
+            if (startCooldownOnCall && returnsHandled)
+            {
+                StartCooldownNow();
+            }
             return returnsHandled;
         }
     }
@@ -592,16 +663,35 @@ public class CastleDbBridgeTests
         public string AbilityId { get; private set; }
         public int Priority { get; private set; }
         public bool Enabled { get; set; } // Phase 5: 添加 setter 以满足接口要求
+
+        // Phase 8: cooldown (HUD/debug). Provide hooks for future tests.
+        public float CooldownSeconds => cooldownSeconds;
+        public float CooldownRemaining => cooldownSeconds > 0f ? Mathf.Max(0f, nextReadyTime - Time.time) : 0f;
+
         private System.Collections.Generic.List<string> executionOrder;
         private string name;
+        private float cooldownSeconds;
+        private float nextReadyTime;
+        private bool startCooldownOnExecute;
 
-        public OrderTrackingAbility(int priority, System.Collections.Generic.List<string> executionOrder, string name)
+        public OrderTrackingAbility(
+            int priority,
+            System.Collections.Generic.List<string> executionOrder,
+            string name,
+            bool enabled = true,
+            float cooldownSeconds = 0f,
+            float cooldownRemaining = 0f,
+            bool startCooldownOnExecute = false)
         {
             this.AbilityId = name; // 使用 name 作为 AbilityId
             this.Priority = priority;
             this.executionOrder = executionOrder;
             this.name = name;
-            this.Enabled = true; // 默认启用
+            this.Enabled = enabled;
+
+            this.cooldownSeconds = Mathf.Max(0f, cooldownSeconds);
+            nextReadyTime = Time.time + Mathf.Max(0f, cooldownRemaining);
+            this.startCooldownOnExecute = startCooldownOnExecute;
         }
 
         public bool OnMove(AbilityInput input) => RecordExecution();
@@ -610,10 +700,46 @@ public class CastleDbBridgeTests
         public bool OnAttack(AbilityInput input) => RecordExecution();
         public bool OnRangedAttack(AbilityInput input) => RecordExecution();
 
+        public void SetCooldown(float cooldownSeconds, float cooldownRemaining = 0f)
+        {
+            this.cooldownSeconds = Mathf.Max(0f, cooldownSeconds);
+            nextReadyTime = Time.time + Mathf.Max(0f, cooldownRemaining);
+        }
+
+        public void StartCooldownNow()
+        {
+            if (cooldownSeconds <= 0f)
+            {
+                nextReadyTime = 0f;
+                return;
+            }
+
+            nextReadyTime = Time.time + cooldownSeconds;
+        }
+
+        public void ClearCooldown()
+        {
+            nextReadyTime = 0f;
+        }
+
+        public void AdvanceCooldown(float seconds)
+        {
+            if (cooldownSeconds <= 0f || seconds <= 0f)
+            {
+                return;
+            }
+
+            nextReadyTime = Mathf.Max(Time.time, nextReadyTime - seconds);
+        }
+
         private bool RecordExecution()
         {
             executionOrder.Add(name);
             Debug.Log($"[OrderTrackingAbility] {name} executed (priority={Priority})");
+            if (startCooldownOnExecute)
+            {
+                StartCooldownNow();
+            }
             return false; // 不消费输入，让所有能力都执行
         }
     }
