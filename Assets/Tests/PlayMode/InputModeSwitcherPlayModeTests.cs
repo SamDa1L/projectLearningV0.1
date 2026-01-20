@@ -18,8 +18,7 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
     private Mouse _mouse;
     private Gamepad _gamepad;
 
-    [UnitySetUp]
-    public IEnumerator UnitySetup()
+    private IEnumerator Init()
     {
         PlayerPrefs.DeleteKey(InputModeSwitcher.PlayerPrefsKey_LastControlScheme);
         PlayerPrefs.SetString(InputModeSwitcher.PlayerPrefsKey_LastControlScheme, InputModeSwitcher.SchemeNameKeyboardMouse);
@@ -37,6 +36,7 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
 
         _playerInput = _playerInstance.GetComponent<PlayerInput>();
         Assert.IsNotNull(_playerInput, "PlayerInput component missing");
+        Assert.IsTrue(_playerInput.user.valid, "PlayerInput.user 无效（常见原因：InputTestFixture.Reset 在 PlayerInput 初始化之后发生）");
 
         _switcher = _playerInstance.GetComponent<InputModeSwitcher>();
         Assert.IsNotNull(_switcher, "InputModeSwitcher component missing (PlayerController should add it)");
@@ -57,6 +57,8 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator SwitchesBetweenKeyboardMouseAndGamepad()
     {
+        yield return Init();
+
         // 初始方案应为键鼠（由 Setup 中的 PlayerPrefs 强制指定）。
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
         Assert.AreEqual(InputModeSwitcher.SchemeNameKeyboardMouse, _playerInput.currentControlScheme);
@@ -82,6 +84,8 @@ public class InputModeSwitcherPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator GamepadAnalogBelowThresholdDoesNotSwitch()
     {
+        yield return Init();
+
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
 
         // 轻微漂移：低于默认阈值 0.2，不应触发切换。

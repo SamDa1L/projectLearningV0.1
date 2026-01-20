@@ -494,12 +494,9 @@ namespace CastleDB.Editor.Providers
                     errors.Add($"NPC '{npc.id}' 的 animationTrigger '{npc.animationTrigger}' 包含非法字符");
                 }
 
-                // 校验 castTrigger (0.5 Phase 3)
-                if (string.IsNullOrWhiteSpace(npc.castTrigger))
-                {
-                    errors.Add($"NPC '{npc.id}' 的 castTrigger 为空");
-                }
-                else if (!System.Text.RegularExpressions.Regex.IsMatch(npc.castTrigger, @"^[a-zA-Z0-9_]+$"))
+                // 校验 castTrigger (0.5 Phase 3) (optional)
+                if (!string.IsNullOrWhiteSpace(npc.castTrigger)
+                    && !System.Text.RegularExpressions.Regex.IsMatch(npc.castTrigger, @"^[a-zA-Z0-9_]+$"))
                 {
                     errors.Add($"NPC '{npc.id}' 的 castTrigger '{npc.castTrigger}' 包含非法字符");
                 }

@@ -18,6 +18,7 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
     private GameObject _playerInstance;
     private PlayerInput _playerInput;
     private PlayerController _playerController;
+    private PlayerContext _playerContext;
     private PlayerInventory _inventory;
 
     private Keyboard _keyboard;
@@ -32,8 +33,7 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
 
     private ScriptableObject _itemCatalog;
 
-    [UnitySetUp]
-    public IEnumerator UnitySetUp()
+    private IEnumerator Init()
     {
         _keyboard = InputSystem.AddDevice<Keyboard>();
         _mouse = InputSystem.AddDevice<Mouse>();
@@ -48,11 +48,16 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
 
         _playerInput = _playerInstance.GetComponent<PlayerInput>();
         _playerController = _playerInstance.GetComponent<PlayerController>();
-        _inventory = _playerInstance.GetComponent<PlayerInventory>();
+        _playerContext = _playerInstance.GetComponent<PlayerContext>();
 
         Assert.IsNotNull(_playerInput, "缺少 PlayerInput 组件");
         Assert.IsNotNull(_playerController, "缺少 PlayerController 组件");
-        Assert.IsNotNull(_inventory, "缺少 PlayerInventory 组件");
+        Assert.IsNotNull(_playerContext, "缺少 PlayerContext 组件");
+        Assert.IsTrue(_playerInput.user.valid, "PlayerInput.user 无效（常见原因：InputTestFixture.Reset 在 PlayerInput 初始化之后发生）");
+
+        // PlayerInventory 不一定挂在 Player 根节点（Prefab 会按模块分区放在子物体上）。
+        _inventory = _playerContext.Inventory;
+        Assert.IsNotNull(_inventory, "PlayerContext.Inventory 为空（缺少 PlayerInventory 组件）");
 
         SetupInventoryAndAbilitySystem();
     }
@@ -78,6 +83,8 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator KeyboardMouse_TriggersSlots1To4()
     {
+        yield return Init();
+
         _playerInput.SwitchCurrentControlScheme(InputModeSwitcher.SchemeNameKeyboardMouse, _keyboard, _mouse);
         yield return null;
 
@@ -116,6 +123,8 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator KeyboardMouse_Slot1Empty_RightButton_DoesNotFallbackToRangedHook()
     {
+        yield return Init();
+
         _playerInput.SwitchCurrentControlScheme(InputModeSwitcher.SchemeNameKeyboardMouse, _keyboard, _mouse);
         yield return null;
 
@@ -138,6 +147,8 @@ public class AbilitySlotInputMappingPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator Gamepad_TriggersSlots1To4()
     {
+        yield return Init();
+
         _playerInput.SwitchCurrentControlScheme(InputModeSwitcher.SchemeNameGamepad, _gamepad);
         yield return null;
 

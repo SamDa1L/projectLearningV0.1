@@ -26,8 +26,7 @@ public class HudSlotKeyIconPresenterPlayModeTests : InputTestFixture
     private Mouse _mouse;
     private DualShockGamepad _gamepad;
 
-    [UnitySetUp]
-    public IEnumerator UnitySetUp()
+    private IEnumerator Init()
     {
         PlayerPrefs.DeleteKey(InputModeSwitcher.PlayerPrefsKey_LastControlScheme);
         PlayerPrefs.SetString(InputModeSwitcher.PlayerPrefsKey_LastControlScheme, InputModeSwitcher.SchemeNameKeyboardMouse);
@@ -47,6 +46,7 @@ public class HudSlotKeyIconPresenterPlayModeTests : InputTestFixture
         _switcher = _playerInstance.GetComponent<InputModeSwitcher>();
         Assert.IsNotNull(_playerInput, "PlayerInput component missing");
         Assert.IsNotNull(_switcher, "InputModeSwitcher component missing");
+        Assert.IsTrue(_playerInput.user.valid, "PlayerInput.user 无效（常见原因：InputTestFixture.Reset 在 PlayerInput 初始化之后发生）");
 
         _catalog = Resources.Load<InputIconCatalog>("Config/InputIconCatalog");
         Assert.IsNotNull(_catalog, "InputIconCatalog not found at Resources/Config/InputIconCatalog.asset");
@@ -77,6 +77,8 @@ public class HudSlotKeyIconPresenterPlayModeTests : InputTestFixture
     [UnityTest]
     public IEnumerator IconsFollowControlScheme()
     {
+        yield return Init();
+
         // 初始方案通过 Setup 中的 PlayerPrefs 强制为键鼠。
         Assert.AreEqual(InputModeSwitcher.ControlScheme.KeyboardMouse, _switcher.CurrentScheme);
         AssertAreIcons(InputIconDevice.Keyboard);

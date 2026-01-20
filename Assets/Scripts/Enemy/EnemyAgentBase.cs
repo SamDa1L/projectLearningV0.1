@@ -88,7 +88,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     // ===== 攻击系统（统一由基类管理）=====
     private float _attackCooldownTimer = 0f;
     private NpcAbilityController _npcAbilityController;
-    private bool _hasTarget = false;  // 由 PrimaryAttack 检测区事件驱动更新
+    private bool _hasTarget = false;  // 由 PrimaryAttack 检测区事件驱动更新（SecondaryAttack 仅在 Tick 中轮询）
     private DetectionZone _primaryAttackZone;  // 缓存 PrimaryAttack 检测区
 
     /// <summary>
@@ -291,19 +291,19 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     /// - 放弃复杂的自动推断，改为强制要求显式配置
     /// - zoneBindings是唯一的数据源（必须在Inspector中配置）
     /// - 每个binding必须有有效的zone和role
-    /// - 直接从zoneBindings查询PrimaryAttack，无需缓存专用字段
+    /// - 优先从zoneBindings查询PrimaryAttack（无则回退SecondaryAttack），无需额外的 public DetectionZone 字段
     /// - GetDetectedTargets()和GetDetectedTargetsForRole()都从zoneBindings读取
     ///
     /// 配置要求：
     /// 1. 在Inspector中为敌人配置zoneBindings列表
-    /// 2. 至少要有一个binding，role=PrimaryAttack
+    /// 2. PrimaryAttack / SecondaryAttack 至少要有一个有效绑定
     /// 3. 可选地添加其他role的binding（Cliff、Alert等）
     ///
     /// 优势：
     /// - 数据源单一，无冲突
     /// - 逻辑清晰简洁
     /// - 无歧义的推断问题
-    /// - GetDetectedTargets()和GetDetectedTargetsForRole()一致
+    /// - GetDetectedTargets()/GetDetectedTargetsForRole() 均从 zoneBindings 读取
     /// - 不需要冗余的缓存字段
     ///
     /// v0.3 更新（攻击系统重构）：
@@ -317,63 +317,83 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         {
             Debug.LogError(
                 $"[{gameObject.name}] ✗ 检测区配置失败：zoneBindings列表为空！\n" +
-                $"请在Inspector中为敌人脚本配置zoneBindings，至少需要一个role=PrimaryAttack的binding，" +
-                $"拖拽DZ_Attack子物体的DetectionZone到zone字段。",
+                $"请在Inspector中为敌人脚本配置zoneBindings，至少需要一个role=PrimaryAttack或role=SecondaryAttack的binding，" +
+                $"并拖拽对应子物体的DetectionZone到zone字段（例如 DZ_Attack / DZ_Ability）。",
                 gameObject
             );
             return;
         }
 
-        // 查找PrimaryAttack角色的binding
-        DetectionZoneBinding primaryBinding = default;
-        int primaryAttackIndex = -1;
+        // 选择可用的“战斗检测区”：优先 PrimaryAttack，其次 SecondaryAttack。
+        // 注意：_hasTarget 只由 PrimaryAttack 事件驱动；SecondaryAttack 仅用于法术/能力判定。
+        bool hasPrimaryRole = false;
+        bool hasSecondaryRole = false;
+        DetectionZone primaryZone = null;
+        DetectionZone secondaryZone = null;
+        int primaryIndex = -1;
+        int secondaryIndex = -1;
 
         for (int i = 0; i < zoneBindings.Count; i++)
         {
-            if (zoneBindings[i].role == DetectionZoneBinding.Role.PrimaryAttack)
+            var binding = zoneBindings[i];
+            if (binding.role == DetectionZoneBinding.Role.PrimaryAttack)
             {
-                primaryBinding = zoneBindings[i];
-                primaryAttackIndex = i;
-                break;
+                hasPrimaryRole = true;
+                if (primaryZone == null && binding.zone != null)
+                {
+                    primaryZone = binding.zone;
+                    primaryIndex = i;
+                }
+            }
+            else if (binding.role == DetectionZoneBinding.Role.SecondaryAttack)
+            {
+                hasSecondaryRole = true;
+                if (secondaryZone == null && binding.zone != null)
+                {
+                    secondaryZone = binding.zone;
+                    secondaryIndex = i;
+                }
             }
         }
 
-        // 检查是否找到PrimaryAttack
-        if (primaryAttackIndex == -1)
+        var chosenZone = primaryZone != null ? primaryZone : secondaryZone;
+        var chosenRole = primaryZone != null ? DetectionZoneBinding.Role.PrimaryAttack : DetectionZoneBinding.Role.SecondaryAttack;
+        var chosenIndex = primaryZone != null ? primaryIndex : secondaryIndex;
+
+        if (chosenZone == null)
         {
+            string hint;
+            if (hasPrimaryRole || hasSecondaryRole)
+            {
+                hint = "已配置 PrimaryAttack/SecondaryAttack 的 role，但对应的 zone 为空（请拖拽子物体的 DetectionZone）。";
+            }
+            else
+            {
+                hint = "zoneBindings 未配置 PrimaryAttack/SecondaryAttack（至少需要一个）。";
+            }
+
             Debug.LogError(
-                $"[{gameObject.name}] ✗ 检测区配置失败：zoneBindings中未找到PrimaryAttack！\n" +
+                $"[{gameObject.name}] ✗ 检测区配置失败：未找到可用的战斗检测区（PrimaryAttack / SecondaryAttack）！\n" +
                 $"检测到的binding数量：{zoneBindings.Count}\n" +
-                $"请检查zoneBindings中是否有role=PrimaryAttack的项，" +
-                $"并将对应的DetectionZone赋值到zone字段。",
+                $"{hint}",
                 gameObject
             );
             return;
         }
 
-        // 检查zone是否有效
-        if (primaryBinding.zone == null)
-        {
-            Debug.LogError(
-                $"[{gameObject.name}] ✗ 检测区配置失败：PrimaryAttack的zone为空！\n" +
-                $"请在Inspector中拖拽DZ_Attack（或其他攻击检测区）的DetectionZone到该binding的zone字段。",
-                gameObject
-            );
-            return;
-        }
-
-        // 配置成功，缓存主检测区到detectionZone字段
-        detectionZone = primaryBinding.zone;
-
-        // v0.3 新增：缓存到 _primaryAttackZone，供攻击系统使用
-        _primaryAttackZone = primaryBinding.zone;
+        // 配置成功：缓存一个“默认检测区”（用于 legacy/泛化访问），并可选缓存 PrimaryAttack。
+        detectionZone = chosenZone;
+        _primaryAttackZone = primaryZone; // 仅在存在 PrimaryAttack 时启用事件驱动
+        _hasTarget = _primaryAttackZone != null
+            && _primaryAttackZone.detectedColliders != null
+            && _primaryAttackZone.detectedColliders.Count > 0;
 
         if (debugStateOverlay)
         {
             Debug.Log(
                 $"[{gameObject.name}] ✓ 检测区初始化成功\n" +
-                $"  配置来源：zoneBindings[{primaryAttackIndex}]\n" +
-                $"  PrimaryAttack → {primaryBinding.zone.gameObject.name}\n" +
+                $"  配置来源：zoneBindings[{chosenIndex}]\n" +
+                $"  {chosenRole} → {chosenZone.gameObject.name}\n" +
                 $"  已配置的binding总数：{zoneBindings.Count}",
                 gameObject
             );
@@ -601,20 +621,34 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     // ===== IAgentPerception 接口实现 =====
 
     /// <summary>
-    /// 获取主检测区（PrimaryAttack角色）的检测目标
+    /// 获取默认战斗检测区的检测目标（优先 PrimaryAttack，回退 SecondaryAttack）
     ///
     /// v0.2设计（方案A）：
-    /// - 直接查询zoneBindings中role=PrimaryAttack的检测区
+    /// - 优先查询zoneBindings中role=PrimaryAttack的检测区；若不存在，则回退到role=SecondaryAttack
     /// - zoneBindings是唯一的数据源，通过GetDetectedTargetsForRole()访问
-    /// - GetDetectedTargets()和GetDetectedTargetsForRole(PrimaryAttack)等价
+    /// - 若 PrimaryAttack/SecondaryAttack 都缺失，返回空列表
     ///
     /// 返回值：
-    /// - 如果配置正确，返回DZ_Attack（或其他PrimaryAttack角色）的目标列表
+    /// - 如果配置正确，返回 DZ_Attack（PrimaryAttack）或 DZ_Ability（SecondaryAttack）的目标列表
     /// - 如果配置不正确，返回空列表
     /// </summary>
     public virtual List<Collider2D> GetDetectedTargets()
     {
-        return GetDetectedTargetsForRole(DetectionZoneBinding.Role.PrimaryAttack);
+        // Prefab 约定：PrimaryAttack / SecondaryAttack 至少一个。
+        // 默认优先返回 PrimaryAttack；若未配置 PrimaryAttack，则回退到 SecondaryAttack。
+        var primary = GetZone(DetectionZoneBinding.Role.PrimaryAttack);
+        if (primary != null && primary.detectedColliders != null)
+        {
+            return primary.detectedColliders;
+        }
+
+        var secondary = GetZone(DetectionZoneBinding.Role.SecondaryAttack);
+        if (secondary != null && secondary.detectedColliders != null)
+        {
+            return secondary.detectedColliders;
+        }
+
+        return new List<Collider2D>();
     }
 
     public virtual bool IsTargetInRange(Transform target, float range)

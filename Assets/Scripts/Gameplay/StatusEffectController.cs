@@ -28,6 +28,7 @@ public class StatusEffectController : MonoBehaviour
     private StatModifierLayer _stats;
 
     private bool _loggedMissingCatalog = false;
+    private bool _loggedMissingStats = false;
 
     public event Action<string, int> OnStatusApplied;
     public event Action<string> OnStatusRemoved;
@@ -42,6 +43,29 @@ public class StatusEffectController : MonoBehaviour
     {
         _stats = GetComponent<StatModifierLayer>();
         _catalog = statusCatalogOverride;
+    }
+
+    private bool EnsureStats()
+    {
+        if (_stats != null)
+        {
+            return true;
+        }
+
+        // Awake is not guaranteed to run in EditMode tests; cache lazily as well.
+        _stats = GetComponent<StatModifierLayer>();
+        if (_stats != null)
+        {
+            return true;
+        }
+
+        if (!_loggedMissingStats)
+        {
+            Debug.LogError("[StatusEffectController] Missing required StatModifierLayer. Status modifiers will be skipped.", this);
+            _loggedMissingStats = true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -166,7 +190,10 @@ public class StatusEffectController : MonoBehaviour
         }
 
         _activeList.Remove(statusId);
-        _stats.ClearMoveSpeedMultiplier(statusId);
+        if (EnsureStats())
+        {
+            _stats.ClearMoveSpeedMultiplier(statusId);
+        }
         OnStatusRemoved?.Invoke(statusId);
         return true;
     }
@@ -219,7 +246,10 @@ public class StatusEffectController : MonoBehaviour
             if (_active.Remove(statusId))
             {
                 _activeList.Remove(statusId);
-                _stats.ClearMoveSpeedMultiplier(statusId);
+                if (EnsureStats())
+                {
+                    _stats.ClearMoveSpeedMultiplier(statusId);
+                }
                 OnStatusExpired?.Invoke(statusId);
             }
         }
@@ -260,6 +290,12 @@ public class StatusEffectController : MonoBehaviour
             return _catalog;
         }
 
+        if (statusCatalogOverride != null)
+        {
+            _catalog = statusCatalogOverride;
+            return _catalog;
+        }
+
         _catalog = Resources.Load<StatusCatalog>("Config/StatusCatalog");
         if (_catalog == null && !_loggedMissingCatalog)
         {
@@ -285,6 +321,11 @@ public class StatusEffectController : MonoBehaviour
 
     private void ApplyToStats(string statusId, StatusRuntimeState state)
     {
+        if (!EnsureStats())
+        {
+            return;
+        }
+
         float perStack = state.definition != null ? state.definition.modifiers.moveSpeedMultiplier : 1f;
         perStack = Mathf.Max(0f, perStack);
 

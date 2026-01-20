@@ -136,7 +136,7 @@ public sealed class InputModeSwitcher : MonoBehaviour
             return;
         }
 
-        if (desired == ControlScheme.Gamepad && !IsMeaningfulGamepadInput(control))
+        if (desired == ControlScheme.Gamepad && !IsMeaningfulGamepadInput(control, eventPtr))
         {
             return;
         }
@@ -249,39 +249,77 @@ public sealed class InputModeSwitcher : MonoBehaviour
         return ControlScheme.Unknown;
     }
 
-    private bool IsMeaningfulGamepadInput(InputControl control)
+    private bool IsMeaningfulGamepadInput(InputControl control, InputEventPtr eventPtr)
     {
         if (control is ButtonControl button)
         {
-            return button.isPressed;
+            // InputUser.onUnpairedDeviceUsed is invoked from InputUser.OnEvent *before* state is applied to the device.
+            // Using `button.isPressed` here would read the previous frame value and miss the first press.
+            try
+            {
+                if (button.ReadValueFromEvent(eventPtr, out float value))
+                {
+                    return value >= button.pressPointOrDefault;
+                }
+
+                // If we can't read from the event (unexpected for a "changed control"), don't block switching.
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         float threshold = Mathf.Max(0f, gamepadAnalogThreshold);
 
-        if (control is StickControl stick)
+        // Covers StickControl/DpadControl/etc.
+        if (control is Vector2Control vec2)
         {
-            Vector2 v = stick.ReadValue();
-            return v.sqrMagnitude >= threshold * threshold;
+            try
+            {
+                if (vec2.ReadValueFromEvent(eventPtr, out Vector2 value))
+                {
+                    return value.sqrMagnitude >= threshold * threshold;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         if (control is AxisControl axis)
         {
-            float v = axis.ReadValue();
-            return Mathf.Abs(v) >= threshold;
+            try
+            {
+                if (axis.ReadValueFromEvent(eventPtr, out float value))
+                {
+                    return Mathf.Abs(value) >= threshold;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
-        // 兜底：处理 Vector2Control/DpadControl 等类型。
+        // 兜底：处理其它 valueType 类型。
         try
         {
             if (control.valueType == typeof(Vector2))
             {
-                Vector2 v = (Vector2)control.ReadValueAsObject();
+                Vector2 v = (Vector2)control.ReadValueFromEventAsObject(eventPtr);
                 return v.sqrMagnitude >= threshold * threshold;
             }
 
             if (control.valueType == typeof(float))
             {
-                float v = (float)control.ReadValueAsObject();
+                float v = (float)control.ReadValueFromEventAsObject(eventPtr);
                 return Mathf.Abs(v) >= threshold;
             }
         }

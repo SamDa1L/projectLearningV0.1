@@ -162,6 +162,7 @@ public class NpcAbilityControllerIntegrationTests
             var dz = dzObj.AddComponent<DetectionZone>();
             dz.detectedColliders.Add(playerCollider);
 
+            // Prefab/运行时约定：PrimaryAttack / SecondaryAttack 至少一个即可；本用例验证 Secondary-only 也能正常施法。
             SetPrivateField(agent, "zoneBindings", new List<DetectionZoneBinding>
             {
                 new DetectionZoneBinding

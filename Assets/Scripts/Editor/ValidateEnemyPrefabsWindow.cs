@@ -17,7 +17,7 @@ using CastleDB.Runtime;
 /// - 核心检查项：
 ///   1. 是否继承EnemyAgentBase
 ///   2. 是否分配了EnemyTuningProfile
-///   3. 是否在zoneBindings中配置了PrimaryAttack检测区（Plan A强制要求）
+///   3. 是否在zoneBindings中配置了 PrimaryAttack / SecondaryAttack 检测区（至少一个）
 ///   4. zoneBindings中的所有zone引用是否有效（非空）
 ///   5. 是否有Animator组件
 ///   6. 是否有Rigidbody2D组件
@@ -26,7 +26,7 @@ using CastleDB.Runtime;
 ///
 /// v0.2改动说明：
 /// - 移除了对primaryDetectionZone字段的检查（该字段已删除）
-/// - 强制检查zoneBindings必须包含至少一个PrimaryAttack
+/// - 强制检查zoneBindings必须包含至少一个 PrimaryAttack / SecondaryAttack
 /// - 新增对zoneBindings配置有效性的验证
 ///
 /// 使用步骤：
@@ -372,7 +372,7 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     /// 验证单个Prefab的完整性（Plan A版本）
     ///
     /// Plan A核心验证：
-    /// - zoneBindings必须包含至少一个PrimaryAttack
+    /// - zoneBindings必须包含至少一个 PrimaryAttack / SecondaryAttack
     /// - zoneBindings中的所有zone引用必须非空
     /// - 不再检查primaryDetectionZone字段（已删除）
     /// </summary>
@@ -409,16 +409,17 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             issueList.Add("Missing TuningProfile");
         }
 
-        // 检查3：Plan A强制要求 - zoneBindings必须包含PrimaryAttack且所有zone有效
+        // 检查3：zoneBindings 至少包含一个有效的 PrimaryAttack / SecondaryAttack
         var zoneBindingsProp = serializedObject.FindProperty("zoneBindings");
         if (zoneBindingsProp == null || zoneBindingsProp.arraySize == 0)
         {
-            issueList.Add("zoneBindings为空（Plan A强制要求：必须在Inspector中配置检测区）");
+            issueList.Add("zoneBindings为空（必须在Inspector中配置检测区，至少一个 PrimaryAttack/SecondaryAttack）");
         }
         else
         {
-            // 检查是否有PrimaryAttack binding
+            // 检查是否有 PrimaryAttack / SecondaryAttack binding
             bool hasPrimaryAttack = false;
+            bool hasSecondaryAttack = false;
             int zoneCount = zoneBindingsProp.arraySize;
 
             for (int i = 0; i < zoneCount; i++)
@@ -433,16 +434,14 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
                     issueList.Add($"zoneBindings[{i}]的zone字段为空（请拖拽DetectionZone组件）");
                 }
 
-                // 检查是否有PrimaryAttack
-                if (roleField.enumValueIndex == (int)DetectionZoneBinding.Role.PrimaryAttack)
-                {
-                    hasPrimaryAttack = true;
-                }
+                var role = (DetectionZoneBinding.Role)roleField.enumValueIndex;
+                if (role == DetectionZoneBinding.Role.PrimaryAttack) hasPrimaryAttack = true;
+                if (role == DetectionZoneBinding.Role.SecondaryAttack) hasSecondaryAttack = true;
             }
 
-            if (!hasPrimaryAttack)
+            if (!hasPrimaryAttack && !hasSecondaryAttack)
             {
-                issueList.Add("zoneBindings中未找到PrimaryAttack（Plan A强制要求至少一个PrimaryAttack用于GetDetectedTargets()）");
+                issueList.Add("zoneBindings中未找到 PrimaryAttack / SecondaryAttack（至少需要一个有效战斗检测区）");
             }
         }
 
@@ -842,7 +841,7 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
     /// 验证Scene中单个敌人实例的完整性（Plan A版本）
     ///
     /// Plan A核心验证：
-    /// - zoneBindings必须包含至少一个PrimaryAttack
+    /// - zoneBindings必须包含至少一个 PrimaryAttack / SecondaryAttack
     /// - zoneBindings中的所有zone引用必须非空
     /// - 不再检查primaryDetectionZone字段（已删除）
     /// </summary>
@@ -859,16 +858,17 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
             issueList.Add("Missing TuningProfile");
         }
 
-        // 检查2：Plan A强制要求 - zoneBindings必须包含PrimaryAttack且所有zone有效
+        // 检查2：zoneBindings 至少包含一个有效的 PrimaryAttack / SecondaryAttack
         var zoneBindingsProp = serializedObject.FindProperty("zoneBindings");
         if (zoneBindingsProp == null || zoneBindingsProp.arraySize == 0)
         {
-            issueList.Add("zoneBindings为空（Plan A强制要求：必须配置检测区）");
+            issueList.Add("zoneBindings为空（必须配置检测区，至少一个 PrimaryAttack/SecondaryAttack）");
         }
         else
         {
-            // 检查是否有PrimaryAttack binding
+            // 检查是否有 PrimaryAttack / SecondaryAttack binding
             bool hasPrimaryAttack = false;
+            bool hasSecondaryAttack = false;
             int zoneCount = zoneBindingsProp.arraySize;
 
             for (int i = 0; i < zoneCount; i++)
@@ -883,16 +883,14 @@ public class ValidateEnemyPrefabsWindow : EditorWindow
                     issueList.Add($"zoneBindings[{i}]的zone字段为空");
                 }
 
-                // 检查是否有PrimaryAttack
-                if (roleField.enumValueIndex == (int)DetectionZoneBinding.Role.PrimaryAttack)
-                {
-                    hasPrimaryAttack = true;
-                }
+                var role = (DetectionZoneBinding.Role)roleField.enumValueIndex;
+                if (role == DetectionZoneBinding.Role.PrimaryAttack) hasPrimaryAttack = true;
+                if (role == DetectionZoneBinding.Role.SecondaryAttack) hasSecondaryAttack = true;
             }
 
-            if (!hasPrimaryAttack)
+            if (!hasPrimaryAttack && !hasSecondaryAttack)
             {
-                issueList.Add("zoneBindings中未找到PrimaryAttack");
+                issueList.Add("zoneBindings中未找到 PrimaryAttack / SecondaryAttack");
             }
         }
 

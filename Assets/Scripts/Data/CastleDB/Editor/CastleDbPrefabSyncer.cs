@@ -883,6 +883,7 @@ public class CastleDbPrefabSyncer : EditorWindow
                 else
                 {
                     bool hasPrimaryAttack = false;
+                    bool hasSecondaryAttack = false;
                     for (int i = 0; i < zoneBindingsProp.arraySize; i++)
                     {
                         var element = zoneBindingsProp.GetArrayElementAtIndex(i);
@@ -890,13 +891,16 @@ public class CastleDbPrefabSyncer : EditorWindow
                         if (role == DetectionZoneBinding.Role.PrimaryAttack)
                         {
                             hasPrimaryAttack = true;
-                            break;
+                        }
+                        else if (role == DetectionZoneBinding.Role.SecondaryAttack)
+                        {
+                            hasSecondaryAttack = true;
                         }
                     }
 
-                    if (!hasPrimaryAttack)
+                    if (!hasPrimaryAttack && !hasSecondaryAttack)
                     {
-                        issues.Add("zoneBindings 缺少 PrimaryAttack 检测区");
+                        issues.Add("zoneBindings 缺少 PrimaryAttack / SecondaryAttack 检测区");
                     }
                 }
             }
