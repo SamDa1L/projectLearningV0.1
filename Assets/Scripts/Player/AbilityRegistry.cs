@@ -318,14 +318,30 @@ public static class AbilityRegistry
     private static IPlayerAbility CreateSummonAbility(
         AbilityCatalogEntry entry,
         PlayerController playerController,
-        AbilityCatalog _,
+        AbilityCatalog catalog,
         Dictionary<string, object> __)
     {
+        AbilitySummonDefinition def = null;
+        if (catalog != null && !string.IsNullOrWhiteSpace(entry.summonId))
+        {
+            if (!catalog.TryGetSummon(entry.summonId, out def) || def == null)
+            {
+                Debug.LogError(
+                    $"[AbilityRegistry] Summon kind missing summon definition for summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(entry.summonId))
+        {
+            Debug.LogError(
+                $"[AbilityRegistry] Summon kind requires AbilityCatalog to resolve summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
+        }
+
         return new SummonAbility(
             playerController,
             entry.id,
             entry.priority,
             entry.enabled,
+            def,
             entry.cooldown,
             entry.paramsJson);
     }

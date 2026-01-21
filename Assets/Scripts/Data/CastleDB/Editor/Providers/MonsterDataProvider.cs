@@ -157,6 +157,7 @@ namespace CastleDB.Editor.Providers
             {
                 id = GetStringValue(dict, "id"),
                 displayName = GetStringValue(dict, "displayName"),
+                faction = GetIntValue(dict, "faction"),
                 prefabName = GetStringValue(dict, "prefabName"),
                 animationTrigger = GetStringValue(dict, "animationTrigger"),
                 castTrigger = GetStringValue(dict, "castTrigger"),
@@ -511,6 +512,17 @@ namespace CastleDB.Editor.Providers
                 if (npc.attackDamage < 0)
                 {
                     errors.Add($"NPC '{npc.id}' 的 attackDamage < 0 ({npc.attackDamage})");
+                }
+
+                // 校验 faction：数据枚举顺序为 0=null，1=enemy，2=friend，3=Neutral。
+                // 约定：MonsterSystem/NPC 的 faction 不允许为 null（=0），否则阻断导入。
+                if (npc.faction < 0 || npc.faction > 3)
+                {
+                    errors.Add($"NPC '{npc.id}' 的 faction 超出范围（0..3）：{npc.faction}");
+                }
+                else if (npc.faction == 0)
+                {
+                    errors.Add($"NPC '{npc.id}' 的 faction 不能为 null（必须为 enemy/friend/Neutral）");
                 }
 
                 if (npc.attackZonePriority < 0)
@@ -1285,7 +1297,7 @@ namespace CastleDB.Editor.Providers
                     builder.Updated(ENEMY_ABILITY_CATALOG_PATH);
                 }
 
-                catalog.ApplyFromCastleDb(_enemyAbilities, _enemyProjectiles, _enemyOnHitSequences, _npcPassiveAbilities);
+                catalog.ApplyFromCastleDb(_enemyAbilities, _enemyProjectiles, null, _enemyOnHitSequences, _npcPassiveAbilities);
                 builder.AddInfo($"EnemyAbilityCatalog: {_enemyAbilities.Count} abilities");
                 builder.AddInfo($"EnemyAbilityProjectiles: {_enemyProjectiles.Count} entries");
                 builder.AddInfo($"EnemyAbilityOnHitSequences: {_enemyOnHitSequences.Count} sequences");

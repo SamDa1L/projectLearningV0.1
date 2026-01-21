@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,28 +20,21 @@ public class Attack : MonoBehaviour
     //{
     //    attackCollider = GetComponent<Collider2D>();
     //}
-
-
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     void OnTriggerEnter2D(Collider2D collision)
     {
-        //����Ƿ��ܱ�����
+        // 检查碰撞目标是否可被伤害
         Damageable damageable = collision.GetComponent<Damageable>();
 
         if (damageable != null) 
         {
+            // 阵营判定：仅对敌对阵营生效，避免友伤（Enemy <-> Friend 才敌对，Neutral 不敌对）。
+            FactionId attackerFaction = FactionUtility.GetFaction(gameObject);
+            FactionId targetFaction = FactionUtility.GetFaction(collision.gameObject);
+            if (!FactionUtility.IsHostile(attackerFaction, targetFaction))
+            {
+                return;
+            }
+
             Vector2 deliveredKnockBack = transform.parent.localScale.x > 0 ? knockback : new Vector2(-knockback.x, knockback.y);
 
             if (attackDamage <= 0)

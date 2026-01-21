@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -35,6 +35,7 @@ namespace CastleDB.Editor.Providers
         // ===== 缓存数据 =====
         private List<AbilityEntry> _abilities = new List<AbilityEntry>();
         private List<AbilityProjectileDefinition> _projectiles = new List<AbilityProjectileDefinition>();
+        private List<AbilitySummonDefinition> _summons = new List<AbilitySummonDefinition>();
         private List<AbilityOnHitSequenceDefinition> _onHitSequences = new List<AbilityOnHitSequenceDefinition>();
         private List<AbilityBuffDefinition> _buffs = new List<AbilityBuffDefinition>();
 
@@ -50,6 +51,7 @@ namespace CastleDB.Editor.Providers
         {
             _abilities.Clear();
             _projectiles.Clear();
+            _summons.Clear();
             _onHitSequences.Clear();
             _buffs.Clear();
 
@@ -65,6 +67,11 @@ namespace CastleDB.Editor.Providers
                     case "AbilityProjectile":
                         _projectiles = ConvertLinesToProjectileDefinitions(sheet.lines);
                         Debug.Log($"[AbilityDataProvider] 解析 AbilityProjectile Sheet：{_projectiles.Count} 条");
+                        break;
+
+                    case "AbilitySummon":
+                        _summons = ConvertLinesToSummonDefinitions(sheet.lines);
+                        Debug.Log($"[AbilityDataProvider] Parsed AbilitySummon Sheet: {_summons.Count}");
                         break;
 
                     case "AbilityOnHitSequence":
@@ -113,6 +120,7 @@ namespace CastleDB.Editor.Providers
                         enabled = GetBoolValue(dict, "enabled"),
                         kind = GetIntValue(dict, "kind"),
                         projectileId = GetStringValue(dict, "projectileId"),
+                        summonId = GetStringValue(dict, "summonId"),
                         buffId = GetStringValue(dict, "buffId"),
                         cooldown = GetFloatValue(dict, "cooldown"),
                         onHitSequenceId = GetStringValue(dict, "onHitSequenceId"),
@@ -145,6 +153,41 @@ namespace CastleDB.Editor.Providers
                         onHitVfxDuration = Mathf.Max(0f, GetFloatValue(dict, "onHitVfxDuration")),
                         onExpireVfxPath = GetStringValue(dict, "onExpireVfxPath"),
                         onExpireVfxDuration = Mathf.Max(0f, GetFloatValue(dict, "onExpireVfxDuration")),
+                        tags = GetStringValue(dict, "tags")
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        private List<AbilitySummonDefinition> ConvertLinesToSummonDefinitions(List<object> lines)
+        {
+            var result = new List<AbilitySummonDefinition>();
+            if (lines == null) return result;
+
+            foreach (var line in lines)
+            {
+                if (line is Dictionary<string, object> dict)
+                {
+                    int spawnRuleRaw = GetIntValue(dict, "spawnRule");
+                    var spawnRule = spawnRuleRaw >= 0 && spawnRuleRaw <= (int)AbilitySummonSpawnRule.Reject
+                        ? (AbilitySummonSpawnRule)spawnRuleRaw
+                        : AbilitySummonSpawnRule.ReplaceOldest;
+
+                    // factionOverride 使用数据枚举：0=null，1=enemy，2=friend，3=Neutral
+                    int factionOverrideRaw = GetIntValueOrDefault(dict, "factionOverride", 0);
+                    FactionId factionOverride = FactionUtility.FromCastleDbFaction(factionOverrideRaw);
+
+                    result.Add(new AbilitySummonDefinition
+                    {
+                        id = GetStringValue(dict, "id"),
+                        prefabPath = GetStringValue(dict, "prefabPath"),
+                        lifetime = GetFloatValue(dict, "lifetime"),
+                        isDead = GetBoolValue(dict, "isDead"),
+                        factionOverride = factionOverride,
+                        maxCount = GetIntValue(dict, "maxCount"),
+                        spawnRule = spawnRule,
                         tags = GetStringValue(dict, "tags")
                     });
                 }
@@ -369,6 +412,69 @@ namespace CastleDB.Editor.Providers
             }
 
             // ===== 7. AbilityBuff 子表校验（0.5 预留） =====
+            var summonIdSet = new HashSet<string>();
+            foreach (var summon in _summons)
+            {
+                if (summon == null)
+                {
+                    errors.Add("AbilitySummon contains null entry (parse failed)");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(summon.id))
+                {
+                    errors.Add("AbilitySummon contains empty id");
+                    continue;
+                }
+
+                if (!summonIdSet.Add(summon.id))
+                {
+                    errors.Add($"AbilitySummon id duplicate: '{summon.id}'");
+                }
+
+                if (string.IsNullOrWhiteSpace(summon.prefabPath))
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' prefabPath is empty");
+                }
+
+                // lifetime 规则：
+                // - >0：时间销毁
+                // - =0：不按时间销毁
+                // - =-1：无时间限制（仅当 isDead=true 时有效；否则仅提示不阻塞）
+                if (summon.lifetime < -1f)
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' lifetime 不能小于 -1（current={summon.lifetime}）");
+                }
+                else if (summon.lifetime < 0f && !Mathf.Approximately(summon.lifetime, -1f))
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' lifetime 仅支持 -1 / 0 / 正数（current={summon.lifetime}）");
+                }
+                else if (Mathf.Approximately(summon.lifetime, -1f) && !summon.isDead)
+                {
+                    Debug.LogWarning($"[AbilityDataProvider] AbilitySummon '{summon.id}' 配置错误：isDead=false 但 lifetime=-1（仅提示，不阻塞导入）");
+                }
+
+                // 校验 factionOverride：允许 null（None）/enemy/friend/Neutral；若出现未知值，视为错误（通常只会在手改 .cdb 时出现）
+                if (summon.factionOverride != FactionId.None
+                    && summon.factionOverride != FactionId.Enemy
+                    && summon.factionOverride != FactionId.Friend
+                    && summon.factionOverride != FactionId.Neutral)
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' factionOverride 非法：{summon.factionOverride}");
+                }
+
+                if (summon.maxCount <= 0)
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' maxCount must be >= 1 (current={summon.maxCount})");
+                }
+
+                int rule = (int)summon.spawnRule;
+                if (rule < (int)AbilitySummonSpawnRule.ReplaceOldest || rule > (int)AbilitySummonSpawnRule.Reject)
+                {
+                    errors.Add($"AbilitySummon '{summon.id}' spawnRule is not supported: {summon.spawnRule}");
+                }
+            }
+
             var buffIdSet = new HashSet<string>();
             foreach (var buff in _buffs)
             {
@@ -479,6 +585,18 @@ namespace CastleDB.Editor.Providers
                         }
                     }
 
+                    if (node.nodeType == AbilityOnHitNodeType.TriggerSummon)
+                    {
+                        if (string.IsNullOrWhiteSpace(node.summonId))
+                        {
+                            errors.Add($"AbilityOnHitSequence '{seq.sequenceId}' TriggerSummon node summonId is empty (order={node.order})");
+                        }
+                        else if (!summonIdSet.Contains(node.summonId))
+                        {
+                            errors.Add($"AbilityOnHitSequence '{seq.sequenceId}' references missing summonId='{node.summonId}' (order={node.order})");
+                        }
+                    }
+
                     if (!string.IsNullOrWhiteSpace(node.paramsJson))
                     {
                         var obj = CastleDbJsonUtil.TryParseJsonObject(node.paramsJson);
@@ -568,34 +686,13 @@ namespace CastleDB.Editor.Providers
 
                 if (kind == AbilityKind.Summon)
                 {
-                    if (string.IsNullOrWhiteSpace(ability.paramsJson))
+                    if (string.IsNullOrWhiteSpace(ability.summonId))
                     {
-                        errors.Add($"Ability '{ability.id}' kind=Summon 但 paramsJson 为空（需要 prefabPath）");
+                        errors.Add($"Ability '{ability.id}' kind=Summon 但 summonId 为空");
                     }
-                    else
+                    else if (!summonIdSet.Contains(ability.summonId))
                     {
-                        var obj = CastleDbJsonUtil.TryParseJsonObject(ability.paramsJson);
-                        if (obj == null)
-                        {
-                            errors.Add($"Ability '{ability.id}' kind=Summon 的 paramsJson 必须是 JSON 对象 ({{...}})");
-                        }
-                        else
-                        {
-                            if (!obj.ContainsKey("prefabPath") || string.IsNullOrWhiteSpace(GetStringValue(obj, "prefabPath")))
-                            {
-                                errors.Add($"Ability '{ability.id}' kind=Summon 缺少或非法 prefabPath（不能为空）");
-                            }
-
-                            if (obj.ContainsKey("lifetime") && GetFloatValue(obj, "lifetime") < 0f)
-                            {
-                                errors.Add($"Ability '{ability.id}' kind=Summon lifetime 不能为负数");
-                            }
-
-                            if (obj.ContainsKey("maxCount") && GetIntValue(obj, "maxCount") <= 0)
-                            {
-                                errors.Add($"Ability '{ability.id}' kind=Summon maxCount 必须 >= 1");
-                            }
-                        }
+                        errors.Add($"Ability '{ability.id}' 引用不存在的 summonId='{ability.summonId}'");
                     }
                 }
 
@@ -661,11 +758,12 @@ namespace CastleDB.Editor.Providers
                 }
 
                 // 应用 CastleDB 数据
-                catalog.ApplyFromCastleDb(_abilities, _projectiles, _onHitSequences, _buffs);
+                catalog.ApplyFromCastleDb(_abilities, _projectiles, _summons, _onHitSequences, _buffs);
 
                 // 记录导入摘要
                 builder.AddInfo($"AbilityCatalog: {_abilities.Count} 个能力配置");
                 builder.AddInfo($"AbilityProjectiles: {_projectiles.Count} 条");
+                builder.AddInfo($"AbilitySummons: {_summons.Count} 条");
                 builder.AddInfo($"AbilityOnHitSequences: {_onHitSequences.Count} 个序列");
                 builder.AddInfo($"AbilityBuffs: {_buffs.Count} 条");
 
@@ -793,6 +891,23 @@ namespace CastleDB.Editor.Providers
                 if (int.TryParse(value?.ToString(), out var result)) return result;
             }
             return 0;
+        }
+
+        private int GetIntValueOrDefault(Dictionary<string, object> dict, string key, int defaultValue)
+        {
+            if (dict == null || string.IsNullOrWhiteSpace(key))
+            {
+                return defaultValue;
+            }
+
+            if (!dict.TryGetValue(key, out var value) || value == null)
+            {
+                return defaultValue;
+            }
+
+            if (value is int i) return i;
+            if (value is long l) return (int)l;
+            return int.TryParse(value.ToString(), out var result) ? result : defaultValue;
         }
 
         private float GetFloatValue(Dictionary<string, object> dict, string key)

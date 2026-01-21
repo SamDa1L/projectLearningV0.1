@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1.0.0
   profileName: Knight
+  faction: 0
   maxHealth: 100
   moveSpeed: 3
   perceptionRadius: 5
@@ -31,7 +32,7 @@ MonoBehaviour:
   enableDeathAnimation: 1
   deathDelay: 1
   animationTrigger: Attack
-  castTrigger: AttackAlt
+  castTrigger: Attack
   useLegacyLogicFallback: 1
   npcAbilities:
   - id: M_Knight_Rage
@@ -44,31 +45,11 @@ MonoBehaviour:
     minRange: 0
     maxRange: 0
     paramsJson: '{"releaseDelay":0.2}'
-  - id: M_Knight_Debuff
-    npcId: M_Knight
-    abilityId: Debuff_Moveslow
-    enabled: 1
-    priority: 100
-    cooldownOverride: 0
-    triggerRole: 1
-    minRange: 0
-    maxRange: 0
-    paramsJson: '{"releaseDelay":0.2}'
   npcPassiveAbilityBindings:
-  - bindingId: M_Knight_Debuff
-    targetMode: 1
-    applyMode: 1
   - bindingId: M_Knight_Rage
     targetMode: 0
     applyMode: 0
   npcPassiveAbilityConditions:
-  - bindingId: M_Knight_Debuff
-    order: 0
-    conditionType: 2
-    floatValue: 0
-    intValue: 1
-    role: 1
-    stringValue: 
   - bindingId: M_Knight_Rage
     order: 0
     conditionType: 0

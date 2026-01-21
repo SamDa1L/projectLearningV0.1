@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CastleDB.Runtime;
 
@@ -25,6 +25,11 @@ public class EnemyTuningProfile : ScriptableObject
     // ===== 版本管理 =====
     [SerializeField] public string version = "1.0.0";
     [SerializeField] public string profileName = "Default Enemy";
+
+    [Header("阵营（0.5 Summon 扩展）")]
+    [SerializeField]
+    [Tooltip("阵营：Enemy/Friend/Neutral。\n规则：Enemy 与 Friend 互为敌对；Neutral 与任何阵营都不敌对。\n注意：导入链路要求 MonsterSystem/NPC 的 faction 不能为 null。")]
+    public FactionId faction = FactionId.Enemy;
 
     // ===== 生命值与移动 =====
     [Header("基础属性")]
@@ -233,6 +238,16 @@ public class EnemyTuningProfile : ScriptableObject
     {
         // ===== 基础信息 =====
         profileName = npc.displayName;
+
+        // MonsterSystem/NPC.faction 使用数据枚举：0=null，1=enemy，2=friend，3=Neutral
+        // 导入侧会阻断 faction=null，但这里仍做兜底，避免异常数据导致运行时行为不可预期。
+        FactionId mappedFaction = FactionUtility.FromCastleDbFaction(npc.faction);
+        if (mappedFaction == FactionId.None)
+        {
+            Debug.LogError($"[EnemyTuningProfile] NPC '{npc.id}' 的 faction 为 null（或非法值：{npc.faction}），请在 MonsterSystem.cdb 中修复。", this);
+            mappedFaction = FactionId.Enemy;
+        }
+        faction = mappedFaction;
 
         // ===== 基础属性（生命值与移动）=====
         maxHealth = npc.maxHealth;

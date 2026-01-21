@@ -55,6 +55,7 @@ public class ActiveBuffAbilityTests
         _catalog.ApplyFromCastleDb(
             abilityEntries: new List<AbilityEntry>(),
             projectileDefinitions: null,
+            summonDefinitions: null,
             onHitSequenceDefinitions: null,
             buffDefinitions: new List<AbilityBuffDefinition>
             {
@@ -113,4 +114,3 @@ public class ActiveBuffAbilityTests
         Assert.AreEqual(1f, _stats.AttackMultiplier, 1e-3f, "buff expired -> rollback");
     }
 }
-

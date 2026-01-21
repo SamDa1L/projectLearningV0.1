@@ -19,6 +19,7 @@ MonoBehaviour:
     enabled: 0
     kind: 1
     projectileId: FireBall_enemy
+    summonId: 
     buffId: Debuff_MoveSlow
     cooldown: 0
     onHitSequenceId: 
@@ -29,6 +30,7 @@ MonoBehaviour:
     enabled: 1
     kind: 2
     projectileId: 
+    summonId: 
     buffId: Knight_Rage_Buff
     cooldown: 0
     onHitSequenceId: 
@@ -39,6 +41,7 @@ MonoBehaviour:
     enabled: 1
     kind: 2
     projectileId: 
+    summonId: 
     buffId: Debuff_MoveSlow
     cooldown: 0
     onHitSequenceId: 
@@ -55,6 +58,7 @@ MonoBehaviour:
     onExpireVfxPath: 
     onExpireVfxDuration: 0.5
     tags: fire
+  summons: []
   onHitSequences: []
   buffs:
   - id: Knight_Rage_Buff

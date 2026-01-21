@@ -99,6 +99,7 @@ public class NpcAbilityControllerIntegrationTests
                         tags = ""
                     }
                 },
+                summonDefinitions: null,
                 onHitSequenceDefinitions: new List<AbilityOnHitSequenceDefinition>(),
                 buffDefinitions: new List<AbilityBuffDefinition>());
 

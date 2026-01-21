@@ -19,6 +19,7 @@ MonoBehaviour:
     enabled: 1
     kind: 0
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 0
     onHitSequenceId: 
@@ -29,6 +30,7 @@ MonoBehaviour:
     enabled: 1
     kind: 0
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 0
     onHitSequenceId: 
@@ -39,6 +41,7 @@ MonoBehaviour:
     enabled: 1
     kind: 0
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 0
     onHitSequenceId: 
@@ -49,6 +52,7 @@ MonoBehaviour:
     enabled: 1
     kind: 0
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 0
     onHitSequenceId: 
@@ -59,6 +63,7 @@ MonoBehaviour:
     enabled: 0
     kind: 0
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 0
     onHitSequenceId: 
@@ -69,6 +74,7 @@ MonoBehaviour:
     enabled: 0
     kind: 1
     projectileId: FireBall_player
+    summonId: 
     buffId: 
     cooldown: 1
     onHitSequenceId: Fireball_Player_OnHit
@@ -79,6 +85,7 @@ MonoBehaviour:
     enabled: 0
     kind: 2
     projectileId: 
+    summonId: 
     buffId: Attr_MoveSpeedUp_Buff
     cooldown: 0
     onHitSequenceId: 
@@ -89,6 +96,7 @@ MonoBehaviour:
     enabled: 0
     kind: 4
     projectileId: 
+    summonId: 
     buffId: 
     cooldown: 1
     onHitSequenceId: 
@@ -99,6 +107,7 @@ MonoBehaviour:
     enabled: 0
     kind: 3
     projectileId: 
+    summonId: 
     buffId: Active_AttackUp_Buff
     cooldown: 5
     onHitSequenceId: 
@@ -109,16 +118,18 @@ MonoBehaviour:
     enabled: 0
     kind: 5
     projectileId: 
+    summonId: ArrowSummon_player
     buffId: 
     cooldown: 2
     onHitSequenceId: 
-    paramsJson: '{"prefabPath":"Prefabs/Projectiles/Player/Arrow","lifetime":5,"maxCount":2,"spawnRule":"ReplaceOldest"}'
+    paramsJson: 
   - id: AttackOverride_Bow
     hookType: 3
     priority: 100
     enabled: 0
     kind: 6
     projectileId: Arrow_player
+    summonId: 
     buffId: 
     cooldown: 0.2
     onHitSequenceId: 
@@ -145,6 +156,15 @@ MonoBehaviour:
     onHitVfxDuration: 0
     onExpireVfxPath: 
     onExpireVfxDuration: 0
+    tags: arrow
+  summons:
+  - id: ArrowSummon_player
+    prefabPath: Prefabs/Enemy/MushroomEnemy/MushroomEnemy
+    lifetime: -1
+    isDead: 1
+    factionOverride: 1
+    maxCount: 2
+    spawnRule: 0
     tags: arrow
   onHitSequences:
   - sequenceId: Fireball_Player_OnHit

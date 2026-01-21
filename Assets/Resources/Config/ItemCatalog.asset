@@ -115,7 +115,7 @@ MonoBehaviour:
   - id: ability_buff_attackup
     displayName: "\u653B\u51FB\u589E\u5F3A"
     itemType: 0
-    icon: 
+    icon: Icons/Items/Skills/Buff_Icons/Attack_up_buff
     abilityId: Buff_AttackUp
     relicId: 
     maxStack: 1
@@ -126,7 +126,7 @@ MonoBehaviour:
   - id: ability_summon_test
     displayName: "\u53EC\u5524\u6D4B\u8BD5"
     itemType: 0
-    icon: 
+    icon: Icons/Items/Skills/Kyrise's 16x16 RPG Icon Pack - V1.3/icons/16x16/skull_01a
     abilityId: Summon_Test
     relicId: 
     maxStack: 1

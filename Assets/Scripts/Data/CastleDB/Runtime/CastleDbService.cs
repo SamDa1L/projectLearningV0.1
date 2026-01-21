@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -421,6 +421,7 @@ namespace CastleDB.Runtime
             {
                 id = GetStringValue(dict, "id"),
                 displayName = GetStringValue(dict, "displayName"),
+                faction = GetIntValue(dict, "faction"),
                 prefabName = GetStringValue(dict, "prefabName"),
                 animationTrigger = GetStringValue(dict, "animationTrigger"),
                 castTrigger = GetStringValue(dict, "castTrigger"),
@@ -465,6 +466,7 @@ namespace CastleDB.Runtime
                         // 0.5: 结构化字段（若不存在则保持默认值）
                         kind = GetIntValue(dict, "kind"),
                         projectileId = GetStringValue(dict, "projectileId"),
+                        summonId = GetStringValue(dict, "summonId"),
                         buffId = GetStringValue(dict, "buffId"),
                         cooldown = GetFloatValue(dict, "cooldown"),
                         onHitSequenceId = GetStringValue(dict, "onHitSequenceId")

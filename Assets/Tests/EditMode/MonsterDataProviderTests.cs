@@ -342,6 +342,7 @@ namespace CastleDB.Tests.EditMode
                             {
                                 { "id", "M_Knight" },
                                 { "displayName", "Knight" },
+                                { "faction", 1 },
                                 { "prefabName", "Knight" },
                                 { "animationTrigger", "Attack" },
                                 { "maxHealth", 100f },
@@ -360,6 +361,7 @@ namespace CastleDB.Tests.EditMode
                             {
                                 { "id", "M_FlyingEye" },
                                 { "displayName", "Flying Eye" },
+                                { "faction", 1 },
                                 { "prefabName", "FlyingEye" },
                                 { "animationTrigger", "Attack" },
                                 { "maxHealth", 50f },
@@ -428,6 +430,7 @@ namespace CastleDB.Tests.EditMode
                             {
                                 { "id", "M_InvalidNpc" },
                                 { "displayName", "Invalid" },
+                                { "faction", 1 },
                                 { "animationTrigger", "Attack" },
                                 { "maxHealth", 0f },  // 无效：maxHealth <= 0
                                 { "attackDamage", 10f },
@@ -459,6 +462,7 @@ namespace CastleDB.Tests.EditMode
                             {
                                 { "id", "M_Knight" },
                                 { "displayName", "Knight" },
+                                { "faction", 1 },
                                 { "animationTrigger", "Attack" },
                                 { "maxHealth", 100f },
                                 { "attackDamage", 20f },

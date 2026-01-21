@@ -1,25 +1,25 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CastleDB.Runtime;
 
 /// <summary>
-/// Summon ability (0.5 Phase 6).
-/// - Uses paramsJson: { "prefabPath":"Prefabs/Enemy/GoblinEnemy/GoblinEnemy", "lifetime":10, "maxCount":2, "spawnRule":"ReplaceOldest" }.
-/// - Cooldown uses AbilityCatalogEntry.cooldown.
+/// 召唤能力（0.5 扩展）。
+/// - 结构化：AbilityCatalogEntry.summonId -> AbilityCatalog.summons
+///   （prefabPath / lifetime / isDead / factionOverride / maxCount / spawnRule）。
+/// - 兼容旧版：当 summonId 缺失（或定义缺失）时，回退读取 paramsJson：
+///   { "prefabPath":"...", "lifetime":10, "isDead":true, "factionOverride":"friend", "maxCount":2, "spawnRule":"ReplaceOldest" }。
+/// - paramsJson 仍支持：{ "animTrigger":"..." }（施法动画 Trigger）。
+/// - 冷却使用 AbilityCatalogEntry.cooldown。
 /// </summary>
 public class SummonAbility : IPlayerAbility
 {
     private const string PrefabPathKey = "prefabPath";
     private const string LifetimeKey = "lifetime";
+    private const string IsDeadKey = "isDead";
+    private const string FactionOverrideKey = "factionOverride";
     private const string MaxCountKey = "maxCount";
     private const string SpawnRuleKey = "spawnRule";
     private const string AnimTriggerKey = "animTrigger";
-
-    private enum SpawnRule
-    {
-        ReplaceOldest = 0,
-        Reject = 1
-    }
 
     private readonly PlayerController _playerController;
     private readonly Animator _animator;
@@ -27,8 +27,10 @@ public class SummonAbility : IPlayerAbility
 
     private readonly string _prefabPath;
     private readonly float _lifetimeSeconds;
+    private readonly bool _isDead;
+    private readonly FactionId _factionOverride;
     private readonly int _maxCount;
-    private readonly SpawnRule _spawnRule;
+    private readonly AbilitySummonSpawnRule _spawnRule;
     private readonly string _animTrigger;
 
     private float _nextReadyTime;
@@ -68,6 +70,7 @@ public class SummonAbility : IPlayerAbility
         string abilityId,
         int priority,
         bool enabled,
+        AbilitySummonDefinition summonDef,
         float cooldownSeconds,
         string paramsJson)
     {
@@ -78,7 +81,46 @@ public class SummonAbility : IPlayerAbility
         AbilityId = abilityId ?? "";
         Priority = priority;
 
-        ParseParams(paramsJson, out _prefabPath, out _lifetimeSeconds, out _maxCount, out _spawnRule, out _animTrigger);
+        string prefabPath = "";
+        float lifetimeSeconds = 0f;
+        bool isDead = false;
+        FactionId factionOverride = FactionId.None;
+        int maxCount = 1;
+        AbilitySummonSpawnRule spawnRule = AbilitySummonSpawnRule.ReplaceOldest;
+        string animTrigger = "";
+
+        Dictionary<string, object> obj = null;
+        if (!string.IsNullOrWhiteSpace(paramsJson))
+        {
+            obj = CastleDbJsonUtil.TryParseJsonObject(paramsJson);
+        }
+
+        if (summonDef != null)
+        {
+            prefabPath = summonDef.prefabPath ?? "";
+            lifetimeSeconds = NormalizeLifetimeSeconds(summonDef.lifetime);
+            isDead = summonDef.isDead;
+            factionOverride = summonDef.factionOverride;
+            maxCount = Mathf.Max(1, summonDef.maxCount);
+            spawnRule = summonDef.spawnRule;
+        }
+        else if (obj != null)
+        {
+            ParseLegacyParams(obj, out prefabPath, out lifetimeSeconds, out isDead, out factionOverride, out maxCount, out spawnRule);
+        }
+
+        if (obj != null && obj.TryGetValue(AnimTriggerKey, out var t) && t != null)
+        {
+            animTrigger = t.ToString()?.Trim() ?? "";
+        }
+
+        _prefabPath = prefabPath;
+        _lifetimeSeconds = lifetimeSeconds;
+        _isDead = isDead;
+        _factionOverride = factionOverride;
+        _maxCount = maxCount;
+        _spawnRule = spawnRule;
+        _animTrigger = animTrigger;
 
         _enabled = false;
         Enabled = enabled;
@@ -132,7 +174,7 @@ public class SummonAbility : IPlayerAbility
         int maxCount = Mathf.Max(1, _maxCount);
         if (_instances.Count >= maxCount)
         {
-            if (_spawnRule == SpawnRule.Reject)
+            if (_spawnRule == AbilitySummonSpawnRule.Reject)
             {
                 return true;
             }
@@ -174,7 +216,19 @@ public class SummonAbility : IPlayerAbility
 
         if (_playerController != null)
         {
-            float dirSign = _playerController.IsFacingRight ? 1f : -1f;
+            // 注意：部分 NPC（如 NpcGroundController）有“移动方向状态机”，只改 scale 会导致“面朝左但向右走”。
+            // 因此优先把“移动方向”设置到控制器上，再做一次 scale 兜底归一化。
+            bool facingRight = _playerController.IsFacingRight;
+
+            var groundController = instance.GetComponent<NpcGroundController>();
+            if (groundController != null)
+            {
+                groundController.WalkDirection = facingRight
+                    ? NpcGroundController.WalkableDirection.Right
+                    : NpcGroundController.WalkableDirection.Left;
+            }
+
+            float dirSign = facingRight ? 1f : -1f;
             Vector3 scale = instance.transform.localScale;
             scale.x = Mathf.Abs(scale.x) * dirSign;
             instance.transform.localScale = scale;
@@ -187,10 +241,28 @@ public class SummonAbility : IPlayerAbility
         }
         marker.abilityId = AbilityId;
 
-        if (_lifetimeSeconds > 0f)
+        // 阵营覆写（可选）：None/null 表示不覆写；Enemy/Friend/Neutral 表示强制覆写
+        FactionId desiredFaction = FactionUtility.GetFaction(instance);
+        if (_factionOverride != FactionId.None)
         {
-            Object.Destroy(instance, _lifetimeSeconds);
+            desiredFaction = _factionOverride;
         }
+
+        var factionMember = instance.GetComponent<FactionMember>();
+        if (factionMember == null)
+        {
+            factionMember = instance.AddComponent<FactionMember>();
+        }
+        factionMember.Faction = desiredFaction;
+        FactionLayerApplier.Apply(instance, desiredFaction);
+
+        // 生命周期：支持 lifetime=-1 + isDead 的组合逻辑（由组件统一处理）
+        var lifetimeController = instance.GetComponent<SummonLifetimeController>();
+        if (lifetimeController == null)
+        {
+            lifetimeController = instance.AddComponent<SummonLifetimeController>();
+        }
+        lifetimeController.Configure(_lifetimeSeconds, _isDead);
 
         _instances.Add(instance);
         return true;
@@ -220,39 +292,123 @@ public class SummonAbility : IPlayerAbility
         _instances.Clear();
     }
 
-    private static void ParseParams(
-        string paramsJson,
+    private static float NormalizeLifetimeSeconds(float lifetimeSeconds)
+    {
+        // -1 表示“无时间限制”，其余负数视为 0（不启用时间销毁）
+        if (lifetimeSeconds > 0f)
+        {
+            return lifetimeSeconds;
+        }
+
+        if (Mathf.Approximately(lifetimeSeconds, -1f))
+        {
+            return -1f;
+        }
+
+        return 0f;
+    }
+
+    private static bool TryParseFactionOverrideString(string raw, out FactionId faction)
+    {
+        faction = FactionId.None;
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        string trimmed = raw.Trim();
+
+        if (string.Equals(trimmed, "null", System.StringComparison.OrdinalIgnoreCase))
+        {
+            faction = FactionId.None;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "enemy", System.StringComparison.OrdinalIgnoreCase))
+        {
+            faction = FactionId.Enemy;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "friend", System.StringComparison.OrdinalIgnoreCase))
+        {
+            faction = FactionId.Friend;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "neutral", System.StringComparison.OrdinalIgnoreCase))
+        {
+            faction = FactionId.Neutral;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static FactionId ParseFactionOverrideLegacyInt(int raw)
+    {
+        // 兼容旧版（0.4 及更早）数字映射：-1=不覆写，0=Enemy，1=Friend，2=Neutral
+        // 注意：此映射与数据枚举（0=null，1=enemy，2=friend，3=Neutral）不同；如需无歧义，推荐在 JSON 中使用字符串枚举。
+        switch (raw)
+        {
+            case 0:
+                return FactionId.Enemy;
+            case 1:
+                return FactionId.Friend;
+            case 2:
+                return FactionId.Neutral;
+            case 3:
+                // 兼容有人按“数据枚举”误填 3=Neutral 的情况
+                return FactionId.Neutral;
+            case -1:
+            default:
+                return FactionId.None;
+        }
+    }
+
+    private static void ParseLegacyParams(
+        Dictionary<string, object> obj,
         out string prefabPath,
         out float lifetimeSeconds,
+        out bool isDead,
+        out FactionId factionOverride,
         out int maxCount,
-        out SpawnRule spawnRule,
-        out string animTrigger)
+        out AbilitySummonSpawnRule spawnRule)
     {
         prefabPath = "";
         lifetimeSeconds = 0f;
+        isDead = false;
+        factionOverride = FactionId.None;
         maxCount = 1;
-        spawnRule = SpawnRule.ReplaceOldest;
-        animTrigger = "";
-
-        if (string.IsNullOrWhiteSpace(paramsJson))
-        {
-            return;
-        }
-
-        Dictionary<string, object> obj = CastleDbJsonUtil.TryParseJsonObject(paramsJson);
-        if (obj == null)
-        {
-            return;
-        }
+        spawnRule = AbilitySummonSpawnRule.ReplaceOldest;
 
         if (obj.TryGetValue(PrefabPathKey, out var p) && p != null)
         {
             prefabPath = p.ToString()?.Trim() ?? "";
         }
 
-        if (TryReadFloat(obj, LifetimeKey, out float lifetime) && lifetime >= 0f)
+        if (TryReadFloat(obj, LifetimeKey, out float lifetime))
         {
-            lifetimeSeconds = lifetime;
+            lifetimeSeconds = NormalizeLifetimeSeconds(lifetime);
+        }
+
+        if (TryReadBool(obj, IsDeadKey, out bool dead))
+        {
+            isDead = dead;
+        }
+
+        if (obj.TryGetValue(FactionOverrideKey, out var rawFactionOverride) && rawFactionOverride != null)
+        {
+            // 字符串枚举优先，避免与旧版数字映射产生歧义
+            if (rawFactionOverride is string s && TryParseFactionOverrideString(s, out var parsedFaction))
+            {
+                factionOverride = parsedFaction;
+            }
+            else if (TryReadInt(obj, FactionOverrideKey, out int factionRaw))
+            {
+                factionOverride = ParseFactionOverrideLegacyInt(factionRaw);
+            }
         }
 
         if (TryReadInt(obj, MaxCountKey, out int count) && count > 0)
@@ -267,18 +423,13 @@ public class SummonAbility : IPlayerAbility
             {
                 if (string.Equals(raw, "Reject", System.StringComparison.OrdinalIgnoreCase))
                 {
-                    spawnRule = SpawnRule.Reject;
+                    spawnRule = AbilitySummonSpawnRule.Reject;
                 }
                 else if (string.Equals(raw, "ReplaceOldest", System.StringComparison.OrdinalIgnoreCase))
                 {
-                    spawnRule = SpawnRule.ReplaceOldest;
+                    spawnRule = AbilitySummonSpawnRule.ReplaceOldest;
                 }
             }
-        }
-
-        if (obj.TryGetValue(AnimTriggerKey, out var t) && t != null)
-        {
-            animTrigger = t.ToString()?.Trim() ?? "";
         }
     }
 
@@ -312,6 +463,44 @@ public class SummonAbility : IPlayerAbility
                 return true;
             case string s:
                 return float.TryParse(s, out value);
+        }
+
+        return false;
+    }
+
+    private static bool TryReadBool(Dictionary<string, object> obj, string key, out bool value)
+    {
+        value = false;
+
+        if (obj == null || string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        if (!obj.TryGetValue(key, out object raw) || raw == null)
+        {
+            return false;
+        }
+
+        switch (raw)
+        {
+            case bool b:
+                value = b;
+                return true;
+            case int i:
+                value = i != 0;
+                return true;
+            case long l:
+                value = l != 0;
+                return true;
+            case float f:
+                value = !Mathf.Approximately(f, 0f);
+                return true;
+            case double d:
+                value = !Mathf.Approximately((float)d, 0f);
+                return true;
+            case string s:
+                return bool.TryParse(s, out value);
         }
 
         return false;

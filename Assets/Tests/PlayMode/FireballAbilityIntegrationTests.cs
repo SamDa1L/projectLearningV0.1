@@ -123,7 +123,8 @@ public class FireballAbilityIntegrationTests
             abilityCatalog.ApplyFromCastleDb(
                 abilityEntries,
                 projectileDefs,
-                onHitSequences,
+                summonDefinitions: null,
+                onHitSequenceDefinitions: onHitSequences,
                 buffDefinitions: new List<AbilityBuffDefinition>());
 
             var abilitySystem = new AbilitySystem();
@@ -221,4 +222,3 @@ public class FireballAbilityIntegrationTests
         }
     }
 }
-

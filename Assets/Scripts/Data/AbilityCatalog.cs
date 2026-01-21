@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CastleDB.Runtime;
 
@@ -13,7 +13,7 @@ public enum AbilityKind
     StatModifier = 2,
     Buff = 3,
 
-    // Phase 6（0.5.x）：扩展主动技能类型（保持追加，避免破坏既有枚举值）
+    // 0.5 Phase 6：扩展主动技能类型（保持追加，避免破坏既有枚举值）
     Dash = 4,
     Summon = 5,
     AttackOverride = 6
@@ -36,6 +36,47 @@ public class AbilityProjectileDefinition
     public float onHitVfxDuration;
     public string onExpireVfxPath;
     public float onExpireVfxDuration;
+    public string tags;
+}
+
+public enum AbilitySummonSpawnRule
+{
+    ReplaceOldest = 0,
+    Reject = 1
+}
+
+/// <summary>
+/// 召唤物定义（0.5）
+/// 对应 PlayerAbility.cdb/AbilitySummon。
+/// </summary>
+[System.Serializable]
+public class AbilitySummonDefinition
+{
+    public string id;
+    public string prefabPath;
+    /// <summary>
+    /// 召唤物持续时间（秒）：
+    /// - > 0：时间到销毁
+    /// - = 0：不启用“时间销毁”
+    /// - = -1：无时间限制（由 isDead 控制；当 isDead=false 时视为错误配置，仅提示不阻塞）
+    /// </summary>
+    public float lifetime;
+
+    /// <summary>
+    /// 是否启用“死亡销毁”：
+    /// - true：当 Damageable.Health <= 0 触发死亡事件时销毁
+    /// - 可与 lifetime 组合，实现“死亡或时间到任一触发即销毁”的逻辑
+    /// </summary>
+    public bool isDead;
+
+    /// <summary>
+    /// 阵营覆写（可选）：
+    /// - None：不覆写（使用怪物默认阵营/预制体默认阵营）
+    /// - Enemy/Friend/Neutral：强制覆写召唤物阵营
+    /// </summary>
+    public FactionId factionOverride = FactionId.None;
+    public int maxCount = 1;
+    public AbilitySummonSpawnRule spawnRule;
     public string tags;
 }
 
@@ -123,6 +164,9 @@ public class AbilityCatalogEntry
     /// <summary>投射物定义 ID（kind=Projectile 时使用）</summary>
     public string projectileId;
 
+    /// <summary>召唤物定义 ID（kind=Summon 时使用）</summary>
+    public string summonId;
+
     /// <summary>Buff 定义 ID（kind=Buff/StatModifier 时使用）</summary>
     public string buffId;
 
@@ -165,6 +209,9 @@ public class AbilityCatalog : ScriptableObject
     public List<AbilityProjectileDefinition> projectiles = new List<AbilityProjectileDefinition>();
 
     [SerializeField]
+    public List<AbilitySummonDefinition> summons = new List<AbilitySummonDefinition>();
+
+    [SerializeField]
     public List<AbilityOnHitSequenceDefinition> onHitSequences = new List<AbilityOnHitSequenceDefinition>();
 
     [SerializeField]
@@ -172,6 +219,9 @@ public class AbilityCatalog : ScriptableObject
 
     [System.NonSerialized]
     private Dictionary<string, AbilityProjectileDefinition> _projectilesById;
+
+    [System.NonSerialized]
+    private Dictionary<string, AbilitySummonDefinition> _summonsById;
 
     [System.NonSerialized]
     private Dictionary<string, AbilityOnHitSequenceDefinition> _onHitSequencesById;
@@ -204,6 +254,23 @@ public class AbilityCatalog : ScriptableObject
         }
 
         return _projectilesById.TryGetValue(projectileId, out def);
+    }
+
+    public bool TryGetSummon(string summonId, out AbilitySummonDefinition def)
+    {
+        def = null;
+
+        if (_summonsById == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(summonId))
+        {
+            return false;
+        }
+
+        return _summonsById.TryGetValue(summonId, out def);
     }
 
     public bool TryGetOnHitSequence(string sequenceId, out AbilityOnHitSequenceDefinition seq)
@@ -247,6 +314,7 @@ public class AbilityCatalog : ScriptableObject
     public void ApplyFromCastleDb(
         List<AbilityEntry> abilityEntries,
         List<AbilityProjectileDefinition> projectileDefinitions,
+        List<AbilitySummonDefinition> summonDefinitions,
         List<AbilityOnHitSequenceDefinition> onHitSequenceDefinitions,
         List<AbilityBuffDefinition> buffDefinitions)
     {
@@ -276,6 +344,7 @@ public class AbilityCatalog : ScriptableObject
                 enabled = dto.enabled,
                 kind = kind,
                 projectileId = dto.projectileId ?? "",
+                summonId = dto.summonId ?? "",
                 buffId = dto.buffId ?? "",
                 cooldown = dto.cooldown,
                 onHitSequenceId = dto.onHitSequenceId ?? "",
@@ -286,6 +355,7 @@ public class AbilityCatalog : ScriptableObject
         }
 
         projectiles = projectileDefinitions ?? new List<AbilityProjectileDefinition>();
+        summons = summonDefinitions ?? new List<AbilitySummonDefinition>();
         onHitSequences = onHitSequenceDefinitions ?? new List<AbilityOnHitSequenceDefinition>();
         buffs = buffDefinitions ?? new List<AbilityBuffDefinition>();
 
@@ -299,6 +369,7 @@ public class AbilityCatalog : ScriptableObject
         _isValid = false;
 
         _projectilesById = new Dictionary<string, AbilityProjectileDefinition>();
+        _summonsById = new Dictionary<string, AbilitySummonDefinition>();
         _onHitSequencesById = new Dictionary<string, AbilityOnHitSequenceDefinition>();
         _buffsById = new Dictionary<string, AbilityBuffDefinition>();
 
@@ -310,6 +381,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found null projectile definition, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -319,6 +391,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found projectile with empty id, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -328,12 +401,52 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError($"[AbilityCatalog] Duplicate projectile id detected: '{proj.id}', resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
                 }
 
                 _projectilesById[proj.id] = proj;
+            }
+        }
+
+        if (summons != null)
+        {
+            foreach (var summon in summons)
+            {
+                if (summon == null)
+                {
+                    Debug.LogError("[AbilityCatalog] Found null summon definition, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _summonsById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(summon.id))
+                {
+                    Debug.LogError("[AbilityCatalog] Found summon with empty id, resource is corrupted!", this);
+                    _projectilesById = null;
+                    _summonsById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                if (_summonsById.ContainsKey(summon.id))
+                {
+                    Debug.LogError($"[AbilityCatalog] Duplicate summon id detected: '{summon.id}', resource is corrupted!", this);
+                    _projectilesById = null;
+                    _summonsById = null;
+                    _onHitSequencesById = null;
+                    _buffsById = null;
+                    return;
+                }
+
+                summon.maxCount = Mathf.Max(1, summon.maxCount);
+                _summonsById[summon.id] = summon;
             }
         }
 
@@ -345,6 +458,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found null onHitSequence, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -354,6 +468,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found onHitSequence with empty sequenceId, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -363,6 +478,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError($"[AbilityCatalog] Duplicate onHitSequence id detected: '{seq.sequenceId}', resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -380,6 +496,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found null buff definition, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -389,6 +506,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError("[AbilityCatalog] Found buff with empty id, resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;
@@ -398,6 +516,7 @@ public class AbilityCatalog : ScriptableObject
                 {
                     Debug.LogError($"[AbilityCatalog] Duplicate buff id detected: '{buff.id}', resource is corrupted!", this);
                     _projectilesById = null;
+                    _summonsById = null;
                     _onHitSequencesById = null;
                     _buffsById = null;
                     return;

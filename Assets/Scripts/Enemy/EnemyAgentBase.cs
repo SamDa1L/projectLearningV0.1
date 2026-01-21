@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
@@ -108,11 +108,10 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
             return true;
         }
 
-        // SecondaryAttack 不走事件驱动（避免每个敌人都写额外绑定），直接读取检测列表即可。
-        var secondaryZone = GetZone(DetectionZoneBinding.Role.SecondaryAttack);
-        return secondaryZone != null
-               && secondaryZone.detectedColliders != null
-               && secondaryZone.detectedColliders.Count > 0;
+        // SecondaryAttack 不走事件驱动（避免每个敌人都写额外绑定）。
+        // 这里使用“阵营过滤后的目标列表”，避免把友军/中立也计入“战斗中”。
+        var secondaryTargets = GetDetectedTargetsForRole(DetectionZoneBinding.Role.SecondaryAttack);
+        return secondaryTargets != null && secondaryTargets.Count > 0;
     }
 
     // ===== 2A 数值缓存（由 ApplyTuningProfile 填充）=====
@@ -207,11 +206,12 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
     {
         if (_primaryAttackZone != null)
         {
-            _hasTarget = _primaryAttackZone.detectedColliders.Count > 0;
+            int hostileCount = CountHostileColliders(_primaryAttackZone.detectedColliders);
+            _hasTarget = hostileCount > 0;
 
             if (debugStateOverlay)
             {
-                Debug.Log($"[{gameObject.name}] PrimaryAttack 目标变化：hasTarget={_hasTarget}, count={_primaryAttackZone.detectedColliders.Count}");
+                Debug.Log($"[{gameObject.name}] PrimaryAttack 目标变化：hasTarget={_hasTarget}, hostileCount={hostileCount}, rawCount={_primaryAttackZone.detectedColliders.Count}");
             }
         }
     }
@@ -448,6 +448,16 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         if (tuningProfile == null)
             return;
 
+        // ===== 应用阵营（0.5 Summon 扩展）=====
+        // 说明：项目的战斗/检测依赖 Layer 碰撞矩阵，因此阵营需要映射到 Layer。
+        var factionMember = GetComponent<FactionMember>();
+        if (factionMember == null)
+        {
+            factionMember = gameObject.AddComponent<FactionMember>();
+        }
+        factionMember.Faction = tuningProfile.faction;
+        FactionLayerApplier.Apply(gameObject, factionMember.Faction);
+
         // ===== 填充运行时数值缓存 =====
         _moveSpeed = tuningProfile.moveSpeed;
         _attackDamage = tuningProfile.attackDamage;
@@ -620,6 +630,68 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
 
     // ===== IAgentPerception 接口实现 =====
 
+    // ===== 阵营过滤（0.5 Summon 扩展）=====
+    // 说明：敌对关系只允许 Enemy <-> Friend；其余组合均不敌对（含 Neutral）。
+    // 这里对“检测目标”进行过滤，避免友军/中立单位被当作战斗目标。
+
+    private FactionId GetSelfFaction()
+    {
+        return FactionUtility.GetFaction(gameObject);
+    }
+
+    private static bool IsHostileCollider(Collider2D col, FactionId selfFaction)
+    {
+        if (col == null)
+        {
+            return false;
+        }
+
+        FactionId targetFaction = FactionUtility.GetFaction(col.gameObject);
+        return FactionUtility.IsHostile(selfFaction, targetFaction);
+    }
+
+    private int CountHostileColliders(List<Collider2D> colliders)
+    {
+        if (colliders == null || colliders.Count == 0)
+        {
+            return 0;
+        }
+
+        FactionId selfFaction = GetSelfFaction();
+        int count = 0;
+
+        for (int i = 0; i < colliders.Count; i++)
+        {
+            if (IsHostileCollider(colliders[i], selfFaction))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private List<Collider2D> FilterHostileColliders(List<Collider2D> colliders)
+    {
+        var result = new List<Collider2D>();
+        if (colliders == null || colliders.Count == 0)
+        {
+            return result;
+        }
+
+        FactionId selfFaction = GetSelfFaction();
+        for (int i = 0; i < colliders.Count; i++)
+        {
+            var col = colliders[i];
+            if (IsHostileCollider(col, selfFaction))
+            {
+                result.Add(col);
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// 获取默认战斗检测区的检测目标（优先 PrimaryAttack，回退 SecondaryAttack）
     ///
@@ -639,13 +711,13 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         var primary = GetZone(DetectionZoneBinding.Role.PrimaryAttack);
         if (primary != null && primary.detectedColliders != null)
         {
-            return primary.detectedColliders;
+            return FilterHostileColliders(primary.detectedColliders);
         }
 
         var secondary = GetZone(DetectionZoneBinding.Role.SecondaryAttack);
         if (secondary != null && secondary.detectedColliders != null)
         {
-            return secondary.detectedColliders;
+            return FilterHostileColliders(secondary.detectedColliders);
         }
 
         return new List<Collider2D>();
@@ -687,7 +759,7 @@ public abstract class EnemyAgentBase : MonoBehaviour, IAgentPerception, IDamageR
         foreach (var binding in zoneBindings)
         {
             if (binding.role == role && binding.zone != null)
-                return binding.zone.detectedColliders;
+                return FilterHostileColliders(binding.zone.detectedColliders);
         }
 
         // 未找到该角色的检测区，返回空列表

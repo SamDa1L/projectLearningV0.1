@@ -56,6 +56,10 @@
 					"display": null
 				},
 				{
+					"typeStr": "5:null,enemy,friend,Neutral",
+					"name": "faction"
+				},
+				{
 					"typeStr": "1",
 					"name": "prefabName",
 					"display": null
@@ -129,9 +133,10 @@
 				{
 					"id": "M_Knight",
 					"displayName": "Knight",
+					"faction": 1,
 					"prefabName": "KnightEnemy",
 					"animationTrigger": "Attack",
-					"castTrigger": "AttackAlt",
+					"castTrigger": "",
 					"maxHealth": 100,
 					"attackDamage": 10,
 					"moveSpeed": 3,
@@ -149,6 +154,7 @@
 				{
 					"id": "M_FlyingEye",
 					"displayName": "FlyingEye",
+					"faction": 1,
 					"prefabName": "FlyingEye",
 					"animationTrigger": "Attack",
 					"castTrigger": "Attack",
@@ -169,9 +175,10 @@
 				{
 					"id": "M_Goblin",
 					"displayName": "Goblin",
+					"faction": 1,
 					"prefabName": "Goblin",
 					"animationTrigger": "Attack",
-					"castTrigger": "Attack",
+					"castTrigger": "AttackAlt",
 					"maxHealth": 60,
 					"attackDamage": 25,
 					"moveSpeed": 2.5,
@@ -189,6 +196,7 @@
 				{
 					"id": "M_Mushroom",
 					"displayName": "Mushroom",
+					"faction": 1,
 					"prefabName": "Mushroom",
 					"animationTrigger": "Attack",
 					"castTrigger": "AttackAlt",
@@ -241,12 +249,6 @@
 					"role": 0
 				},
 				{
-					"id": "M_Knight_DZ_Ability",
-					"npcId": "M_Knight",
-					"childId": "DZ_Ability",
-					"role": 1
-				},
-				{
 					"id": "M_FlyingEye_DZ",
 					"npcId": "M_FlyingEye",
 					"role": 0,
@@ -255,6 +257,12 @@
 				{
 					"id": "M_Mushroom_DZ_Ability",
 					"npcId": "M_Mushroom",
+					"role": 1,
+					"childId": "DZ_Ability"
+				},
+				{
+					"id": "M_Goblin_DZ_Debuff",
+					"npcId": "M_Goblin",
 					"role": 1,
 					"childId": "DZ_Ability"
 				}
@@ -343,7 +351,7 @@
 				},
 				{
 					"id": "M_Knight_Debuff",
-					"npcId": "M_Knight",
+					"npcId": "M_Goblin",
 					"abilityId": "Debuff_Moveslow",
 					"enabled": true,
 					"priority": 100,

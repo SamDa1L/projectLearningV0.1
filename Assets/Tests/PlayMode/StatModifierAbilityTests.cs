@@ -66,7 +66,7 @@ public class StatModifierAbilityTests
             }
         };
 
-        _catalog.ApplyFromCastleDb(new List<AbilityEntry>(), null, null, buffDefs);
+        _catalog.ApplyFromCastleDb(new List<AbilityEntry>(), null, null, null, buffDefs);
 
         var entry = new AbilityCatalogEntry
         {
@@ -99,4 +99,3 @@ public class StatModifierAbilityTests
         yield return null;
     }
 }
-

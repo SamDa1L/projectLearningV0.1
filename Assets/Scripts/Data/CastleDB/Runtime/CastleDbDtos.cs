@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -84,6 +84,14 @@ namespace CastleDB.Runtime
 
         [SerializeField]
         public string displayName;
+
+        /// <summary>
+        /// 阵营（枚举值，JSON 中以 int 存储）。
+        /// 约定（数据枚举顺序）：0=null，1=enemy，2=friend，3=Neutral。
+        /// 注意：MonsterSystem/NPC 的 faction 不允许为 null（导入时会阻断）。
+        /// </summary>
+        [SerializeField]
+        public int faction;
 
         [SerializeField]
         public string prefabName;
@@ -277,6 +285,9 @@ namespace CastleDB.Runtime
 
         [SerializeField]
         public string projectileId;
+
+        [SerializeField]
+        public string summonId;
 
         [SerializeField]
         public string buffId;

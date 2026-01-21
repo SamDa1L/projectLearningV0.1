@@ -81,6 +81,7 @@ public class AttackOverrideAbilityTests
                     tags = ""
                 }
             },
+            summonDefinitions: null,
             onHitSequenceDefinitions: null,
             buffDefinitions: new List<AbilityBuffDefinition>());
 
@@ -154,4 +155,3 @@ public class AttackOverrideAbilityTests
         Assert.AreEqual(0, Object.FindObjectsOfType<AbilityProjectileController>(true).Length);
     }
 }
-
