@@ -105,6 +105,9 @@ public class NpcAbilityControllerIntegrationTests
 
             // ===== Profile (in-memory) =====
             profile = ScriptableObject.CreateInstance<EnemyTuningProfile>();
+            // EnemyAgentBase filters detected targets by hostile factions (Enemy <-> Friend).
+            // Make the test intent explicit so future default changes don't break it.
+            profile.faction = FactionId.Enemy;
             profile.attackRange = 10f;
             profile.animationTrigger = "Attack";
             profile.npcAbilities = new List<NpcAbilityEntry>
@@ -132,6 +135,7 @@ public class NpcAbilityControllerIntegrationTests
 
             // ===== Player target =====
             player = new GameObject("Player");
+            player.AddComponent<FactionMember>().Faction = FactionId.Friend;
             var playerCollider = player.AddComponent<BoxCollider2D>();
             playerCollider.isTrigger = false;
 

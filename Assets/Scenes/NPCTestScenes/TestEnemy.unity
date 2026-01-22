@@ -25707,17 +25707,12 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3031806397556506238, guid: 05730c98d2a30e7479d79ca0ae4c9d71, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -1.48
-      objectReference: {fileID: 0}
     - target: {fileID: 4134758838270076137, guid: 05730c98d2a30e7479d79ca0ae4c9d71, type: 3}
       propertyPath: m_Name
       value: MushroomEnemy
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects:
-    - {fileID: 4810403046032305334, guid: 05730c98d2a30e7479d79ca0ae4c9d71, type: 3}
+    m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 05730c98d2a30e7479d79ca0ae4c9d71, type: 3}

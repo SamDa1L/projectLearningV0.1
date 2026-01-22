@@ -75,6 +75,25 @@ public class AbilityProjectileControllerTests
         return projectile;
     }
 
+    private static void SetHostileFactions(GameObject owner, GameObject target)
+    {
+        // AbilityProjectileController only applies damage to hostile factions (Enemy <-> Friend).
+        // Tests that assert damage must set factions explicitly; otherwise both default to Neutral.
+        var ownerMember = owner.GetComponent<FactionMember>();
+        if (ownerMember == null)
+        {
+            ownerMember = owner.AddComponent<FactionMember>();
+        }
+        ownerMember.Faction = FactionId.Friend;
+
+        var targetMember = target.GetComponent<FactionMember>();
+        if (targetMember == null)
+        {
+            targetMember = target.AddComponent<FactionMember>();
+        }
+        targetMember.Faction = FactionId.Enemy;
+    }
+
     [Test]
     public void ProjectileHit_AppliesDamageAndStatus()
     {
@@ -89,6 +108,7 @@ public class AbilityProjectileControllerTests
             statusCatalog = CreateStatusCatalog();
 
             target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
+            SetHostileFactions(owner, target);
 
             var def = new AbilityProjectileDefinition
             {
@@ -153,6 +173,7 @@ public class AbilityProjectileControllerTests
             statusCatalog = CreateStatusCatalog();
             target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
             target.transform.SetParent(root.transform);
+            SetHostileFactions(owner, target);
 
             var def = new AbilityProjectileDefinition
             {
@@ -214,6 +235,7 @@ public class AbilityProjectileControllerTests
             statusCatalog = CreateStatusCatalog();
             target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
             target.transform.SetParent(owner.transform);
+            SetHostileFactions(owner, target);
 
             var def = new AbilityProjectileDefinition
             {
@@ -271,6 +293,7 @@ public class AbilityProjectileControllerTests
             statusCatalog = CreateStatusCatalog();
 
             target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
+            SetHostileFactions(owner, target);
 
             int enemyHitBoxLayer = LayerMask.NameToLayer("EnemyHitBox");
             Assert.GreaterOrEqual(enemyHitBoxLayer, 0, "Layer 'EnemyHitBox' not defined in TagManager");
@@ -330,6 +353,7 @@ public class AbilityProjectileControllerTests
             statusCatalog = CreateStatusCatalog();
 
             target = CreateTarget(statusCatalog, out var damageable, out var statusController, out var statLayer, out var targetCollider);
+            SetHostileFactions(owner, target);
 
             int enemyHitBoxLayer = LayerMask.NameToLayer("EnemyHitBox");
             Assert.GreaterOrEqual(enemyHitBoxLayer, 0, "Layer 'EnemyHitBox' not defined in TagManager");

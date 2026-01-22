@@ -55,6 +55,9 @@ public class FireballAbilityIntegrationTests
             // ===== Player setup =====
             player = new GameObject("TestPlayer");
             player.SetActive(false);
+            // AbilityProjectileController only deals damage to hostile factions (Enemy <-> Friend).
+            // Tests must set factions explicitly; otherwise new GameObjects default to Neutral.
+            player.AddComponent<FactionMember>().Faction = FactionId.Friend;
             player.AddComponent<Rigidbody2D>();
             player.AddComponent<TouchingDirections>();
             player.AddComponent<Damageable>();
@@ -181,6 +184,7 @@ public class FireballAbilityIntegrationTests
             statusCatalog = CreateTestStatusCatalog();
 
             target = new GameObject("Target");
+            target.AddComponent<FactionMember>().Faction = FactionId.Enemy;
             var targetCollider = target.AddComponent<BoxCollider2D>();
             targetCollider.isTrigger = false;
 

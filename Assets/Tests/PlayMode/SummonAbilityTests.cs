@@ -257,14 +257,32 @@ public class SummonAbilityTests
 
         int playerLayer = LayerMask.NameToLayer("Player");
         int playerHitBoxLayer = LayerMask.NameToLayer("PlayerHitBox");
+        int groundDetectionLayer = LayerMask.NameToLayer("GroundDetection");
         Assert.GreaterOrEqual(playerLayer, 0, "Layer 'Player' missing");
         Assert.GreaterOrEqual(playerHitBoxLayer, 0, "Layer 'PlayerHitBox' missing");
+        Assert.GreaterOrEqual(groundDetectionLayer, 0, "Layer 'GroundDetection' missing");
 
         Assert.AreEqual(playerLayer, marker.gameObject.layer, "Summoned Friend unit root layer should be Player");
 
         foreach (var zone in marker.GetComponentsInChildren<DetectionZone>(true))
         {
-            Assert.AreEqual(playerHitBoxLayer, zone.gameObject.layer, "Summoned Friend unit DetectionZone should be on PlayerHitBox layer");
+            if (zone == null)
+            {
+                continue;
+            }
+
+            // Only combat-related zones should be remapped to PlayerHitBox.
+            // Ground probe zones (e.g. cliff/wall) must stay on GroundDetection for correct physics filtering.
+            string zoneName = zone.gameObject != null ? zone.gameObject.name : "";
+            bool isGroundProbe = zoneName == "DZ_Cliff" || zoneName == "DZ_Wall";
+
+            int expectedLayer = isGroundProbe ? groundDetectionLayer : playerHitBoxLayer;
+            Assert.AreEqual(
+                expectedLayer,
+                zone.gameObject.layer,
+                isGroundProbe
+                    ? "Summoned Friend unit ground DetectionZone should stay on GroundDetection layer"
+                    : "Summoned Friend unit combat DetectionZone should be on PlayerHitBox layer");
         }
 
         foreach (var atk in marker.GetComponentsInChildren<Attack>(true))
