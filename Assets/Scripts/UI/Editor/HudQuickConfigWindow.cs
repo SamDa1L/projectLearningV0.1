@@ -11,7 +11,7 @@ using System.Text;
 /// 契约 [C-Tool-1]：创建模板 / 自动绑定 / 校验
 ///
 /// 功能：
-/// - 创建模板：生成 HUD 模板 Prefab（Resources/Prefabs/UI/UITemplates）并更新 HudBinding.asset
+/// - 创建模板：生成 HUD 模板 Prefab（非 Resources：Assets/_Generated/HUDTemplates）并更新 HudBinding.asset
 /// - 自动绑定：自动绑定 HudRefs 字段（按固定路径）
 /// - 校验：校验节点完整性（符合 [C-UI-1]/[C-UI-2]）
 ///
@@ -25,7 +25,8 @@ public class HudQuickConfigWindow : EditorWindow
     private const string TEMPLATE_DIR = "Assets/Editor/HUDTemplates";
     private const string CURRENT_TEMPLATE_PATH = "Assets/Editor/HUDTemplates/HUDCanvas_Snapshot.prefab";
     private const string CURRENT_TEMPLATE_NAME = "当前HUDCanvas";
-    private const string TEMPLATE_OUTPUT_DIR = "Assets/Resources/Prefabs/UI/UITemplates";
+    // Templates are editor-generated snapshots; keep them out of Resources to avoid bloating builds.
+    private const string TEMPLATE_OUTPUT_DIR = "Assets/_Generated/HUDTemplates";
 
     // 日志前缀
     private const string LOG_PREFIX = "[HUDQuickConfig]";
@@ -65,7 +66,7 @@ public class HudQuickConfigWindow : EditorWindow
 
         EditorGUILayout.HelpBox(
             "此工具生成 HUD 模板与绑定资源：\n" +
-            "- HUD 模板 Prefab (Assets/Resources/Prefabs/UI/UITemplates/)\n" +
+            "- HUD 模板 Prefab (Assets/_Generated/HUDTemplates/)\n" +
             "- HudBinding.asset (Assets/Resources/Config/)\n\n" +
             "不会覆盖现有 HUDCanvas.prefab",
             MessageType.Info

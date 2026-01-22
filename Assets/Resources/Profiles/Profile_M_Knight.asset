@@ -15,7 +15,7 @@ MonoBehaviour:
   version: 1.0.0
   profileName: Knight
   faction: 0
-  maxHealth: 100
+  maxHealth: 1
   moveSpeed: 3
   perceptionRadius: 5
   attackRange: 10
@@ -23,14 +23,14 @@ MonoBehaviour:
   attackCooldown: 0.25
   attackZonePriority: 0
   abilityZonePriority: 0
-  knockbackForce: {x: 5, y: 3}
+  knockbackForce: {x: 20, y: 10}
   patrolDistance: 4
   hitRecoveryDelay: 0.5
   invulnerableFrameDuration: 0.5
   knockbackMultiplier: 3
   knockbackToPlayer: 1
   enableDeathAnimation: 1
-  deathDelay: 1
+  deathDelay: 99
   animationTrigger: Attack
   castTrigger: Attack
   useLegacyLogicFallback: 1

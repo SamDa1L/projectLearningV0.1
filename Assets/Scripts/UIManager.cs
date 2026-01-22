@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 /// 0.45 方案 B 单 prefab 版本：统一管理所有浮动文字
 /// 所有伤害/治疗数字使用同一个 FloatingText.prefab
 /// </summary>
-public class UIManager : MonoBehaviour
+public class UIManager : MonoBehaviour, IHealthTextRecycler
 {
     /// <summary>
     /// 0.45 修正：统一的浮动文字 prefab（必须包含 HealthText.cs 和 TMP_Text）
@@ -41,6 +41,18 @@ public class UIManager : MonoBehaviour
     /// </summary>
     [Tooltip("世界坐标转换用相机（优先使用，空则回退到 Camera.main）")]
     public Camera worldCamera;
+
+    [Header("Floating Text Pool (0.5)")]
+    [Tooltip("If enabled, floating texts are recycled instead of Destroy to reduce Instantiate/GC churn.")]
+    public bool useFloatingTextPool = true;
+
+    [Min(0)]
+    public int floatingTextPoolMaxSize = 32;
+
+    public int FloatingTextInstantiateCount { get; private set; }
+    public int FloatingTextReuseCount { get; private set; }
+
+    private readonly Stack<GameObject> _floatingTextPool = new Stack<GameObject>();
 
     private InputAction _escapeAction;
 
@@ -284,6 +296,54 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    private GameObject GetFloatingTextInstance(RectTransform parentRect)
+    {
+        if (useFloatingTextPool)
+        {
+            while (_floatingTextPool.Count > 0)
+            {
+                GameObject pooled = _floatingTextPool.Pop();
+                if (pooled == null)
+                {
+                    continue;
+                }
+
+                FloatingTextReuseCount++;
+                pooled.transform.SetParent(parentRect, false);
+                pooled.SetActive(true);
+                return pooled;
+            }
+        }
+
+        FloatingTextInstantiateCount++;
+        return Instantiate(floatingTextPrefab, parentRect);
+    }
+
+    public void Recycle(HealthText text)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        GameObject go = text.gameObject;
+
+        if (!useFloatingTextPool || floatingTextPoolMaxSize <= 0)
+        {
+            Destroy(go);
+            return;
+        }
+
+        if (_floatingTextPool.Count >= floatingTextPoolMaxSize)
+        {
+            Destroy(go);
+            return;
+        }
+
+        go.SetActive(false);
+        _floatingTextPool.Push(go);
+    }
+
     private void ShowFloatingText(FloatingTextKind kind, int amount, Vector2 worldPos)
     {
         if (gameCanvas == null)
@@ -345,7 +405,7 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        GameObject go = Instantiate(floatingTextPrefab, parentRect);
+        GameObject go = GetFloatingTextInstance(parentRect);
         RectTransform goRect = go.transform as RectTransform;
         if (goRect == null)
         {
@@ -369,50 +429,57 @@ public class UIManager : MonoBehaviour
         {
             tmpText.text = displayAmount.ToString();
             tmpText.color = kind == FloatingTextKind.Heal ? Color.green : Color.red;
-            return;
-        }
-
-        var textStyle = style.textStyle;
-
-        if (textStyle.fontAsset != null)
-        {
-            tmpText.font = textStyle.fontAsset;
-        }
-
-        if (textStyle.fontMaterialPreset != null)
-        {
-            tmpText.fontSharedMaterial = textStyle.fontMaterialPreset;
-        }
-
-        tmpText.fontStyle = textStyle.fontStyle;
-        tmpText.color = textStyle.color;
-
-        if (textStyle.enableAutoSize)
-        {
-            tmpText.enableAutoSizing = true;
-            if (textStyle.fontSizeMin > 0)
-                tmpText.fontSizeMin = textStyle.fontSizeMin;
-            if (textStyle.fontSizeMax > 0)
-                tmpText.fontSizeMax = textStyle.fontSizeMax;
-            if (textStyle.fontSize > 0)
-                tmpText.fontSize = textStyle.fontSize;
         }
         else
         {
-            tmpText.enableAutoSizing = false;
-            if (textStyle.fontSize > 0)
-                tmpText.fontSize = textStyle.fontSize;
-        }
+            var textStyle = style.textStyle;
 
-        string prefix = string.IsNullOrEmpty(textStyle.prefix) ? string.Empty : textStyle.prefix;
-        string suffix = string.IsNullOrEmpty(textStyle.suffix) ? string.Empty : textStyle.suffix;
-        tmpText.text = $"{prefix}{displayAmount}{suffix}";
+            if (textStyle.fontAsset != null)
+            {
+                tmpText.font = textStyle.fontAsset;
+            }
+
+            if (textStyle.fontMaterialPreset != null)
+            {
+                tmpText.fontSharedMaterial = textStyle.fontMaterialPreset;
+            }
+
+            tmpText.fontStyle = textStyle.fontStyle;
+            tmpText.color = textStyle.color;
+
+            if (textStyle.enableAutoSize)
+            {
+                tmpText.enableAutoSizing = true;
+                if (textStyle.fontSizeMin > 0)
+                    tmpText.fontSizeMin = textStyle.fontSizeMin;
+                if (textStyle.fontSizeMax > 0)
+                    tmpText.fontSizeMax = textStyle.fontSizeMax;
+                if (textStyle.fontSize > 0)
+                    tmpText.fontSize = textStyle.fontSize;
+            }
+            else
+            {
+                tmpText.enableAutoSizing = false;
+                if (textStyle.fontSize > 0)
+                    tmpText.fontSize = textStyle.fontSize;
+            }
+
+            string prefix = string.IsNullOrEmpty(textStyle.prefix) ? string.Empty : textStyle.prefix;
+            string suffix = string.IsNullOrEmpty(textStyle.suffix) ? string.Empty : textStyle.suffix;
+            tmpText.text = $"{prefix}{displayAmount}{suffix}";
+        }
 
         HealthText healthText = go.GetComponent<HealthText>();
         if (healthText != null)
         {
-            healthText.moveSpeed = style.motionStyle.moveSpeed;
-            healthText.timeToFade = style.motionStyle.timeToFade;
+            healthText.SetRecycler(this);
+            if (hasCatalog)
+            {
+                healthText.moveSpeed = style.motionStyle.moveSpeed;
+                healthText.timeToFade = style.motionStyle.timeToFade;
+            }
+
+            healthText.ResetForSpawn();
         }
     }
 

@@ -12,7 +12,8 @@ using System.IO;
 /// </summary>
 public class PickupPrefabGenerator : Editor
 {
-    private const string PREFAB_PATH = "Assets/Resources/Prefabs/PickupItem.prefab";
+    // Editor-only template; keep it out of Resources so it won't be included in builds.
+    private const string PREFAB_PATH = "Assets/_Generated/Authoring/PickupItem.prefab";
 
     [MenuItem("Tools/Authoring/Generate PickupItem.prefab Template")]
     private static void GeneratePickupItemPrefab()
