@@ -14,6 +14,7 @@ using CastleDB.Runtime;
 /// 2. 加载 HudBinding.asset 并实例化/定位 HUD
 /// 3. 统一初始化玩家模块：player.InitializeModules(items, cfg, relicCatalog, hudPresenter, hudRefs)
 ///    - 内部顺序保持不变：Inventory → HUD → Replace(可选) → Equipment(可选)
+///    - Phase 0.5：额外注入 IGameAssetProvider（统一资源访问入口）
 /// 4. Start：player.SyncInitialAbilities()（初次同步）
 ///
 /// 依赖定位（硬契约）：
@@ -35,6 +36,7 @@ public class GameBootstrap : MonoBehaviour
     private CastleDbService _castleDbService;
     private GameplayConfig _gameplayConfig;
     private RelicCatalog _relicCatalog;
+    private IGameAssetProvider _assets;
     private GameObject _hudRoot;  // Phase 7: HUD 实例根节点
 
     // ===== 生命周期 =====
@@ -42,6 +44,9 @@ public class GameBootstrap : MonoBehaviour
     private void Awake()
     {
         Debug.Log("[GameBootstrap] ========== 开始 Runtime 装配 ==========");
+
+        // Phase 0.5 / P1-1: 统一资源访问入口（避免到处散落 Resources.Load）
+        _assets = new ResourcesGameAssetProvider();
 
         // 验证必需依赖
         if (player == null)
@@ -60,7 +65,7 @@ public class GameBootstrap : MonoBehaviour
         // 装配顺序（硬契约 [C-Runtime-0]）
         bool success = true;
 
-        // Step 1: 加载 ItemCatalog 并初始化 CastleDbService
+        // Step 1: 加载 ItemCatalog 并初始化 CastleDbService（统一走 IGameAssetProvider）
         success = success && LoadItemCatalog();
 
         // Step 2: 加载 HudBinding 并实例化/定位 HUD（Phase 7）
@@ -102,7 +107,7 @@ public class GameBootstrap : MonoBehaviour
         Debug.Log("[GameBootstrap] [1/3] 加载 ItemCatalog...");
 
         // 加载 ItemCatalog.asset
-        var itemCatalog = Resources.Load<ItemCatalog>("Config/ItemCatalog");
+        var itemCatalog = _assets != null ? _assets.ItemCatalog : null;
         if (itemCatalog == null)
         {
             Debug.LogError("[GameBootstrap] 缺失必需资源：ItemCatalog (Resources/Config/ItemCatalog.asset)，中止装配", this);
@@ -123,14 +128,14 @@ public class GameBootstrap : MonoBehaviour
         Debug.Log($"[GameBootstrap] ItemCatalog 加载成功（{_castleDbService.GetAllItems().Count} 个 Item）");
 
         // 加载 GameplayConfig（可选）
-        _gameplayConfig = Resources.Load<GameplayConfig>("Config/GameplayConfig");
+        _gameplayConfig = _assets != null ? _assets.GameplayConfig : null;
         if (_gameplayConfig == null)
         {
             Debug.LogWarning("[GameBootstrap] GameplayConfig 未找到，Inventory 将使用默认配置", this);
         }
 
         // Phase 7：加载 RelicCatalog（可选，缺失则禁用遗物系统）
-        _relicCatalog = Resources.Load<RelicCatalog>("Config/RelicCatalog");
+        _relicCatalog = _assets != null ? _assets.RelicCatalog : null;
         if (_relicCatalog == null)
         {
             Debug.LogWarning("[GameBootstrap] 未找到 RelicCatalog（Resources/Config/RelicCatalog.asset），遗物功能将被禁用", this);
@@ -158,7 +163,7 @@ public class GameBootstrap : MonoBehaviour
         Debug.Log("[GameBootstrap] [2/3] 加载 HudBinding...");
 
         // 加载 HudBinding.asset
-        var binding = Resources.Load<HudBindingAsset>("Config/HudBinding");
+        var binding = _assets != null ? _assets.HudBinding : null;
         if (binding == null)
         {
             Debug.LogError("[GameBootstrap] 缺失必需资源：HudBinding (Resources/Config/HudBinding.asset)，中止装配", this);
@@ -225,7 +230,7 @@ public class GameBootstrap : MonoBehaviour
             keyIconPresenter = _hudRoot.AddComponent<HudSlotKeyIconPresenter>();
         }
 
-        var inputIconCatalog = Resources.Load<InputIconCatalog>("Config/InputIconCatalog");
+        var inputIconCatalog = _assets != null ? _assets.InputIconCatalog : null;
         if (inputIconCatalog == null)
         {
             Debug.LogWarning("[GameBootstrap] 未找到 InputIconCatalog（Resources/Config/InputIconCatalog.asset），按键图标不会更新", this);
@@ -242,7 +247,7 @@ public class GameBootstrap : MonoBehaviour
         }
 
         // 统一初始化入口（Inventory/HUD/Replace/Equipment）
-        if (!player.InitializeModules(_castleDbService, _gameplayConfig, _relicCatalog, hudPresenter, hudRefs))
+        if (!player.InitializeModules(_castleDbService, _gameplayConfig, _relicCatalog, hudPresenter, hudRefs, _assets))
         {
             Debug.LogError("[GameBootstrap] PlayerContext.InitializeModules 执行失败，中止装配", this);
             return false;

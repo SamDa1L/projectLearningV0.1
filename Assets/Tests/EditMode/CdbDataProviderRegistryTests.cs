@@ -2,8 +2,6 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
 using CastleDB.Runtime;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace CastleDB.Tests.EditMode
 {
@@ -19,6 +17,8 @@ namespace CastleDB.Tests.EditMode
         public void Setup()
         {
             _registry = new CdbDataProviderRegistry();
+            // 单元测试不应在控制台输出红色错误日志（负例测试会覆盖无效输入）
+            _registry.EnableUnityConsoleLogging = false;
         }
 
         [TearDown]
@@ -47,9 +47,6 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void Register_NullProvider_ReturnsFalse()
         {
-            // Assert log
-            LogAssert.Expect(LogType.Error, "[CdbRegistry] 尝试注册 null Provider");
-
             // Act
             var result = _registry.Register(null);
 

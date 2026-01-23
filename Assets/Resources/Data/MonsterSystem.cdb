@@ -452,6 +452,83 @@
 			"props": {}
 		},
 		{
+			"name": "EnemyAbilityProjectile",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "speed",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "lifetime",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "baseDamage",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "hitMask",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onHitVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "tags",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "FireBall_enemy",
+					"prefabPath": "Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile",
+					"speed": 5,
+					"lifetime": 3,
+					"baseDamage": 10,
+					"hitMask": "Player",
+					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
+					"onHitVfxDuration": 0.5,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0.5,
+					"tags": "fire"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
 			"name": "NpcPassiveAbility",
 			"columns": [
 				{
@@ -639,83 +716,6 @@
 					"intValue": 1,
 					"role": 1,
 					"stringValue": ""
-				}
-			],
-			"separators": [],
-			"props": {}
-		},
-		{
-			"name": "EnemyAbilityProjectile",
-			"columns": [
-				{
-					"typeStr": "0",
-					"name": "id",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "prefabPath",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "speed",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "lifetime",
-					"display": null
-				},
-				{
-					"typeStr": "3",
-					"name": "baseDamage",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "hitMask",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "onHitVfxPath",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "onHitVfxDuration",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "onExpireVfxPath",
-					"display": null
-				},
-				{
-					"typeStr": "4",
-					"name": "onExpireVfxDuration",
-					"display": null
-				},
-				{
-					"typeStr": "1",
-					"name": "tags",
-					"display": null
-				}
-			],
-			"lines": [
-				{
-					"id": "FireBall_enemy",
-					"prefabPath": "Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile",
-					"speed": 5,
-					"lifetime": 3,
-					"baseDamage": 10,
-					"hitMask": "Player",
-					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
-					"onHitVfxDuration": 0.5,
-					"onExpireVfxPath": "",
-					"onExpireVfxDuration": 0.5,
-					"tags": "fire"
 				}
 			],
 			"separators": [],

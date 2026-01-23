@@ -60,6 +60,13 @@ public class ReplaceController : MonoBehaviour
     // ===== 初始化标记 =====
     private bool _initialized = false;
 
+    /// <summary>
+    /// 是否输出 Unity 控制台日志（Debug.Log/LogWarning/LogError）。
+    /// - 默认开启：保留现有运行时行为
+    /// - 自动化测试建议关闭：避免用“红色错误日志”来验收失败路径
+    /// </summary>
+    public bool EnableUnityConsoleLogging { get; set; } = true;
+
     // ===== 一次性日志去重 =====
     private static readonly HashSet<string> _loggedWarnings = new HashSet<string>();
     private static readonly HashSet<string> _loggedErrors = new HashSet<string>();
@@ -106,14 +113,20 @@ public class ReplaceController : MonoBehaviour
     {
         if (_initialized)
         {
-            Debug.LogError($"[ReplaceController] Initialize 只允许调用一次");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Initialize 只允许调用一次");
+            }
             return;
         }
 
         // 参数校验
         if (items == null || refs == null || ctx == null)
         {
-            Debug.LogError($"[ReplaceController] Initialize 参数不能为空：items={items}, refs={refs}, ctx={ctx}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Initialize 参数不能为空：items={items}, refs={refs}, ctx={ctx}");
+            }
             return;
         }
 
@@ -122,7 +135,10 @@ public class ReplaceController : MonoBehaviour
             string key = "ReplaceController_NullHudPresenter";
             if (!_loggedErrors.Contains(key))
             {
-                Debug.LogError($"[ReplaceController] HudPresenter 为空，Replace 功能不可用");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ReplaceController] HudPresenter 为空，Replace 功能不可用");
+                }
                 _loggedErrors.Add(key);
             }
             return; // hud 为空则 Replace 不可用
@@ -140,7 +156,10 @@ public class ReplaceController : MonoBehaviour
         // 校验 panel 存在
         if (_panelRoot == null)
         {
-            Debug.LogError($"[ReplaceController] HudRefs.abilityReplacePanelRoot 为空，Replace 功能不可用");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] HudRefs.abilityReplacePanelRoot 为空，Replace 功能不可用");
+            }
             return;
         }
 
@@ -150,12 +169,18 @@ public class ReplaceController : MonoBehaviour
         // 缓存 UI 节点（契约 [C-UI-2]）
         if (!CacheUINodes())
         {
-            Debug.LogError($"[ReplaceController] UI 节点缓存失败，Replace 功能不可用");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] UI 节点缓存失败，Replace 功能不可用");
+            }
             return;
         }
 
         _initialized = true;
-        Debug.Log($"[ReplaceController] 初始化完成");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] 初始化完成");
+        }
     }
 
     /// <summary>
@@ -172,7 +197,10 @@ public class ReplaceController : MonoBehaviour
 
         if (pendingIcon == null || pendingName == null)
         {
-            Debug.LogError($"[ReplaceController] 缺少 Pending 节点");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] 缺少 Pending 节点");
+            }
             return false;
         }
 
@@ -181,7 +209,10 @@ public class ReplaceController : MonoBehaviour
 
         if (_pendingIcon == null || _pendingNameText == null)
         {
-            Debug.LogError($"[ReplaceController] Pending 节点组件类型错误");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Pending 节点组件类型错误");
+            }
             return false;
         }
 
@@ -193,7 +224,10 @@ public class ReplaceController : MonoBehaviour
 
             if (slotIcon == null || slotHighlight == null)
             {
-                Debug.LogError($"[ReplaceController] 缺少 Slot_{i} 节点");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ReplaceController] 缺少 Slot_{i} 节点");
+                }
                 return false;
             }
 
@@ -202,7 +236,10 @@ public class ReplaceController : MonoBehaviour
 
             if (_slotIcons[i] == null)
             {
-                Debug.LogError($"[ReplaceController] Slot_{i}/Icon 组件类型错误");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ReplaceController] Slot_{i}/Icon 组件类型错误");
+                }
                 return false;
             }
 
@@ -227,7 +264,10 @@ public class ReplaceController : MonoBehaviour
             string key = "ReplaceController_NullSourcePickup";
             if (!_loggedErrors.Contains(key))
             {
-                Debug.LogError($"[ReplaceController] BeginReplace 失败：ctx.sourcePickup 为空");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ReplaceController] BeginReplace 失败：ctx.sourcePickup 为空");
+                }
                 _loggedErrors.Add(key);
             }
             return; // 不得进入 Selecting，也不得尝试解锁
@@ -236,7 +276,10 @@ public class ReplaceController : MonoBehaviour
         // 2) 状态检查：仅 Idle 可调用
         if (_state != State.Idle)
         {
-            Debug.LogError($"[ReplaceController] BeginReplace 失败：当前状态为 {_state}，仅 Idle 可调用。pendingItemId={ctx.pendingItemId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] BeginReplace 失败：当前状态为 {_state}，仅 Idle 可调用。pendingItemId={ctx.pendingItemId}");
+            }
             ctx.sourcePickup.SetLocked(false); // 解锁新请求的 pickup
             return;
         }
@@ -247,8 +290,11 @@ public class ReplaceController : MonoBehaviour
             string key = "ReplaceController_NotInitialized";
             if (!_loggedWarnings.Contains(key))
             {
-                Debug.LogWarning($"[ReplaceController] 尚未初始化，降级处理：直接解锁 pickup。pendingItemId={ctx.pendingItemId}");
-                _loggedWarnings.Add(key);
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogWarning($"[ReplaceController] 尚未初始化，降级处理：直接解锁 pickup。pendingItemId={ctx.pendingItemId}");
+                    _loggedWarnings.Add(key);
+                }
             }
             ctx.sourcePickup.SetLocked(false);
             return;
@@ -272,7 +318,10 @@ public class ReplaceController : MonoBehaviour
         // 7) 显示面板
         _panelRoot.SetActive(true);
 
-        Debug.Log($"[ReplaceController] 进入 Selecting 状态，等待用户选择槽位。pendingItemId={ctx.pendingItemId}");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] 进入 Selecting 状态，等待用户选择槽位。pendingItemId={ctx.pendingItemId}");
+        }
     }
 
     // ===== 输入切换 =====
@@ -287,8 +336,11 @@ public class ReplaceController : MonoBehaviour
             string key = "ReplaceController_MissingPlayerInput";
             if (!_loggedWarnings.Contains(key))
             {
-                Debug.LogWarning($"[ReplaceController] 缺少 PlayerInput，无法切换输入映射，将使用键盘监听替换选择/取消。", this);
-                _loggedWarnings.Add(key);
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogWarning($"[ReplaceController] 缺少 PlayerInput，无法切换输入映射，将使用键盘监听替换选择/取消。", this);
+                    _loggedWarnings.Add(key);
+                }
             }
             return true;
         }
@@ -300,12 +352,18 @@ public class ReplaceController : MonoBehaviour
         try
         {
             _playerInput.SwitchCurrentActionMap("UI");
-            Debug.Log($"[ReplaceController] 输入切换：{_prevActionMap} → UI");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.Log($"[ReplaceController] 输入切换：{_prevActionMap} → UI");
+            }
             return true;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[ReplaceController] 切换到 UI ActionMap 失败: {ex.Message}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] 切换到 UI ActionMap 失败: {ex.Message}");
+            }
             return false;
         }
     }
@@ -323,11 +381,17 @@ public class ReplaceController : MonoBehaviour
         try
         {
             _playerInput.SwitchCurrentActionMap(_prevActionMap);
-            Debug.Log($"[ReplaceController] 输入恢复：UI → {_prevActionMap}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.Log($"[ReplaceController] 输入恢复：UI → {_prevActionMap}");
+            }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[ReplaceController] 恢复 ActionMap 失败: {ex.Message}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] 恢复 ActionMap 失败: {ex.Message}");
+            }
         }
     }
 
@@ -358,7 +422,10 @@ public class ReplaceController : MonoBehaviour
 
         if (!_items.TryGetItem(itemId, out ItemDefinition def))
         {
-            Debug.LogError($"[ReplaceController] 待入槽物品不存在：{itemId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] 待入槽物品不存在：{itemId}");
+            }
             _pendingIcon.enabled = false;
             _pendingNameText.text = "???";
             return;
@@ -421,7 +488,10 @@ public class ReplaceController : MonoBehaviour
     /// </summary>
     private void OnSlotSelected(int slotIndex)
     {
-        Debug.Log($"[ReplaceController] 用户选择槽位 {slotIndex + 1}");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] 用户选择槽位 {slotIndex + 1}");
+        }
 
         // 高亮选中槽位（可选，视觉反馈）
         for (int i = 0; i < 4; i++)
@@ -438,7 +508,10 @@ public class ReplaceController : MonoBehaviour
     /// </summary>
     private void OnCancelPressed()
     {
-        Debug.Log($"[ReplaceController] 用户取消替换");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] 用户取消替换");
+        }
         Cancel();
     }
 
@@ -459,7 +532,10 @@ public class ReplaceController : MonoBehaviour
         // 2) TryGetItem：校验待入槽物品存在
         if (!_items.TryGetItem(_pendingContext.pendingItemId, out ItemDefinition def))
         {
-            Debug.LogError($"[ReplaceController] Confirm 失败：待入槽物品不存在 {_pendingContext.pendingItemId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Confirm 失败：待入槽物品不存在 {_pendingContext.pendingItemId}");
+            }
             CancelInternal(true);
             return;
         }
@@ -467,7 +543,10 @@ public class ReplaceController : MonoBehaviour
         // 3) 校验 itemType 必须是 Ability
         if (def.itemType != ItemType.Ability)
         {
-            Debug.LogError($"[ReplaceController] Confirm 失败：待入槽物品不是 Ability 类型 {_pendingContext.pendingItemId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Confirm 失败：待入槽物品不是 Ability 类型 {_pendingContext.pendingItemId}");
+            }
             CancelInternal(true);
             return;
         }
@@ -476,14 +555,20 @@ public class ReplaceController : MonoBehaviour
         bool success = _ctx.Inventory.EquipAbilityItemToSlot(slotIndex, _pendingContext.pendingItemId);
         if (!success)
         {
-            Debug.LogError($"[ReplaceController] Confirm 失败：EquipAbilityItemToSlot 返回 false。slot={slotIndex}, itemId={_pendingContext.pendingItemId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] Confirm 失败：EquipAbilityItemToSlot 返回 false。slot={slotIndex}, itemId={_pendingContext.pendingItemId}");
+            }
             CancelInternal(true); // 装备失败，解锁 pickup
             return;
         }
 
         // 5) 销毁拾取物
         Destroy(_pendingContext.sourcePickup.gameObject);
-        Debug.Log($"[ReplaceController] Confirm 成功：槽位 {slotIndex + 1} 已装备 {_pendingContext.pendingItemId}");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] Confirm 成功：槽位 {slotIndex + 1} 已装备 {_pendingContext.pendingItemId}");
+        }
 
         // 6) ExitSelecting（统一清理）
         ExitSelecting();
@@ -507,7 +592,10 @@ public class ReplaceController : MonoBehaviour
         if (unlock && _pendingContext.sourcePickup != null)
         {
             _pendingContext.sourcePickup.SetLocked(false);
-            Debug.Log($"[ReplaceController] 已解锁 sourcePickup");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.Log($"[ReplaceController] 已解锁 sourcePickup");
+            }
         }
 
         ExitSelecting();
@@ -537,7 +625,10 @@ public class ReplaceController : MonoBehaviour
         // 4) 状态回 Idle
         _state = State.Idle;
 
-        Debug.Log($"[ReplaceController] 已退出 Selecting 状态");
+        if (EnableUnityConsoleLogging)
+        {
+            Debug.Log($"[ReplaceController] 已退出 Selecting 状态");
+        }
     }
 
     /// <summary>
@@ -547,13 +638,19 @@ public class ReplaceController : MonoBehaviour
     {
         if (_pendingContext.sourcePickup == null)
         {
-            Debug.LogError($"[ReplaceController] ValidatePending 失败：sourcePickup 为空");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] ValidatePending 失败：sourcePickup 为空");
+            }
             return false;
         }
 
         if (string.IsNullOrEmpty(_pendingContext.pendingItemId))
         {
-            Debug.LogError($"[ReplaceController] ValidatePending 失败：pendingItemId 为空");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[ReplaceController] ValidatePending 失败：pendingItemId 为空");
+            }
             return false;
         }
 

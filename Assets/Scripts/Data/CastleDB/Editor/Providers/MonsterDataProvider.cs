@@ -233,6 +233,9 @@ namespace CastleDB.Editor.Providers
 
         private NpcAbilityEntry ConvertDictToNpcAbilityEntry(Dictionary<string, object> dict)
         {
+            string paramsJson = GetStringValue(dict, "paramsJson");
+            CastleDbParamsJson.ParseAnimTriggerAndReleaseDelay(paramsJson, out string animTrigger, out float releaseDelay);
+
             return new NpcAbilityEntry
             {
                 id = GetStringValue(dict, "id"),
@@ -244,7 +247,12 @@ namespace CastleDB.Editor.Providers
                 triggerRole = GetIntValue(dict, "triggerRole"),
                 minRange = GetFloatValue(dict, "minRange"),
                 maxRange = GetFloatValue(dict, "maxRange"),
-                paramsJson = GetStringValue(dict, "paramsJson")
+                paramsJson = paramsJson,
+
+                // 2.2：导入阶段结构化高频字段（运行时不再反复解析 paramsJson）
+                castParamsVersion = 1,
+                animTrigger = animTrigger,
+                releaseDelay = releaseDelay
             };
         }
 

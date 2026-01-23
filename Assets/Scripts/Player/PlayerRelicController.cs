@@ -299,7 +299,7 @@ public sealed class PlayerRelicController : MonoBehaviour, IDamageInterceptor
             return;
         }
 
-        GameObject prefab = Resources.Load<GameObject>(prefabPath);
+        GameObject prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabPath);
         if (prefab == null)
         {
             return;
@@ -382,4 +382,3 @@ public sealed class PlayerRelicController : MonoBehaviour, IDamageInterceptor
         return raw?.ToString() ?? defaultValue;
     }
 }
-

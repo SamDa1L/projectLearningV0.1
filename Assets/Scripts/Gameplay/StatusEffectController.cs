@@ -14,9 +14,13 @@ using CastleDB.Runtime;
 [RequireComponent(typeof(StatModifierLayer))]
 public class StatusEffectController : MonoBehaviour
 {
+    // 兜底资源提供器：把资源加载调用收口到一个位置。
+    // 注意：正常情况下应由 GameBootstrap 注入真实的 StatusCatalog，避免到处散落字符串路径与重复加载。
+    private static readonly IGameAssetProvider _fallbackAssets = ResourcesGameAssetProvider.Shared;
+
     [Header("可选覆盖")]
     [SerializeField]
-    [Tooltip("可选：覆盖 StatusCatalog（为空则运行时 Resources.Load<StatusCatalog>(Config/StatusCatalog)）")]
+    [Tooltip("可选：覆盖 StatusCatalog（为空则运行时通过 IGameAssetProvider 加载默认 Config/StatusCatalog）")]
     private StatusCatalog statusCatalogOverride;
 
     private readonly Dictionary<string, StatusRuntimeState> _active = new Dictionary<string, StatusRuntimeState>();
@@ -52,7 +56,7 @@ public class StatusEffectController : MonoBehaviour
             return true;
         }
 
-        // Awake is not guaranteed to run in EditMode tests; cache lazily as well.
+        // 编辑模式测试中 Awake 不一定按预期执行；这里做一次懒缓存兜底。
         _stats = GetComponent<StatModifierLayer>();
         if (_stats != null)
         {
@@ -73,12 +77,19 @@ public class StatusEffectController : MonoBehaviour
     /// </summary>
     public void Initialize(StatusCatalog catalog)
     {
+        // 尊重检视面板覆盖（便于测试/特殊场景定制）。
+        if (statusCatalogOverride != null)
+        {
+            _catalog = statusCatalogOverride;
+            return;
+        }
+
         _catalog = catalog;
     }
 
     /// <summary>
     /// 应用状态（外部入口）
-    /// durationOverride:
+    /// 参数 durationOverride：
     /// - >0：覆盖默认持续时间
     /// - <=0：使用默认持续时间（<=0 表示永久）
     /// </summary>
@@ -263,7 +274,7 @@ public class StatusEffectController : MonoBehaviour
             return def;
         }
 
-        // Fallback：用于容错/测试（正常情况下应由 Import 阶段校验保证存在）
+        // 兜底：用于容错/测试（正常情况下应由 Import 阶段校验保证存在）
         if (_fallbackDefinitions.TryGetValue(statusId, out StatusDefinition cached))
         {
             return cached;
@@ -296,7 +307,8 @@ public class StatusEffectController : MonoBehaviour
             return _catalog;
         }
 
-        _catalog = Resources.Load<StatusCatalog>("Config/StatusCatalog");
+        // 兜底：把资源加载使用点限制在 Provider 内（P1-3）。
+        _catalog = _fallbackAssets != null ? _fallbackAssets.StatusCatalog : null;
         if (_catalog == null && !_loggedMissingCatalog)
         {
             Debug.LogWarning("[StatusEffectController] StatusCatalog 未找到（Resources/Config/StatusCatalog.asset）。ApplyStatus 将以 fallback 定义执行（无 modifiers）。", this);

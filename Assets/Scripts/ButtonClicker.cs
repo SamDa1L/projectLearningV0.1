@@ -1,55 +1,41 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UIElements;
 
 public class ButtonClicker : MonoBehaviour
 {
-    UIDocument buttonDocument;
-    Button uiButton;
+    private UIDocument _buttonDocument;
+    private Button _uiButton;
 
-
-    //OnEnableµ±Ç°µÄ·½·¨ÄÚÈİÖ»ÊÇµ¥´¿²âÊÔ¿Ø¼ş°´Å¥¹¦ÄÜ
-    //ToDo ºóĞøĞèÒª°ÑÕâ²¿·ÖÄÚÈİ»»³É¾ßÓĞÊµ¼ÊĞ§¹ûµÄ·½·¨
+    // å½“å‰è„šæœ¬ä»…ç”¨äºæµ‹è¯• UI Toolkit æŒ‰é’®ç‚¹å‡»å›è°ƒï¼›åç»­å¯æ›¿æ¢ä¸ºå®é™…ä¸šåŠ¡é€»è¾‘ã€‚
     private void OnEnable()
     {
-        buttonDocument = GetComponent<UIDocument>();
-
-        if (buttonDocument == null)
+        _buttonDocument = GetComponent<UIDocument>();
+        if (_buttonDocument == null)
         {
-            Debug.LogError("Ã»ÕÒµ½button Document");
+            Debug.LogError("æ²¡æ‰¾åˆ° UIDocument ç»„ä»¶");
+            return;
         }
 
-        uiButton = buttonDocument.rootVisualElement.Q("TestButton") as Button;
-
-        if (uiButton != null) 
+        _uiButton = _buttonDocument.rootVisualElement.Q<Button>("TestButton");
+        if (_uiButton == null)
         {
-            Debug.Log("ButtonÕÒµ½ÁË");
+            Debug.LogError("æ²¡æ‰¾åˆ°æŒ‰é’®ï¼šTestButton");
+            return;
         }
 
-
-        uiButton.RegisterCallback<ClickEvent>(OnButtonClick);
-
-
+        _uiButton.RegisterCallback<ClickEvent>(OnButtonClick);
     }
 
-
-    public void OnButtonClick(ClickEvent evt)
+    private void OnDisable()
     {
-        Debug.Log("Õâ¸ö°´¼ü±»°´ÏÂÁË");
+        if (_uiButton != null)
+        {
+            _uiButton.UnregisterCallback<ClickEvent>(OnButtonClick);
+        }
     }
 
-
-    // Start is called before the first frame update
-    void Start()
+    private void OnButtonClick(ClickEvent evt)
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        Debug.Log("æŒ‰é’®è¢«ç‚¹å‡»");
     }
 }

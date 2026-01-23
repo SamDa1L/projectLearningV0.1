@@ -47,6 +47,13 @@ namespace CastleDB.Runtime
         public const string DefaultScanPath = "Assets/Resources/Data";
 
         /// <summary>
+        /// 是否输出 Unity 控制台日志（Debug.Log/LogWarning/LogError）。
+        /// - 默认开启：保留现有运行时行为
+        /// - 单元测试建议关闭：避免负例用例在控制台输出红色错误日志
+        /// </summary>
+        public bool EnableUnityConsoleLogging { get; set; } = true;
+
+        /// <summary>
         /// 注册 Provider
         /// </summary>
         /// <param name="provider">Provider 实例</param>
@@ -55,24 +62,36 @@ namespace CastleDB.Runtime
         {
             if (provider == null)
             {
-                Debug.LogError("[CdbRegistry] 尝试注册 null Provider");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError("[CdbRegistry] 尝试注册 null Provider");
+                }
                 return false;
             }
 
             var providerId = provider.ExpectedProviderId;
             if (string.IsNullOrEmpty(providerId))
             {
-                Debug.LogError("[CdbRegistry] Provider.ExpectedProviderId 不能为空");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError("[CdbRegistry] Provider.ExpectedProviderId 不能为空");
+                }
                 return false;
             }
 
             if (_providers.ContainsKey(providerId))
             {
-                Debug.LogWarning($"[CdbRegistry] Provider '{providerId}' 已注册，将被覆盖");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogWarning($"[CdbRegistry] Provider '{providerId}' 已注册，将被覆盖");
+                }
             }
 
             _providers[providerId] = provider;
-            Debug.Log($"[CdbRegistry] 注册 Provider：{providerId}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.Log($"[CdbRegistry] 注册 Provider：{providerId}");
+            }
             return true;
         }
 
@@ -83,7 +102,10 @@ namespace CastleDB.Runtime
         {
             if (_providers.Remove(providerId))
             {
-                Debug.Log($"[CdbRegistry] 注销 Provider：{providerId}");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.Log($"[CdbRegistry] 注销 Provider：{providerId}");
+                }
                 return true;
             }
             return false;
@@ -215,10 +237,16 @@ namespace CastleDB.Runtime
                 var desc = GetDescriptor(id);
                 if (desc != null && desc.Dependencies.Count > 0)
                 {
-                    UnityEngine.Debug.Log($"[TopologicalSort] {id} depends on: {string.Join(", ", desc.Dependencies)}");
+                    if (EnableUnityConsoleLogging)
+                    {
+                        UnityEngine.Debug.Log($"[TopologicalSort] {id} depends on: {string.Join(", ", desc.Dependencies)}");
+                    }
                 }
             }
-            UnityEngine.Debug.Log($"[TopologicalSort] Result before output: {string.Join(" → ", result)}");
+            if (EnableUnityConsoleLogging)
+            {
+                UnityEngine.Debug.Log($"[TopologicalSort] Result before output: {string.Join(" → ", result)}");
+            }
             #endif
 
             return TopologicalSortResult.Success(result);

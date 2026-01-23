@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.SceneManagement;
@@ -55,6 +54,12 @@ public class ReplaceFlowIntegrationTests
         _playerContext = _playerObj.GetComponentInChildren<PlayerContext>(true);
         _replaceController = _playerObj.GetComponentInChildren<ReplaceController>(true);
         _equipmentController = _playerObj.GetComponentInChildren<PlayerEquipmentController>(true);
+
+        // PlayMode 测试不使用“红色 Error 日志”来验收失败路径
+        if (_replaceController != null)
+        {
+            _replaceController.EnableUnityConsoleLogging = false;
+        }
 
         // 查找 HudPresenter（通过类型查找，避免 HUDCanvas(Clone) 命名差异）
         _hudPresenter = Object.FindObjectOfType<HudPresenter>(true);
@@ -296,9 +301,6 @@ public class ReplaceFlowIntegrationTests
         Object.Destroy(pickupObj);
         yield return null;
 
-        // 预期 ValidatePending 失败的 Error 日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[ReplaceController\] ValidatePending 失败.*sourcePickup.*"));
-
         // 调用 Confirm（由于 sourcePickup 已失效，ValidatePending 应返回 false）
         confirmMethod.Invoke(_replaceController, new object[] { 0 });
 
@@ -344,9 +346,6 @@ public class ReplaceFlowIntegrationTests
         // 锁定 pickup
         pickup.SetLocked(true);
 
-        // 预期 RenderPendingItem 失败的 Error 日志（待入槽物品不存在）
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[ReplaceController\] 待入槽物品不存在.*invalid_item_id"));
-
         // 调用 BeginReplace
         _replaceController.BeginReplace(ctx);
         yield return null;
@@ -357,9 +356,6 @@ public class ReplaceFlowIntegrationTests
         // 调用 Confirm（由于 itemId 无效，TryGetItem 应失败）
         var confirmMethod = typeof(ReplaceController).GetMethod("Confirm", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.IsNotNull(confirmMethod, "Confirm method not found");
-
-        // 预期 Confirm 失败的 Error 日志（待入槽物品不存在）
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[ReplaceController\] Confirm 失败：待入槽物品不存在.*invalid_item_id"));
 
         confirmMethod.Invoke(_replaceController, new object[] { 0 });
 

@@ -11,7 +11,7 @@ public static class AbilityBuffVfx
             return null;
         }
 
-        GameObject prefab = Resources.Load<GameObject>(def.prefabPath);
+        GameObject prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(def.prefabPath);
         if (prefab == null)
         {
             return null;
@@ -55,7 +55,7 @@ public static class AbilityBuffVfx
             return null;
         }
 
-        GameObject prefab = Resources.Load<GameObject>(def.onExpireVfxPath);
+        GameObject prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(def.onExpireVfxPath);
         if (prefab == null)
         {
             return null;
@@ -108,4 +108,3 @@ public static class AbilityBuffVfx
         return current != null ? current : targetRoot;
     }
 }
-

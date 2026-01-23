@@ -176,6 +176,49 @@ namespace CastleDB.Runtime
         [SerializeField] public float maxRange;
         [SerializeField] public string paramsJson;
 
+        // ===== 2.2：高频字段结构化（减少运行时反复解析 paramsJson）=====
+
+        /// <summary>
+        /// 施法参数结构化版本：
+        /// - 0：旧产物（运行时按需解析 paramsJson，并在内存中做一次性缓存）
+        /// - 1：已在导入阶段解析并写入 animTrigger/releaseDelay
+        /// </summary>
+        [SerializeField] public int castParamsVersion;
+
+        /// <summary>施法动画触发器（来自 paramsJson.animTrigger；空表示不覆盖）</summary>
+        [SerializeField] public string animTrigger;
+
+        /// <summary>施法释放延迟（秒）（来自 paramsJson.releaseDelay；缺失/非法视为 0）</summary>
+        [SerializeField] public float releaseDelay;
+
+        [System.NonSerialized] private bool _castParamsCached;
+        [System.NonSerialized] private string _cachedAnimTrigger;
+        [System.NonSerialized] private float _cachedReleaseDelay;
+
+        /// <summary>
+        /// 获取施法公共参数（animTrigger/releaseDelay）。
+        /// - 新产物：直接读取结构化字段
+        /// - 旧产物：解析 paramsJson 并在内存中缓存（不写回资产，避免 PlayMode 污染资源）
+        /// </summary>
+        public void GetCastParams(out string resolvedAnimTrigger, out float resolvedReleaseDelaySeconds)
+        {
+            if (castParamsVersion >= 1)
+            {
+                resolvedAnimTrigger = animTrigger ?? "";
+                resolvedReleaseDelaySeconds = Mathf.Max(0f, releaseDelay);
+                return;
+            }
+
+            if (!_castParamsCached)
+            {
+                _castParamsCached = true;
+                CastleDbParamsJson.ParseAnimTriggerAndReleaseDelay(paramsJson, out _cachedAnimTrigger, out _cachedReleaseDelay);
+            }
+
+            resolvedAnimTrigger = _cachedAnimTrigger ?? "";
+            resolvedReleaseDelaySeconds = Mathf.Max(0f, _cachedReleaseDelay);
+        }
+
         public string GetTriggerRoleName()
         {
             return triggerRole switch
@@ -354,7 +397,7 @@ namespace CastleDB.Runtime
     /// - targetType: 0=Hitbox, 1=Projectile
     /// - targetId:
     ///   - Hitbox: Attack.attackId（稳定ID）
-    ///   - Projectile: Resources.Load路径（例如 Prefabs/Projectiles/Player/Arrow）
+    ///   - Projectile: 资源加载路径（例如 Prefabs/Projectiles/Player/Arrow）
     /// - damageMultiplier: 伤害倍率（必须 > 0）
     /// - damageOverride: 直接覆盖伤害值（若填写必须 > 0，优先级高于multiplier）
     /// </summary>

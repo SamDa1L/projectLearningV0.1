@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEditor;
 using CastleDB.Runtime;
 using CastleDB.Editor;
@@ -132,7 +131,7 @@ public class ItemDataProviderTests
         string cdbPath = CreateTestCdb("test_wrong_version.cdb", "0.3", "Item", "", itemLines);
 
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out _, out _);
 
         // Provider 本身不校验 schemaVersion，导入应成功
         Assert.IsTrue(success, "Provider 不校验 schemaVersion，导入应成功");
@@ -152,13 +151,11 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_duplicate_id.cdb", "0.4", "Item", "", itemLines);
 
-        // 预期错误日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*重复.*item_1.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out var validationErrors, out _);
 
         Assert.IsFalse(success, "重复 id 应导入失败");
+        Assert.IsTrue(validationErrors.Exists(e => e.Contains("Item id 重复") && e.Contains("item_1")), "应返回重复 id 的校验错误");
     }
 
     /// <summary>
@@ -174,13 +171,11 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_invalid_itemtype.cdb", "0.4", "Item", "", itemLines);
 
-        // 预期错误日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*itemType.*InvalidType.*非法.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out var validationErrors, out _);
 
         Assert.IsFalse(success, "非法 itemType 应导入失败");
+        Assert.IsTrue(validationErrors.Exists(e => e.Contains("itemType") && e.Contains("InvalidType") && e.Contains("非法")), "应返回 itemType 非法的校验错误");
     }
 
     /// <summary>
@@ -196,13 +191,11 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_ability_missing_id.cdb", "0.4", "Item", "", itemLines);
 
-        // 预期错误日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*abilityId.*为空.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out var validationErrors, out _);
 
         Assert.IsFalse(success, "Ability 缺失 abilityId 应导入失败");
+        Assert.IsTrue(validationErrors.Exists(e => e.Contains("abilityId") && e.Contains("为空")), "应返回 abilityId 为空的校验错误");
     }
 
     /// <summary>
@@ -218,13 +211,11 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_invalid_json.cdb", "0.4", "Item", "", itemLines);
 
-        // 预期错误日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*consumeEffectJson.*JSON 对象.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out var validationErrors, out _);
 
         Assert.IsFalse(success, "consumeEffectJson 非 JSON 对象应导入失败");
+        Assert.IsTrue(validationErrors.Exists(e => e.Contains("consumeEffectJson") && e.Contains("JSON 对象")), "应返回 consumeEffectJson 格式错误");
     }
 
     /// <summary>
@@ -240,13 +231,11 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_zero_maxstack.cdb", "0.4", "Item", "", itemLines);
 
-        // 预期错误日志
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*maxStack.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out var validationErrors, out _);
 
         Assert.IsFalse(success, "maxStack <= 0 应导入失败");
+        Assert.IsTrue(validationErrors.Exists(e => e.Contains("maxStack") && e.Contains("> 0")), "应返回 maxStack 范围错误");
     }
 
     /// <summary>
@@ -263,7 +252,7 @@ public class ItemDataProviderTests
         string cdbPath = CreateTestCdb("test_valid_item.cdb", "0.4", "Item", "", itemLines);
 
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out _, out _);
 
         Assert.IsTrue(success, "合法数据应导入成功");
 
@@ -296,11 +285,9 @@ public class ItemDataProviderTests
 
         var provider = new ItemDataProvider();
 
-        // 捕获 Warning 日志（如果 Provider 实现了 icon 校验）
-        // 注意：当前 ItemDataProvider 可能不做 icon 校验，此测试仅验证不阻断导入
-        // LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex(".*icon.*"));
+        // 不使用 LogAssert 捕获 Warning：本测试只验证 icon 缺失不阻断导入
 
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out _, out _);
 
         // icon 缺失应 Warning 但不阻断导入
         Assert.IsTrue(success, "icon 缺失应 Warning 但导入成功");
@@ -336,11 +323,8 @@ public class ItemDataProviderTests
 
         string cdbPath = CreateTestCdb("test_invalid_ability_ref.cdb", "0.4", "Item", "PlayerAbility", itemLines);
 
-        // 预期 Warning（PlayerAbility Provider 未初始化，跳过引用校验）
-        LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex(".*PlayerAbility.*未初始化.*"));
-
         var provider = new ItemDataProvider();
-        bool success = TryImport(provider, cdbPath);
+        bool success = TryImport(provider, cdbPath, out _, out _);
 
         // 由于 PlayerAbility Provider 未初始化，引用校验被跳过，导入应成功
         Assert.IsTrue(success, "PlayerAbility Provider 未初始化时，导入应成功（仅 Warning）");
@@ -403,76 +387,57 @@ public class ItemDataProviderTests
     /// <summary>
     /// 尝试导入（捕获异常）
     /// </summary>
-    private bool TryImport(ItemDataProvider provider, string cdbPath)
+    private bool TryImport(ItemDataProvider provider, string cdbPath, out List<string> validationErrors, out List<string> importErrors)
     {
-        try
+        validationErrors = new List<string>();
+        importErrors = new List<string>();
+
+        // 创建 CastleDbSource
+        var source = new CastleDbFileSource(cdbPath);
+
+        // 创建 ModuleDescriptor（从 .cdb 文件读取 Meta Sheet）
+        var root = source.ReadCastleDbJson();
+        Assert.IsNotNull(root, $"{cdbPath} 读取失败");
+
+        var metaSheet = root.sheets?.FirstOrDefault(s => s.name == "Meta");
+        Assert.IsNotNull(metaSheet, $"{cdbPath} 缺少 Meta Sheet");
+
+        // 解析 Meta Sheet - 转换为 MetaEntry 列表
+        var metaEntries = metaSheet.lines?
+            .OfType<Dictionary<string, object>>()
+            .Select(d => new MetaEntry
+            {
+                key = d.TryGetValue("key", out var k) ? k?.ToString() ?? "" : "",
+                value = d.TryGetValue("value", out var v) ? v?.ToString() ?? "" : ""
+            })
+            .ToList() ?? new List<MetaEntry>();
+
+        // 创建 descriptor
+        var descriptor = CdbModuleDescriptor.FromMetaEntries(metaEntries, cdbPath);
+
+        // 执行导入流程
+        // 1. Initialize
+        provider.Initialize(source, descriptor);
+
+        // 2. Validate（测试中通过返回值断言失败路径，不依赖控制台红色错误日志）
+        validationErrors = provider.Validate(descriptor);
+        if (validationErrors.Count > 0)
         {
-            // 创建 CastleDbSource
-            var source = new CastleDbFileSource(cdbPath);
-
-            // 创建 ModuleDescriptor（从 .cdb 文件读取 Meta Sheet）
-            var root = source.ReadCastleDbJson();
-            if (root == null)
-            {
-                Debug.LogError($"{cdbPath} 读取失败");
-                return false;
-            }
-
-            var metaSheet = root.sheets?.FirstOrDefault(s => s.name == "Meta");
-            if (metaSheet == null)
-            {
-                Debug.LogError($"{cdbPath} 缺少 Meta Sheet");
-                return false;
-            }
-
-            // 解析 Meta Sheet - 转换为 MetaEntry 列表
-            var metaEntries = metaSheet.lines?
-                .OfType<Dictionary<string, object>>()
-                .Select(d => new MetaEntry {
-                    key = d.TryGetValue("key", out var k) ? k?.ToString() ?? "" : "",
-                    value = d.TryGetValue("value", out var v) ? v?.ToString() ?? "" : ""
-                })
-                .ToList() ?? new List<MetaEntry>();
-
-            // 创建 descriptor
-            var descriptor = CdbModuleDescriptor.FromMetaEntries(metaEntries, cdbPath);
-
-            // 执行导入流程
-            // 1. Initialize
-            provider.Initialize(source, descriptor);
-
-            // 2. Validate
-            var errors = provider.Validate(descriptor);
-            if (errors.Count > 0)
-            {
-                foreach (var error in errors)
-                {
-                    Debug.LogError($"Validation Error: {error}");
-                }
-                return false;
-            }
-
-            // 3. Import
-            var result = provider.Import(descriptor);
-            if (!result.Success)
-            {
-                foreach (var error in result.Errors)
-                {
-                    Debug.LogError($"Import Error: {error}");
-                }
-                return false;
-            }
-
-            // 4. SaveAssets
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            return true;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Import 捕获异常: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
+
+        // 3. Import
+        var result = provider.Import(descriptor);
+        if (!result.Success)
+        {
+            importErrors = result.Errors != null ? result.Errors.ToList() : new List<string>();
+            return false;
+        }
+
+        // 4. SaveAssets
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        return true;
     }
 }

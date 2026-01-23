@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,55 +6,67 @@ public class Projectile : MonoBehaviour
 {
     public Vector2 moveSpeed = new Vector2(15f, 0);
     public int damage = 10;
-    public Vector2 knockback = new Vector2 (0, 0);
+    public Vector2 knockback = new Vector2(0, 0);
 
-
-    Rigidbody2D rb;
-
-
+    private Rigidbody2D rb;
+    private IGameObjectRecycler _recycler;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
     }
 
-
-    // Start is called before the first frame update
-    void Start()
+    // 兼容：如果生成方未显式调用 ResetForSpawn()，首次生成时也能正确设置速度。
+    private void Start()
     {
-        rb.velocity = new Vector2(moveSpeed.x * transform.localScale.x, moveSpeed.y);
+        ResetForSpawn();
     }
 
-    // Update is called once per frame
-    void Update()
+    public void SetRecycler(IGameObjectRecycler recycler)
     {
-        
+        _recycler = recycler;
     }
 
+    public void ResetForSpawn()
+    {
+        if (rb == null)
+        {
+            rb = GetComponent<Rigidbody2D>();
+        }
+
+        if (rb != null)
+        {
+            rb.velocity = new Vector2(moveSpeed.x * transform.localScale.x, moveSpeed.y);
+        }
+    }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         Damageable damageable = collision.GetComponent<Damageable>();
 
-
-        if(damageable != null)
+        if (damageable != null)
         {
-            Vector2 deliveredKnockBack = transform.localScale.x > 0 ? knockback : new Vector2(-knockback.x, knockback.y);
+            Vector2 deliveredKnockBack = transform.localScale.x > 0
+                ? knockback
+                : new Vector2(-knockback.x, knockback.y);
 
-            //����Ŀ��
             bool gotHit = damageable.Hit(damage, deliveredKnockBack);
 
             if (gotHit)
             {
-                Debug.Log(collision.name + "����" + damage);
-                Destroy(gameObject);
+                Despawn();
             }
         }
-
-
     }
 
+    private void Despawn()
+    {
+        if (_recycler != null)
+        {
+            _recycler.Recycle(gameObject);
+            return;
+        }
 
-
-
+        Destroy(gameObject);
+    }
 }

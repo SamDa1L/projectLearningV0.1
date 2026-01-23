@@ -193,17 +193,17 @@ public class SummonAbility : IPlayerAbility
 
         if (_cachedPrefab == null)
         {
-            _cachedPrefab = Resources.Load<GameObject>(_prefabPath);
-            if (_cachedPrefab == null)
-            {
-                if (!_loggedMissingPrefab)
+            _cachedPrefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(_prefabPath);
+                if (_cachedPrefab == null)
                 {
-                    Debug.LogError($"[SummonAbility] Resources.Load failed: '{_prefabPath}' (abilityId='{AbilityId}')");
-                    _loggedMissingPrefab = true;
+                    if (!_loggedMissingPrefab)
+                    {
+                        Debug.LogError($"[SummonAbility] 资源加载失败: '{_prefabPath}' (abilityId='{AbilityId}')");
+                        _loggedMissingPrefab = true;
+                    }
+                    return false;
                 }
-                return false;
             }
-        }
 
         Transform spawnPoint = _playerController != null ? _playerController.AbilityFirePoint : null;
         Vector3 spawnPosition = spawnPoint != null ? spawnPoint.position : Vector3.zero;

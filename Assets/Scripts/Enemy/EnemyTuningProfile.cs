@@ -409,7 +409,12 @@ public class EnemyTuningProfile : ScriptableObject
                     triggerRole = entry.triggerRole,
                     minRange = entry.minRange,
                     maxRange = entry.maxRange,
-                    paramsJson = entry.paramsJson
+                    paramsJson = entry.paramsJson,
+
+                    // 2.2：施法参数结构化字段（避免克隆后退化为运行时重复解析）
+                    castParamsVersion = entry.castParamsVersion,
+                    animTrigger = entry.animTrigger,
+                    releaseDelay = entry.releaseDelay
                 });
             }
         }

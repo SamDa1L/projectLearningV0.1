@@ -15,7 +15,7 @@ MonoBehaviour:
   version: 1.0.0
   profileName: Knight
   faction: 0
-  maxHealth: 1
+  maxHealth: 100
   moveSpeed: 3
   perceptionRadius: 5
   attackRange: 10

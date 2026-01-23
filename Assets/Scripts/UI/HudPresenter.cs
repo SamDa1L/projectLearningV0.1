@@ -52,7 +52,7 @@ public class HudPresenter : MonoBehaviour
     // ========== Sprite 图标缓存（契约 [C-Runtime-6]）==========
     /// <summary>
     /// Sprite 缓存：iconPath → Sprite（失败缓存 null）
-    /// Resources.Load<Sprite>(iconPath) 只加载一次
+    /// 通过 IGameAssetProvider.Load<Sprite>(iconPath) 只加载一次
     /// </summary>
     private Dictionary<string, Sprite> _spriteCache = new Dictionary<string, Sprite>();
 
@@ -230,7 +230,7 @@ public class HudPresenter : MonoBehaviour
         }
 
         // 加载 Sprite
-        Sprite sprite = Resources.Load<Sprite>(iconPath);
+        Sprite sprite = ResourcesGameAssetProvider.Shared.Load<Sprite>(iconPath);
 
         // 缓存结果（包括 null）
         _spriteCache[iconPath] = sprite;

@@ -95,18 +95,6 @@ public class UIManager : MonoBehaviour, IHealthTextRecycler
 
 
 
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
-
     private void EnsureEscapeAction()
     {
         if (_escapeAction != null)
@@ -114,7 +102,7 @@ public class UIManager : MonoBehaviour, IHealthTextRecycler
             return;
         }
 
-        // Local action avoids adding a second PlayerInput that would steal keyboard/mouse pairing.
+        // 使用本地 InputAction，避免额外挂第二个 PlayerInput 导致键鼠配对被抢占。
         _escapeAction = new InputAction("UIManager.Escape", InputActionType.Button, "<Keyboard>/escape");
         _escapeAction.started += OnExitGame;
     }

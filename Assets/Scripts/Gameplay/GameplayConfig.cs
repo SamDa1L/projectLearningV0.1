@@ -13,18 +13,13 @@ using UnityEngine;
 ///
 /// 使用步骤：
 /// 1. 在Assets/Resources/Config目录下创建此资源
-/// 2. 在游戏启动时调用GameplayConfig.Load()获取实例
-/// 3. 其他系统通过GameplayConfig.instance访问参数
+/// 2. 在游戏启动时由 GameBootstrap/IGameAssetProvider 加载并注入到需要的模块
 /// 4. 修改参数后自动验证，Version会自动更新
 /// 5. 需要回溯时使用DumpConfigSnapshot()
 /// </summary>
 [CreateAssetMenu(menuName = "Game/Gameplay Config")]
 public class GameplayConfig : ScriptableObject
 {
-    // ===== Singleton实例 =====
-    private static GameplayConfig _instance;
-    public static GameplayConfig instance => _instance;
-
     // ===== 版本管理 =====
     [SerializeField] public string version = "0.2.0";
     [TextArea(2, 4)]
@@ -133,28 +128,8 @@ public class GameplayConfig : ScriptableObject
     // ===== 生命周期 =====
 
     /// <summary>
-    /// 显式加载GameplayConfig
-    /// 在游戏启动时调用，避免Singleton的null异常
-    /// </summary>
-    public static GameplayConfig Load()
-    {
-        if (_instance != null)
-            return _instance;
-
-        _instance = Resources.Load<GameplayConfig>("Config/GameplayConfig");
-        if (_instance == null)
-        {
-            Debug.LogError("[GameplayConfig] 配置资源未找到。请在 Assets/Resources/Config/GameplayConfig.asset 创建资源");
-            return null;
-        }
-
-        Debug.Log($"[GameplayConfig] 已加载版本 v{_instance.version}");
-        return _instance;
-    }
-
-    /// <summary>
-    /// 编辑器编辑时自动验证参数范围
-    /// </summary>
+     /// 编辑器编辑时自动验证参数范围
+     /// </summary>
     private void OnValidate()
     {
         // 敌人参数
@@ -228,22 +203,5 @@ public class GameplayConfig : ScriptableObject
                   $"  Debug Mode: {debugMode}\n" +
                   $"  Debug Enemy State Overlay: {debugEnemyStateOverlay}\n" +
                   $"  Timestamp: {System.DateTime.Now:HH:mm:ss}");
-    }
-
-    /// <summary>
-    /// 编辑器菜单：验证配置是否正确加载
-    /// </summary>
-    public static void VerifyConfig()
-    {
-        var config = Resources.Load<GameplayConfig>("Config/GameplayConfig");
-        if (config == null)
-        {
-            Debug.LogError("[GameplayConfig] 配置未找到。请在 Assets/Resources/Config/GameplayConfig.asset 创建");
-        }
-        else
-        {
-            Debug.Log($"[GameplayConfig] 验证成功 - 版本 v{config.version}");
-            config.PrintAllValues();
-        }
     }
 }

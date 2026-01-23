@@ -278,7 +278,7 @@ public class PlayerController : MonoBehaviour
 
     private void EnsureInputModeSwitcher()
     {
-        // Only wire this up when PlayerInput exists on the same GameObject.
+        // 仅当 PlayerInput 挂在同一 GameObject 上时才启用（避免无输入时无意义地挂组件）。
         if (GetComponent<PlayerInput>() == null)
         {
             return;
@@ -414,7 +414,7 @@ public class PlayerController : MonoBehaviour
             gameObject.AddComponent<StatusEffectController>();
         }
 
-        // Phase 9：最后输入设备优先的控制方案切换器（不使用 Find/Tag/单例）。
+        // 阶段 9：最后输入设备优先的控制方案切换器（不使用 Find/Tag/单例）。
         EnsureInputModeSwitcher();
 
         // 阶段 3A: 从 PlayerConfig 加载配置
@@ -540,7 +540,7 @@ public class PlayerController : MonoBehaviour
     private void BuildAbilitySystem()
     {
         // 加载 AbilityCatalog
-        AbilityCatalog catalog = Resources.Load<AbilityCatalog>("Config/AbilityCatalog");
+        AbilityCatalog catalog = ResourcesGameAssetProvider.Shared.AbilityCatalog;
         if (catalog == null)
         {
             // 硬失败：能力系统是必需的，不允许回退到旧逻辑
@@ -624,7 +624,7 @@ public class PlayerController : MonoBehaviour
 
         Debug.Log($"[PlayerController] 能力系统构建完成: 注册 {registeredTotalCount} 个（enabled {registeredEnabledCount} / disabled {registeredDisabledCount}）");
 
-        // ===== Phase 4 集成：注入 AbilitySystem 到 PlayerContext =====
+        // ===== 阶段 4 集成：注入 AbilitySystem 到 PlayerContext =====
         PlayerContext playerContext = GetComponent<PlayerContext>();
         if (playerContext != null)
         {
@@ -636,14 +636,14 @@ public class PlayerController : MonoBehaviour
             Debug.LogError("[PlayerController] 未找到 PlayerContext 组件，无法注入 AbilitySystem");
         }
 
-        // ===== Phase 4-6 集成说明 =====
+        // ===== 阶段 4-6 集成说明 =====
         // 注意：玩家各模块初始化由 GameBootstrap 触发，但入口已收拢到 PlayerContext.InitializeModules（Phase 3，契约 [C-Runtime-0]）
-        // PlayerController 仅负责创建 AbilitySystem 并注入到 PlayerContext
-        // GameBootstrap.Awake 将完成以下装配：
+        // 说明：PlayerController 仅负责创建 AbilitySystem 并注入到 PlayerContext
+        // 说明：GameBootstrap.Awake 将完成以下装配：
         //   1. 加载 ItemCatalog 并创建 CastleDbService
         //   2. 加载 HudBinding 并实例化/定位 HUD
         //   3. player.InitializeModules(items, cfg, hudPresenter, hudRefs)
-        // GameBootstrap.Start 将执行：
+        // 说明：GameBootstrap.Start 将执行：
         //   - player.SyncInitialAbilities()
     }
 
@@ -661,18 +661,6 @@ public class PlayerController : MonoBehaviour
     {
         // 此方法已废弃，不应调用
         Debug.LogWarning("[PlayerController] ApplyProjectileDamageOverride 已废弃，使用 prefab 级赋值");
-    }
-
-    // Start：Unity 生命周期回调（当前未使用）
-    void Start()
-    {
-
-    }
-
-    // Update：Unity 生命周期回调（当前未使用）
-    void Update()
-    {
-
     }
 
     /// <summary>
@@ -717,7 +705,7 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// LateUpdate生命周期函数（Phase 5）
+    /// LateUpdate 生命周期回调（阶段 5）
     /// 每帧在所有 Update 完成后调用，用于刷新 AbilitySystem 的待处理状态变更
     ///
     /// 功能:
@@ -726,7 +714,7 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
-        // Phase 5: 刷新能力系统的待处理状态变更
+        // 阶段 5：刷新能力系统的待处理状态变更
         if (usePlayerConfigFromCastleDb && abilitySystem != null)
         {
             abilitySystem.FlushPendingChanges();
@@ -738,7 +726,7 @@ public class PlayerController : MonoBehaviour
     /// 由Input System在输入事件发生时调用
     ///
     /// 适配器职责（阶段 3B）：
-    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统，不执行业务逻辑
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并派发到能力系统，不执行业务逻辑
     /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
     /// 原有功能（回退模式）:
@@ -755,7 +743,7 @@ public class PlayerController : MonoBehaviour
         // 阶段 3B: 适配器模式分支
         if (usePlayerConfigFromCastleDb && abilitySystem != null)
         {
-            // Dispatch 到能力系统（不执行业务逻辑）
+            // 派发到能力系统（不执行业务逻辑）
             AbilityInput input = AbilityInput.Performed(moveInput, true);
             abilitySystem.Dispatch(AbilityHookType.Move, input);
             return; // 立即返回，不执行下方的原有逻辑
@@ -842,7 +830,7 @@ public class PlayerController : MonoBehaviour
     /// 由Input System在按下/释放奔跑键时调用(默认Shift键)
     ///
     /// 适配器职责（阶段 3B）：
-    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并派发到能力系统
     /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
     /// 原有功能（回退模式）:
@@ -869,7 +857,7 @@ public class PlayerController : MonoBehaviour
                 return; // 忽略其他阶段
             }
 
-            // Dispatch 到能力系统
+            // 派发到能力系统
             abilitySystem.Dispatch(AbilityHookType.Run, input);
             return;
         }
@@ -892,7 +880,7 @@ public class PlayerController : MonoBehaviour
     /// 由Input System在按下空格键时调用
     ///
     /// 适配器职责（阶段 3B）：
-    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并派发到能力系统
     /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
     /// 原有功能（回退模式）:
@@ -953,7 +941,7 @@ public class PlayerController : MonoBehaviour
     /// 由Input System在按下攻击键时调用(默认Z键或J键)
     ///
     /// 适配器职责（阶段 3B）：
-    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并派发到能力系统
     /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
     /// 原有功能（回退模式）:
@@ -1001,7 +989,7 @@ public class PlayerController : MonoBehaviour
     /// 由Input System在按下远程攻击键时调用
     ///
     /// 适配器职责（阶段 3B）：
-    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并 Dispatch 到能力系统
+    /// - 当 usePlayerConfigFromCastleDb=true: 仅适配输入并派发到能力系统
     /// - 当 usePlayerConfigFromCastleDb=false: 执行原有业务逻辑（回退方案）
     ///
     /// 原有功能（回退模式）:
@@ -1009,7 +997,7 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void OnRangedAttack(InputAction.CallbackContext context)
     {
-        // 兼容旧 Action 名（Phase 9 将输入动作命名为 Ability2/Ability3/Ability4）。
+        // 兼容旧的输入动作命名（阶段 9 将输入动作命名为 Ability2/Ability3/Ability4）。
         OnAbility2(context);
     }
 
@@ -1023,7 +1011,7 @@ public class PlayerController : MonoBehaviour
             {
                 AbilityInput input = AbilityInput.Started(isPressed: true);
 
-                // 0.5 Phase 9：按槽位释放（Ability2 固定触发 slot1 当前装备的能力）
+                // 0.5 阶段 9：按槽位释放（Ability2 固定触发 slot1 当前装备的能力）
                 if (_playerContext != null
                     && _playerContext.Inventory != null
                     && _playerContext.Inventory.TryGetAbilityIdInSlot(1, out string abilityId)

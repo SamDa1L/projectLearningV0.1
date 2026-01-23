@@ -179,6 +179,49 @@ public class AbilityCatalogEntry
     /// <summary>参数 JSON（0.5：收敛为 cast/targeting 等可变配置；不再放 kind/基础数值）</summary>
     public string paramsJson;
 
+    // ===== 2.2：高频字段结构化（减少运行时反复解析 paramsJson）=====
+
+    /// <summary>
+    /// 施法参数结构化版本：
+    /// - 0：旧产物（运行时按需解析 paramsJson，并在内存中做一次性缓存）
+    /// - 1：已在导入阶段解析并写入 animTrigger/releaseDelay
+    /// </summary>
+    public int castParamsVersion;
+
+    /// <summary>施法动画触发器（来自 paramsJson.animTrigger；空表示不覆盖）</summary>
+    public string animTrigger;
+
+    /// <summary>施法释放延迟（秒）（来自 paramsJson.releaseDelay；缺失/非法视为 0）</summary>
+    public float releaseDelay;
+
+    [System.NonSerialized] private bool _castParamsCached;
+    [System.NonSerialized] private string _cachedAnimTrigger;
+    [System.NonSerialized] private float _cachedReleaseDelay;
+
+    /// <summary>
+    /// 获取施法公共参数（animTrigger/releaseDelay）。
+    /// - 新产物：直接读取结构化字段
+    /// - 旧产物：解析 paramsJson 并在内存中缓存（不写回资产，避免 PlayMode 污染资源）
+    /// </summary>
+    public void GetCastParams(out string resolvedAnimTrigger, out float resolvedReleaseDelaySeconds)
+    {
+        if (castParamsVersion >= 1)
+        {
+            resolvedAnimTrigger = animTrigger ?? "";
+            resolvedReleaseDelaySeconds = Mathf.Max(0f, releaseDelay);
+            return;
+        }
+
+        if (!_castParamsCached)
+        {
+            _castParamsCached = true;
+            CastleDbParamsJson.ParseAnimTriggerAndReleaseDelay(paramsJson, out _cachedAnimTrigger, out _cachedReleaseDelay);
+        }
+
+        resolvedAnimTrigger = _cachedAnimTrigger ?? "";
+        resolvedReleaseDelaySeconds = Mathf.Max(0f, _cachedReleaseDelay);
+    }
+
     public override string ToString()
     {
         return $"AbilityCatalogEntry[id={id}, hookType={hookType}, priority={priority}, enabled={enabled}, kind={kind}]";
@@ -336,6 +379,9 @@ public class AbilityCatalog : ScriptableObject
                 kind = (AbilityKind)dto.kind;
             }
 
+            string paramsJson = dto.paramsJson ?? "";
+            CastleDbParamsJson.ParseAnimTriggerAndReleaseDelay(paramsJson, out string animTrigger, out float releaseDelay);
+
             var entry = new AbilityCatalogEntry
             {
                 id = dto.id,
@@ -348,7 +394,12 @@ public class AbilityCatalog : ScriptableObject
                 buffId = dto.buffId ?? "",
                 cooldown = dto.cooldown,
                 onHitSequenceId = dto.onHitSequenceId ?? "",
-                paramsJson = dto.paramsJson ?? ""
+                paramsJson = paramsJson,
+
+                // 2.2：导入阶段结构化高频字段（运行时不再反复解析 paramsJson）
+                castParamsVersion = 1,
+                animTrigger = animTrigger,
+                releaseDelay = releaseDelay
             };
 
             entries.Add(entry);

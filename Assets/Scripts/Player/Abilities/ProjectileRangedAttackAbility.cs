@@ -21,6 +21,13 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
     private GameObject cachedPrefab;
     private bool loggedMissingPrefab;
 
+    private const int DefaultProjectilePoolMaxSize = 16;
+    private PrefabGameObjectPool _projectilePool;
+    private GameObject _pooledPrefab;
+
+    private const int DefaultVfxPoolMaxSize = 32;
+    private VfxPoolService _vfxPool;
+
     public string AbilityId { get; private set; }
     public int Priority { get; private set; }
     public bool Enabled { get; set; }
@@ -126,23 +133,28 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
 
         if (cachedPrefab == null)
         {
-            cachedPrefab = Resources.Load<GameObject>(prefabResourcesPath);
+            cachedPrefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabResourcesPath);
             if (cachedPrefab == null)
             {
-                if (!loggedMissingPrefab)
-                {
-                    Debug.LogError(
-                        $"[ProjectileRangedAttackAbility] Resources.Load failed: '{prefabResourcesPath}' (abilityId='{AbilityId}')");
-                    loggedMissingPrefab = true;
+                    if (!loggedMissingPrefab)
+                    {
+                        Debug.LogError(
+                            $"[ProjectileRangedAttackAbility] 资源加载失败: '{prefabResourcesPath}' (abilityId='{AbilityId}')");
+                        loggedMissingPrefab = true;
+                    }
+                    return false;
                 }
-                return false;
             }
-        }
 
         Transform launchPoint = ResolveLaunchPoint();
         Vector3 spawnPosition = launchPoint != null ? launchPoint.position : playerController.transform.position;
 
-        GameObject projectile = Object.Instantiate(cachedPrefab, spawnPosition, cachedPrefab.transform.rotation);
+        PrefabGameObjectPool pool = GetOrCreateProjectilePool(cachedPrefab);
+        GameObject projectile = pool != null ? pool.Get(spawnPosition, cachedPrefab.transform.rotation) : null;
+        if (projectile == null)
+        {
+            projectile = Object.Instantiate(cachedPrefab, spawnPosition, cachedPrefab.transform.rotation);
+        }
 
         float dirSign = playerController.IsFacingRight ? 1f : -1f;
         Vector3 scale = projectile.transform.localScale;
@@ -165,7 +177,19 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
             }
 
             IReadOnlyList<AbilityOnHitNode> nodes = onHitSequence != null ? onHitSequence.nodes : null;
+            controller.SetRecycler(pool);
+            controller.SetVfxPool(GetOrCreateVfxPool());
             controller.Initialize(playerController.gameObject, AbilityId, projectileDef, nodes);
+        }
+        else
+        {
+            // 兼容旧投射物：复用时需要重新设置速度，并确保命中后能回收到对象池。
+            var legacy = projectile.GetComponent<Projectile>();
+            if (legacy != null)
+            {
+                legacy.SetRecycler(pool);
+                legacy.ResetForSpawn();
+            }
         }
 
         return true;
@@ -181,13 +205,13 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
         GameObject prefab = cachedPrefab;
         if (prefab == null)
         {
-            prefab = Resources.Load<GameObject>(prefabResourcesPath);
+            prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabResourcesPath);
             if (prefab == null)
             {
                 if (!loggedMissingPrefab)
                 {
                     Debug.LogError(
-                        $"[ProjectileRangedAttackAbility] Resources.Load failed: '{prefabResourcesPath}' (abilityId='{AbilityId}')");
+                        $"[ProjectileRangedAttackAbility] 资源加载失败: '{prefabResourcesPath}' (abilityId='{AbilityId}')");
                     loggedMissingPrefab = true;
                 }
 
@@ -212,19 +236,30 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
 
                 Transform spawnPoint = launchPoint != null ? launchPoint : playerController.transform;
                 Vector3 spawnPosition = spawnPoint.position;
-                GameObject projectile = Object.Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+
+                PrefabGameObjectPool pool = GetOrCreateProjectilePool(prefab);
+                GameObject projectile = pool != null ? pool.Get(spawnPosition, prefab.transform.rotation) : null;
+                if (projectile == null)
+                {
+                    projectile = Object.Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+                }
 
                 float dirSign = playerController.IsFacingRight ? 1f : -1f;
                 Vector3 scale = projectile.transform.localScale;
                 scale.x = Mathf.Abs(scale.x) * dirSign;
                 projectile.transform.localScale = scale;
 
+                var legacy = projectile.GetComponent<Projectile>();
                 if (def == null)
                 {
+                    if (legacy != null)
+                    {
+                        legacy.SetRecycler(pool);
+                        legacy.ResetForSpawn();
+                    }
                     return;
                 }
 
-                var legacy = projectile.GetComponent<Projectile>();
                 if (legacy != null)
                 {
                     legacy.enabled = false;
@@ -236,6 +271,8 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
                     controller = projectile.AddComponent<AbilityProjectileController>();
                 }
 
+                controller.SetRecycler(pool);
+                controller.SetVfxPool(GetOrCreateVfxPool());
                 controller.Initialize(playerController.gameObject, AbilityId, def, nodes);
             },
             expirySeconds: 1.5f);
@@ -255,4 +292,39 @@ public class ProjectileRangedAttackAbility : IPlayerAbility
     public bool OnRun(AbilityInput input) => false;
     public bool OnJump(AbilityInput input) => false;
     public bool OnAttack(AbilityInput input) => false;
+
+    private PrefabGameObjectPool GetOrCreateProjectilePool(GameObject prefab)
+    {
+        if (playerController == null || prefab == null)
+        {
+            return null;
+        }
+
+        if (_projectilePool == null || _pooledPrefab != prefab)
+        {
+            _pooledPrefab = prefab;
+            _projectilePool = new PrefabGameObjectPool(
+                prefab,
+                playerController.transform,
+                $"[Pool] PlayerProjectiles({AbilityId})",
+                DefaultProjectilePoolMaxSize);
+        }
+
+        return _projectilePool;
+    }
+
+    private VfxPoolService GetOrCreateVfxPool()
+    {
+        if (playerController == null)
+        {
+            return null;
+        }
+
+        if (_vfxPool == null)
+        {
+            _vfxPool = new VfxPoolService(playerController.transform, DefaultVfxPoolMaxSize);
+        }
+
+        return _vfxPool;
+    }
 }

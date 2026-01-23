@@ -30,6 +30,13 @@ namespace CastleDB.Editor
         // 一次性日志去重
         private readonly HashSet<string> _loggedErrors = new HashSet<string>();
 
+        /// <summary>
+        /// 是否输出 Unity 控制台日志（Debug.Log/LogWarning/LogError）。
+        /// - 默认开启：保留现有工具行为
+        /// - 单元测试建议关闭：避免负例用例在控制台输出红色错误日志
+        /// </summary>
+        public bool EnableUnityConsoleLogging { get; set; } = true;
+
         #region Public API
 
         /// <summary>
@@ -46,7 +53,10 @@ namespace CastleDB.Editor
                 // 0. 校验 CdbImportRoot（Phase 12: 不可访问时直接失败，不走 Orphaned）
                 if (!ValidateCdbImportRoot(cdbImportRootFullPath))
                 {
-                    Debug.LogError($"[ExcelExporter] CdbImportRoot 不可访问，中止导出：{cdbImportRootFullPath}");
+                    if (EnableUnityConsoleLogging)
+                    {
+                        Debug.LogError($"[ExcelExporter] CdbImportRoot 不可访问，中止导出：{cdbImportRootFullPath}");
+                    }
                     return false;
                 }
 
@@ -54,7 +64,10 @@ namespace CastleDB.Editor
                 string fullCdbPath = Path.GetFullPath(cdbFilePath);
                 if (!File.Exists(fullCdbPath))
                 {
-                    Debug.LogError($"[ExcelExporter] 文件不存在：{fullCdbPath}");
+                    if (EnableUnityConsoleLogging)
+                    {
+                        Debug.LogError($"[ExcelExporter] 文件不存在：{fullCdbPath}");
+                    }
                     return false;
                 }
 
@@ -69,7 +82,10 @@ namespace CastleDB.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[ExcelExporter] 导出失败：{ex}");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ExcelExporter] 导出失败：{ex}");
+                }
                 return false;
             }
         }
@@ -267,7 +283,10 @@ namespace CastleDB.Editor
                 var sheets = root["sheets"] as JArray;
                 if (sheets == null || sheets.Count == 0)
                 {
-                    Debug.LogWarning($"[ExcelExporter] 无有效 sheets，跳过导出：{sourceCdbPathFull}");
+                    if (EnableUnityConsoleLogging)
+                    {
+                        Debug.LogWarning($"[ExcelExporter] 无有效 sheets，跳过导出：{sourceCdbPathFull}");
+                    }
                     return false;
                 }
 
@@ -314,7 +333,10 @@ namespace CastleDB.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[ExcelExporter] GenerateXlsxFile 失败：{ex}");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ExcelExporter] GenerateXlsxFile 失败：{ex}");
+                }
                 return false;
             }
         }
@@ -539,7 +561,10 @@ namespace CastleDB.Editor
                     {
                         // 典型：Excel 占用/锁定。保持旧文件不变，只清理 tmp
                         if (File.Exists(tmpPath)) File.Delete(tmpPath);
-                        Debug.LogWarning($"[ExcelExporter] 目标文件可能被占用，未覆盖旧文件：{targetPath} ({ioEx.GetType().Name})");
+                        if (EnableUnityConsoleLogging)
+                        {
+                            Debug.LogWarning($"[ExcelExporter] 目标文件可能被占用，未覆盖旧文件：{targetPath} ({ioEx.GetType().Name})");
+                        }
                         return false;
                     }
                     catch (PlatformNotSupportedException)
@@ -568,7 +593,10 @@ namespace CastleDB.Editor
                     File.Move(tmpPath, targetPath);
                 }
 
-                Debug.Log($"[ExcelExporter] ✓ 导出成功：{targetPath}");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.Log($"[ExcelExporter] ✓ 导出成功：{targetPath}");
+                }
                 return true;
             }
             catch (Exception ex)
@@ -578,7 +606,10 @@ namespace CastleDB.Editor
                     File.Delete(tmpPath);
 
                 // 4. 记录错误但不中断导入
-                Debug.LogError($"[ExcelExporter] 导出失败：{ex}");
+                if (EnableUnityConsoleLogging)
+                {
+                    Debug.LogError($"[ExcelExporter] 导出失败：{ex}");
+                }
                 return false;
             }
         }

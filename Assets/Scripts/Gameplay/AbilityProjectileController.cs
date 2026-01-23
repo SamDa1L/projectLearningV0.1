@@ -22,6 +22,9 @@ public class AbilityProjectileController : MonoBehaviour
     private Rigidbody2D _rb;
     private Collider2D _collider;
 
+    private IGameObjectRecycler _recycler;
+    private VfxPoolService _vfxPool;
+
     private bool _initialized;
     private bool _finished;
 
@@ -40,6 +43,43 @@ public class AbilityProjectileController : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody2D>();
         _collider = GetComponent<Collider2D>();
+    }
+
+    private void OnDisable()
+    {
+        // 池化安全性：
+        // - 投射物生命周期使用协程；池化对象不会 Destroy，因此需要显式 StopAllCoroutines
+        // - 必须恢复对 owner 的 IgnoreCollision，否则复用后可能永远打不到旧 owner
+        StopAllCoroutines();
+        RestoreOwnerCollisions();
+
+        if (_rb != null)
+        {
+            _rb.velocity = Vector2.zero;
+        }
+
+        _initialized = false;
+        _finished = false;
+
+        _owner = null;
+        _ownerFaction = FactionId.Neutral;
+        _abilityId = "";
+        _def = null;
+        _onHitNodes = null;
+
+        _hasHitMask = false;
+        _hitLayerMask = 0;
+        _loggedMissingVfx = false;
+    }
+
+    public void SetRecycler(IGameObjectRecycler recycler)
+    {
+        _recycler = recycler;
+    }
+
+    public void SetVfxPool(VfxPoolService vfxPool)
+    {
+        _vfxPool = vfxPool;
     }
 
     public void Initialize(
@@ -83,15 +123,28 @@ public class AbilityProjectileController : MonoBehaviour
         }
     }
 
+    private void Despawn()
+    {
+        if (_recycler != null)
+        {
+            _recycler.Recycle(gameObject);
+            return;
+        }
+
+        Destroy(gameObject);
+    }
+
     private void IgnoreOwnerCollisions()
     {
+        RestoreOwnerCollisions();
+
         if (_owner == null || _collider == null)
         {
             return;
         }
 
-        Collider2D[] ownerColliders = _owner.GetComponentsInChildren<Collider2D>(true);
-        foreach (var ownerCollider in ownerColliders)
+        _ignoredOwnerColliders = _owner.GetComponentsInChildren<Collider2D>(true);
+        foreach (var ownerCollider in _ignoredOwnerColliders)
         {
             if (ownerCollider == null)
             {
@@ -100,6 +153,30 @@ public class AbilityProjectileController : MonoBehaviour
 
             Physics2D.IgnoreCollision(_collider, ownerCollider, true);
         }
+    }
+
+    private Collider2D[] _ignoredOwnerColliders;
+
+    private void RestoreOwnerCollisions()
+    {
+        if (_ignoredOwnerColliders == null || _ignoredOwnerColliders.Length == 0 || _collider == null)
+        {
+            _ignoredOwnerColliders = null;
+            return;
+        }
+
+        for (int i = 0; i < _ignoredOwnerColliders.Length; i++)
+        {
+            var ownerCollider = _ignoredOwnerColliders[i];
+            if (ownerCollider == null)
+            {
+                continue;
+            }
+
+            Physics2D.IgnoreCollision(_collider, ownerCollider, false);
+        }
+
+        _ignoredOwnerColliders = null;
     }
 
     private void ApplyVelocity()
@@ -132,7 +209,7 @@ public class AbilityProjectileController : MonoBehaviour
         string vfxPath = ResolveExpireVfxPath();
         float vfxDuration = ResolveExpireVfxDuration();
         SpawnVfx(vfxPath, pos, vfxDuration);
-        Destroy(gameObject);
+        Despawn();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -193,7 +270,7 @@ public class AbilityProjectileController : MonoBehaviour
         SpawnVfx(_def.onHitVfxPath, hitPoint, _def.onHitVfxDuration);
 
         _finished = true;
-        Destroy(gameObject);
+        Despawn();
     }
 
     private void InitializeHitMask()
@@ -273,7 +350,7 @@ public class AbilityProjectileController : MonoBehaviour
 
     private static FactionId ResolveOwnerFaction(GameObject owner)
     {
-        // owner 阵营为 None 通常意味着错误配置（或忘记挂 FactionMember）。
+        // 注意：owner 阵营为 None 通常意味着错误配置（或忘记挂 FactionMember）。
         // 这里回退为 Neutral，避免误伤；同时保留日志便于排查。
         FactionId faction = FactionUtility.GetFaction(owner);
         if (faction == FactionId.None)
@@ -308,7 +385,7 @@ public class AbilityProjectileController : MonoBehaviour
             return;
         }
 
-        // Neutral 不参与敌对关系；这里不强行改 Layer，避免把特殊投射物错误映射到 Default 后影响其它碰撞规则。
+        // 注意：Neutral 不参与敌对关系；这里不强行改 Layer，避免把特殊投射物错误映射到 Default 后影响其它碰撞规则。
         if (faction != FactionId.Enemy && faction != FactionId.Friend)
         {
             return;
@@ -484,7 +561,13 @@ public class AbilityProjectileController : MonoBehaviour
             return;
         }
 
-        GameObject prefab = Resources.Load<GameObject>(vfxPath);
+        if (_vfxPool != null)
+        {
+            _vfxPool.SpawnOneShot(vfxPath, position, destroyAfterSeconds, this);
+            return;
+        }
+
+        GameObject prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(vfxPath);
         if (prefab == null)
         {
             if (!_loggedMissingVfx)

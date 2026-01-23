@@ -436,11 +436,10 @@ namespace CastleDB.Tests.EditMode
             string invalidRoot = Path.Combine(_testCdbRoot, "NonExistentDir");
 
             var exporter = new CdbExcelExporter();
+            // 单元测试不应在控制台输出红色错误日志（负例用例会覆盖无效路径）
+            exporter.EnableUnityConsoleLogging = false;
 
-            // 3. 预期 Error 日志（CdbImportRoot 不可访问）
-            UnityEngine.TestTools.LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[ExcelExporter\] CdbImportRoot 不可访问.*"));
-
-            // 4. 导出应失败（因为 CdbImportRoot 不存在）
+            // 3. 导出应失败（因为 CdbImportRoot 不存在）
             bool success = exporter.ExportToExcel(testCdbPath, invalidRoot, TriggerMode.ThisFile);
 
             // 验证：ExportToExcel 在 ValidateCdbImportRoot 失败时返回 false

@@ -22,8 +22,8 @@ public struct DamageableStats
 	    public event System.Action<DamageableStats> DamageableStateChanged;
 
 	    /// <summary>
-	    /// Phase 7: 生命值变化事件（用于 HUD 订阅）
-	    /// 契约 [C-Runtime-6]: 必须在 Health 变化时触发，参数为 (current, max)
+	    /// 阶段 7：生命值变化事件（用于 HUD 订阅）
+	    /// 契约 [C-Runtime-6]：必须在 Health 变化时触发，参数为 (current, max)
 	    /// </summary>
 	    public event Action<int, int> OnHealthChanged;
 
@@ -66,8 +66,8 @@ public struct DamageableStats
     }
 
     /// <summary>
-    /// Phase 7: CurrentHealth 只读属性（用于 HUD 初始刷新）
-    /// 契约 [C-Runtime-6]: 返回当前生命值（四舍五入到 int）
+    /// 阶段 7：CurrentHealth 只读属性（用于 HUD 初始刷新）
+    /// 契约 [C-Runtime-6]：返回当前生命值（四舍五入到 int）
     /// </summary>
     public int CurrentHealth => Mathf.RoundToInt(_health);
 
@@ -84,12 +84,12 @@ public struct DamageableStats
         }
         set
         {
-            // Phase 7: 计算变化前后的 int 值，只有实际变化时才触发事件
+            // 阶段 7：计算变化前后的 int 值，只有实际变化时才触发事件
             int oldHealthInt = Mathf.RoundToInt(_health);
             _health = value;
             int newHealthInt = Mathf.RoundToInt(_health);
 
-            // 触发 OnHealthChanged 事件（Phase 7: 契约 [C-Runtime-6]）
+            // 触发 OnHealthChanged 事件（阶段 7：契约 [C-Runtime-6]）
             if (oldHealthInt != newHealthInt)
             {
                 int current = Mathf.Clamp(newHealthInt, 0, Mathf.RoundToInt(_maxHealth));
@@ -114,7 +114,7 @@ public struct DamageableStats
     [SerializeField]
     public float knockbackMultiplier = 1f;
 
-    // Phase 6: 外部无敌窗口（例如 Dash invincibleWindow），不污染受击 invincibilityTime 配置。
+    // 阶段 6：外部无敌窗口（例如 Dash invincibleWindow），不污染受击 invincibilityTime 配置。
     private float _externalInvulnerableUntilTime = 0f;
 
     /// <summary>
@@ -127,7 +127,7 @@ public struct DamageableStats
     }
 
     /// <summary>
-    /// Phase 6: 授予一个“外部无敌窗口”（秒）。
+    /// 阶段 6：授予一个“外部无敌窗口”（秒）。
     /// - seconds<=0：忽略
     /// - 多次调用：取更晚的结束时间（窗口可延长）
     /// </summary>
@@ -195,7 +195,7 @@ public struct DamageableStats
     /// <summary>
     /// 使用 DamageableStats 配置此组件
     /// 将传入的数值应用到组件（最大生命、当前生命、无敌时间等）
-    /// Phase 7: 配置后必须触发 OnHealthChanged 事件进行初始刷新
+    /// 阶段 7：配置后必须触发 OnHealthChanged 事件进行初始刷新
     /// </summary>
     /// <param name="stats">包含配置数值的结构体</param>
     public void Configure(DamageableStats? stats)
@@ -223,7 +223,7 @@ public struct DamageableStats
     {
         if(IsAlive && !IsInvulnerable)
         {
-            // Phase 7：扣血前允许拦截器改写伤害（护盾优先扣等）
+            // 阶段 7：扣血前允许拦截器改写伤害（护盾优先扣等）
             Vector2 worldPos = hitPoint ?? (Vector2)transform.position;
             int incomingDamage = Mathf.Max(damage, 0);
             int healthDamage = incomingDamage;
@@ -303,14 +303,6 @@ public struct DamageableStats
         return TryHeal(healthRestore) > 0;
     }
 
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
     void Update()
     {
         if (isInvincible)

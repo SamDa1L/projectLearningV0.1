@@ -11,7 +11,7 @@ using UnityEngine;
 /// - 可选纯配置字段（不得包含 Image/TMP_Text/GameObject 等实例引用）
 ///
 /// Runtime 使用规则：
-/// - GameBootstrap 从 Resources.Load 加载此资产
+/// - GameBootstrap 通过资源提供器加载此资产
 /// - 通过 hudPrefab 实例化或复用 HUD（取决于 hudRootOverride）
 /// - HudPresenter/ReplaceController 只能使用 HUD 实例上的 HudRefs 引用，禁止从此资产读取组件引用
 ///

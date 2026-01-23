@@ -172,12 +172,6 @@ public class TouchingDirections : MonoBehaviour
         animator = GetComponent<Animator>();
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
     /// <summary>
     /// FixedUpdate生命周期函数
     /// 每个物理帧调用一次(默认0.02秒)

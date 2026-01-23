@@ -21,6 +21,22 @@ public class NpcAbilityController : MonoBehaviour
     private readonly Dictionary<string, float> _nextReadyTimeByBindingId = new Dictionary<string, float>();
     private readonly Dictionary<string, GameObject> _prefabCache = new Dictionary<string, GameObject>();
 
+    [Header("Projectile Pool (2.3)")]
+    [SerializeField] private bool useProjectilePool = true;
+
+    [Min(0)]
+    [SerializeField] private int projectilePoolMaxSize = 16;
+
+    private readonly Dictionary<string, PrefabGameObjectPool> _projectilePoolsByPrefabPath = new Dictionary<string, PrefabGameObjectPool>();
+
+    [Header("VFX Pool (2.3)")]
+    [SerializeField] private bool useVfxPool = true;
+
+    [Min(0)]
+    [SerializeField] private int vfxPoolMaxSize = 32;
+
+    private VfxPoolService _vfxPool;
+
     private Transform _cachedFirePoint;
     private bool _searchedFirePoint;
 
@@ -492,16 +508,7 @@ public class NpcAbilityController : MonoBehaviour
             _nextReadyTimeByBindingId[bestBinding.id] = now + cooldown;
         }
 
-        string paramsJson = !string.IsNullOrWhiteSpace(bestBinding.paramsJson)
-            ? bestBinding.paramsJson
-            : bestAbility.paramsJson;
-
-        string fallbackTrigger = !string.IsNullOrWhiteSpace(profile.castTrigger)
-            ? profile.castTrigger
-            : profile.animationTrigger;
-
-        string animTrigger = ResolveAnimTrigger(paramsJson, fallback: fallbackTrigger);
-        float releaseDelay = ResolveReleaseDelay(paramsJson, fallbackSeconds: 0f);
+        ResolveCastParams(profile, bestBinding, bestAbility, out string animTrigger, out float releaseDelay);
 
         if (_animator != null && !string.IsNullOrWhiteSpace(animTrigger))
         {
@@ -571,7 +578,7 @@ public class NpcAbilityController : MonoBehaviour
         }
 
         // 约定：怪物/NPC 的技能冷却只由 NpcAbilityEntry.cooldownOverride 配置。
-        // AbilityCatalogEntry.cooldown 仅用于玩家能力，这里不参与 NPC 施法冷却计算。
+        // 注意：AbilityCatalogEntry.cooldown 仅用于玩家能力；这里不参与 NPC 施法冷却计算。
         return Mathf.Max(0f, binding.cooldownOverride);
     }
 
@@ -598,70 +605,52 @@ public class NpcAbilityController : MonoBehaviour
         return true;
     }
 
-    private static string ResolveAnimTrigger(string paramsJson, string fallback)
+    private static void ResolveCastParams(
+        EnemyTuningProfile profile,
+        NpcAbilityEntry binding,
+        AbilityCatalogEntry ability,
+        out string animTrigger,
+        out float releaseDelaySeconds)
     {
-        if (string.IsNullOrWhiteSpace(paramsJson))
+        // 注意：这里的优先级必须与旧逻辑一致：
+        // - 如果 binding.paramsJson 非空，则只读取 binding（即使字段缺失也不回退到 ability.paramsJson）
+        // - 如果 binding.paramsJson 为空，再读取 ability 的结构化字段/缓存解析结果
+        // - animTrigger 缺失/为空时回退到 NPC Profile 的 castTrigger / animationTrigger
+        // - releaseDelay 缺失/非法时视为 0
+
+        string fallbackTrigger = "";
+        if (profile != null)
         {
-            return fallback ?? "";
+            fallbackTrigger = !string.IsNullOrWhiteSpace(profile.castTrigger)
+                ? profile.castTrigger
+                : (profile.animationTrigger ?? "");
         }
 
-        var obj = CastleDbJsonUtil.TryParseJsonObject(paramsJson);
-        if (obj == null)
-        {
-            return fallback ?? "";
-        }
+        animTrigger = fallbackTrigger ?? "";
+        releaseDelaySeconds = 0f;
 
-        if (obj.TryGetValue("animTrigger", out var value) && value != null)
+        if (binding != null && !string.IsNullOrWhiteSpace(binding.paramsJson))
         {
-            string trigger = value.ToString()?.Trim();
-            if (!string.IsNullOrWhiteSpace(trigger))
+            binding.GetCastParams(out string bindingTrigger, out float bindingDelay);
+            if (!string.IsNullOrWhiteSpace(bindingTrigger))
             {
-                return trigger;
+                animTrigger = bindingTrigger;
             }
+
+            releaseDelaySeconds = Mathf.Max(0f, bindingDelay);
+            return;
         }
 
-        return fallback ?? "";
-    }
-
-    private static float ResolveReleaseDelay(string paramsJson, float fallbackSeconds)
-    {
-        if (string.IsNullOrWhiteSpace(paramsJson))
+        if (ability != null)
         {
-            return fallbackSeconds;
-        }
+            ability.GetCastParams(out string abilityTrigger, out float abilityDelay);
+            if (!string.IsNullOrWhiteSpace(abilityTrigger))
+            {
+                animTrigger = abilityTrigger;
+            }
 
-        var obj = CastleDbJsonUtil.TryParseJsonObject(paramsJson);
-        if (obj == null)
-        {
-            return fallbackSeconds;
+            releaseDelaySeconds = Mathf.Max(0f, abilityDelay);
         }
-
-        if (!obj.TryGetValue("releaseDelay", out var value) || value == null)
-        {
-            return fallbackSeconds;
-        }
-
-        if (value is float f)
-        {
-            return Mathf.Max(0f, f);
-        }
-
-        if (value is double d)
-        {
-            return Mathf.Max(0f, (float)d);
-        }
-
-        if (value is int i)
-        {
-            return Mathf.Max(0f, i);
-        }
-
-        if (float.TryParse(value.ToString(), out float parsed))
-        {
-            return Mathf.Max(0f, parsed);
-        }
-
-        return fallbackSeconds;
     }
 
     private void ApplyPendingBuff(PendingCast cast)
@@ -694,16 +683,7 @@ public class NpcAbilityController : MonoBehaviour
             _nextReadyTimeByBindingId[binding.id] = now + cooldown;
         }
 
-        string paramsJson = !string.IsNullOrWhiteSpace(binding.paramsJson)
-            ? binding.paramsJson
-            : ability.paramsJson;
-
-        string fallbackTrigger = !string.IsNullOrWhiteSpace(profile.castTrigger)
-            ? profile.castTrigger
-            : profile.animationTrigger;
-
-        string animTrigger = ResolveAnimTrigger(paramsJson, fallback: fallbackTrigger);
-        float releaseDelay = ResolveReleaseDelay(paramsJson, fallbackSeconds: 0f);
+        ResolveCastParams(profile, binding, ability, out string animTrigger, out float releaseDelay);
 
         if (_animator != null && !string.IsNullOrWhiteSpace(animTrigger))
         {
@@ -1210,7 +1190,12 @@ public class NpcAbilityController : MonoBehaviour
         Transform spawnPoint = ResolveFirePoint();
         Vector3 spawnPosition = spawnPoint != null ? spawnPoint.position : transform.position;
 
-        GameObject projectile = Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+        GameObject projectile = SpawnProjectileInstance(
+            projectileDef.prefabPath,
+            prefab,
+            spawnPosition,
+            prefab.transform.rotation,
+            out PrefabGameObjectPool pool);
 
         Vector3 scale = projectile.transform.localScale;
         scale.x = Mathf.Abs(scale.x) * (directionSign >= 0f ? 1f : -1f);
@@ -1228,7 +1213,47 @@ public class NpcAbilityController : MonoBehaviour
             controller = projectile.AddComponent<AbilityProjectileController>();
         }
 
+        controller.SetRecycler(pool);
+        controller.SetVfxPool(GetOrCreateVfxPool());
         controller.Initialize(gameObject, abilityId, projectileDef, onHitNodes);
+    }
+
+    private GameObject SpawnProjectileInstance(
+        string prefabPath,
+        GameObject prefab,
+        Vector3 position,
+        Quaternion rotation,
+        out PrefabGameObjectPool pool)
+    {
+        pool = null;
+
+        if (!useProjectilePool || projectilePoolMaxSize <= 0 || prefab == null || string.IsNullOrWhiteSpace(prefabPath))
+        {
+            return Instantiate(prefab, position, rotation);
+        }
+
+        if (!_projectilePoolsByPrefabPath.TryGetValue(prefabPath, out pool) || pool == null)
+        {
+            pool = new PrefabGameObjectPool(prefab, transform, $"[Pool] {name}.Projectiles", projectilePoolMaxSize);
+            _projectilePoolsByPrefabPath[prefabPath] = pool;
+        }
+
+        return pool.Get(position, rotation);
+    }
+
+    private VfxPoolService GetOrCreateVfxPool()
+    {
+        if (!useVfxPool || vfxPoolMaxSize <= 0)
+        {
+            return null;
+        }
+
+        if (_vfxPool == null)
+        {
+            _vfxPool = new VfxPoolService(transform, vfxPoolMaxSize);
+        }
+
+        return _vfxPool;
     }
 
     private GameObject ResolvePrefab(string prefabPath)
@@ -1243,7 +1268,7 @@ public class NpcAbilityController : MonoBehaviour
             return prefab;
         }
 
-        prefab = Resources.Load<GameObject>(prefabPath);
+        prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabPath);
         if (prefab != null)
         {
             _prefabCache[prefabPath] = prefab;
@@ -1312,12 +1337,12 @@ public class NpcAbilityController : MonoBehaviour
 
         _catalog = abilityCatalogOverride != null
             ? abilityCatalogOverride
-            : Resources.Load<AbilityCatalog>(AbilityCatalogResourcePath);
+            : ResourcesGameAssetProvider.Shared.AbilityCatalog;
         if (_catalog == null)
         {
             if (!_loggedMissingCatalog)
             {
-                Debug.LogError($"[NpcAbilityController] Resources.Load failed: '{AbilityCatalogResourcePath}'.", this);
+                Debug.LogError($"[NpcAbilityController] 资源加载失败：'{AbilityCatalogResourcePath}'。", this);
                 _loggedMissingCatalog = true;
             }
             _abilitiesById = null;

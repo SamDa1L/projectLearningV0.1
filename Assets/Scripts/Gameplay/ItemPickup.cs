@@ -27,8 +27,8 @@ public class ItemPickup : MonoBehaviour
 
     /// <summary>
     /// 拾取数量
-    /// Ability 类固定为 1（Inspector 会自动修正）
-    /// Consumable 类可 >1
+    /// 能力类固定为 1（检视面板会自动修正）
+    /// 消耗品类可 > 1
     /// </summary>
     [SerializeField]
     [Tooltip("拾取数量（Ability 固定 1，Consumable 可 >1）")]
@@ -49,7 +49,7 @@ public class ItemPickup : MonoBehaviour
     private bool _locked = false;
 
     /// <summary>
-    /// Collider2D 组件引用
+    /// 碰撞器组件（Collider2D）引用
     /// </summary>
     private Collider2D _collider;
 
@@ -71,7 +71,7 @@ public class ItemPickup : MonoBehaviour
             Debug.LogError($"[ItemPickup] 缺少 Collider2D 组件，交互将无法工作", this);
         }
 
-        // autoPickup 语义检查（0.4 不支持手动拾取）
+        // 自动拾取开关（autoPickup）语义检查（0.4 不支持手动拾取）
         if (!autoPickup)
         {
             string key = $"ItemPickup_ManualPickupNotSupported_{itemId}";
@@ -139,7 +139,7 @@ public class ItemPickup : MonoBehaviour
         // 构造 PickupRequest
         PickupRequest req = new PickupRequest(itemId, amount, this);
 
-        // Phase 7：遗物拾取优先走 PlayerRelicController（不走 Inventory.TryPickup）
+        // 阶段 7：遗物拾取优先走 PlayerRelicController（不走 Inventory.TryPickup）
         // 规则：若返回非 Failed_NotSupported，则视为“已处理”（成功或失败）并直接进入结果处理。
         if (playerCtx.RelicController != null)
         {
@@ -213,7 +213,7 @@ public class ItemPickup : MonoBehaviour
             case PickupResult.Failed_NotSupported:
                 // 失败：操作不支持（默认不输出，避免噪音）
                 // 如果需要调试，可以启用以下日志：
-                // Debug.Log($"[ItemPickup] 拾取失败 (NotSupported)。itemId={itemId}", this);
+                // 例：Debug.Log($"[ItemPickup] 拾取失败：不支持。itemId={itemId}", this);
                 break;
 
             default:
@@ -292,30 +292,89 @@ public class ItemPickup : MonoBehaviour
 
     // ===== 编辑器校验 =====
 #if UNITY_EDITOR
-    private void OnValidate()
+    /// <summary>
+    /// 编辑器校验级别（仅用于 OnValidate 与单元测试）。
+    /// 注意：这是“纯逻辑”结果，不包含任何日志输出。
+    /// </summary>
+    public enum EditorValidationSeverity
     {
+        None,
+        Warning,
+        Error
+    }
+
+    /// <summary>
+    /// 编辑器规则校验（纯逻辑）：按规则修正 amount，并返回需要提示的级别与消息。
+    /// 目的：
+    /// - OnValidate 仍可在编辑器中输出提示
+    /// - 单元测试不再依赖 Debug.LogError/LogAssert.Expect 来“验收”失败路径
+    /// </summary>
+    public static EditorValidationSeverity ValidateAndFixAmountForEditor(ItemType itemType, ref int amount, out string message)
+    {
+        message = null;
+
         // 1) amount <= 0 自动改为 1
         if (amount <= 0)
         {
-            Debug.LogWarning($"[ItemPickup] amount <= 0 已自动修正为 1。itemId={itemId}", this);
             amount = 1;
+            message = "amount <= 0 已自动修正为 1。";
+            return EditorValidationSeverity.Warning;
         }
 
         // 2) 若 itemType=Ability/Relic，强制 amount=1
-        ItemCatalog catalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
-        if (catalog != null && catalog.TryGetItem(itemId, out ItemDefinition def))
+        if ((itemType == ItemType.Ability || itemType == ItemType.Relic) && amount != 1)
         {
-            if ((def.itemType == ItemType.Ability || def.itemType == ItemType.Relic) && amount != 1)
-            {
-                Debug.LogWarning($"[ItemPickup] itemType=Ability/Relic 时 amount 必须为 1，已自动修正。itemId={itemId}", this);
-                amount = 1;
-            }
+            amount = 1;
+            message = "itemType=Ability/Relic 时 amount 必须为 1，已自动修正。";
+            return EditorValidationSeverity.Warning;
+        }
 
-            // 3) 若 itemType=Material，警告（0.4 不支持）
-            if (def.itemType == ItemType.Material)
-            {
-                Debug.LogError($"[ItemPickup] itemType=Material 在 0.4 版本不支持拾取，请勿投放。itemId={itemId}", this);
-            }
+        // 3) 若 itemType=Material，提示错误（0.4 不支持）
+        if (itemType == ItemType.Material)
+        {
+            message = "itemType=Material 在 0.4 版本不支持拾取，请勿投放。";
+            return EditorValidationSeverity.Error;
+        }
+
+        return EditorValidationSeverity.None;
+    }
+
+    private void OnValidate()
+    {
+        // 1) 先处理 amount<=0（不依赖 ItemCatalog）
+        int tmpAmount = amount;
+        var severity = ValidateAndFixAmountForEditor(ItemType.Consumable, ref tmpAmount, out string message);
+        if (severity == EditorValidationSeverity.Warning && tmpAmount != amount)
+        {
+            amount = tmpAmount;
+            Debug.LogWarning($"[ItemPickup] {message} itemId={itemId}", this);
+        }
+
+        // 2) 若能从 ItemCatalog 解析到 itemType，则应用类型规则
+        // 注意：编辑模式测试中 ItemCatalog.asset 可能被 AssetDatabase 删除/重建，
+        // 因此这里不能使用“资源提供器”的缓存 ItemCatalog 引用，必须实时加载最新资源。
+        ItemCatalog catalog = ResourcesGameAssetProvider.Shared.Load<ItemCatalog>("Config/ItemCatalog");
+        if (catalog == null || !catalog.TryGetItem(itemId, out ItemDefinition def))
+        {
+            return;
+        }
+
+        tmpAmount = amount;
+        severity = ValidateAndFixAmountForEditor(def.itemType, ref tmpAmount, out message);
+        if (tmpAmount != amount)
+        {
+            amount = tmpAmount;
+        }
+
+        switch (severity)
+        {
+            case EditorValidationSeverity.Warning:
+                Debug.LogWarning($"[ItemPickup] {message} itemId={itemId}", this);
+                break;
+
+            case EditorValidationSeverity.Error:
+                Debug.LogError($"[ItemPickup] {message} itemId={itemId}", this);
+                break;
         }
     }
 #endif

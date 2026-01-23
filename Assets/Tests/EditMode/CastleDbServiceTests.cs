@@ -8,8 +8,8 @@ using UnityEngine.TestTools;
 namespace CastleDB.Tests.EditMode
 {
     /// <summary>
-        /// CastleDbService 单元测试
-        /// 覆盖 DTO 解析、版本校验、数据查询等功能
+    /// CastleDbService 单元测试
+    /// 覆盖 DTO 解析、版本校验、数据查询等功能
     /// </summary>
     public class CastleDbServiceTests
     {
@@ -20,6 +20,10 @@ namespace CastleDB.Tests.EditMode
         public void Setup()
         {
             _service = new CastleDbService();
+            // 单元测试不应污染项目 Logs/*.log 文件
+            _service.EnableFileLogging = false;
+            // 单元测试不应在控制台输出红色错误日志（负例测试会故意触发版本不匹配）
+            _service.EnableUnityConsoleLogging = false;
             _mockSource = new MockCastleDbSource();
         }
 
@@ -36,13 +40,13 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestInitializeWithValidData()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
 
-            // Act
+            // 执行
             _service.Initialize(_mockSource);
 
-            // Assert
+            // 断言
             Assert.IsNotNull(_service.GetVersionInfo());
             Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, _service.GetVersionInfo().schemaVersion);
             Assert.Greater(_service.GetAllNpcs().Count, 0);
@@ -54,17 +58,22 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestInitializeWithVersionMismatch()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupVersionMismatch();
             bool versionMismatchCalled = false;
+            string receivedMessage = null;
 
-            // Act
-            _service.OnVersionMismatch += (msg) => versionMismatchCalled = true;
-            LogAssert.Expect(LogType.Error, $"[CastleDbService] Schema 版本不匹配！期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 0.1");
+            // 执行
+            _service.OnVersionMismatch += (msg) =>
+            {
+                versionMismatchCalled = true;
+                receivedMessage = msg;
+            };
             _service.Initialize(_mockSource);
 
-            // Assert
+            // 断言
             Assert.IsTrue(versionMismatchCalled);
+            Assert.AreEqual($"Schema 版本不匹配！期望 {CdbDataProviderRegistry.ExpectedSchemaVersion}，实际 0.1", receivedMessage);
         }
 
         /// <summary>
@@ -73,14 +82,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestGetNpcById()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var npc = _service.GetNpcById("M_Knight");
 
-            // Assert
+            // 断言
             Assert.IsNotNull(npc);
             Assert.AreEqual("M_Knight", npc.id);
             Assert.AreEqual("Knight", npc.displayName);
@@ -93,14 +102,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestGetNpcByIdNotFound()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var npc = _service.GetNpcById("NonExistent");
 
-            // Assert
+            // 断言
             Assert.IsNull(npc);
         }
 
@@ -110,14 +119,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestGetAllNpcs()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var npcs = _service.GetAllNpcs();
 
-            // Assert
+            // 断言
             Assert.AreEqual(2, npcs.Count);
             Assert.AreEqual("M_Knight", npcs[0].id);
             Assert.AreEqual("M_FlyingEye", npcs[1].id);
@@ -129,17 +138,17 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestGetDetectionZonesByNpcId()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var zones = _service.GetDetectionZonesByNpcId("M_Knight");
 
-            // Assert
+            // 断言
             Assert.AreEqual(1, zones.Count);
             Assert.AreEqual("M_Knight", zones[0].npcId);
-            Assert.AreEqual(0, zones[0].role); // PrimaryAttack
+            Assert.AreEqual(0, zones[0].role); // 主攻击
             Assert.AreEqual("HitboxDecetion", zones[0].childId);
         }
 
@@ -149,14 +158,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestGetAllDetectionZones()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var zones = _service.GetAllDetectionZones();
 
-            // Assert
+            // 断言
             Assert.AreEqual(2, zones.Count);
         }
 
@@ -166,14 +175,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestVersionInfoParsing()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var versionInfo = _service.GetVersionInfo();
 
-            // Assert
+            // 断言
             Assert.AreEqual(CdbDataProviderRegistry.ExpectedSchemaVersion, versionInfo.schemaVersion);
             Assert.AreEqual("UseNewDamageable=true", versionInfo.featureFlags);
         }
@@ -184,14 +193,14 @@ namespace CastleDB.Tests.EditMode
         [Test]
         public void TestNpcDataIntegrity()
         {
-            // Arrange
+            // 准备
             _mockSource.SetupValidData();
             _service.Initialize(_mockSource);
 
-            // Act
+            // 执行
             var knight = _service.GetNpcById("M_Knight");
 
-            // Assert
+            // 断言
             Assert.AreEqual("Knight", knight.displayName);
             Assert.AreEqual("KnightEnemy", knight.prefabName);
             Assert.AreEqual("hasTarget", knight.animationTrigger);

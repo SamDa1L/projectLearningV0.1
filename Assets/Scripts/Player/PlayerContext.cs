@@ -56,6 +56,12 @@ public class PlayerContext : MonoBehaviour
     /// </summary>
     public PlayerRelicController RelicController { get; private set; }
 
+    /// <summary>
+    /// Runtime 资源访问入口（Phase 0.5 / P1-1）
+    /// 由 GameBootstrap 创建并注入，避免模块各自直接加载 Resources 资源。
+    /// </summary>
+    public IGameAssetProvider Assets { get; private set; }
+
     // ===== 状态标记 =====
     /// <summary>
     /// 交互是否启用
@@ -232,7 +238,13 @@ public class PlayerContext : MonoBehaviour
     /// 4) ReplaceController.Initialize(items, hudRefs, ctx, hudPresenter)（可选）
     /// 5) EquipmentController.Initialize(items, abilitySystem, inv)（可选）
     /// </summary>
-    public bool InitializeModules(ICastleDbService items, GameplayConfig cfg, RelicCatalog relicCatalog, HudPresenter hudPresenter, HudRefs hudRefs)
+    public bool InitializeModules(
+        ICastleDbService items,
+        GameplayConfig cfg,
+        RelicCatalog relicCatalog,
+        HudPresenter hudPresenter,
+        HudRefs hudRefs,
+        IGameAssetProvider assets)
     {
         if (_runtimeModulesInitialized)
         {
@@ -272,6 +284,8 @@ public class PlayerContext : MonoBehaviour
             return false;
         }
 
+        Assets = assets;
+
         // 1) Inventory
         Inventory.Initialize(items, cfg);
 
@@ -294,6 +308,22 @@ public class PlayerContext : MonoBehaviour
 
         // 3) HUD
         hudPresenter.Initialize(items, hudRefs, Inventory, Damageable, RelicController, AbilitySystem);
+
+        // 3.5) StatusCatalog（可选）
+        // - StatusEffectController 自身仍支持资源加载 fallback（用于未走 Bootstrap 注入的对象）
+        // - Player 侧优先走注入，避免重复加载与字符串路径散落
+        if (Assets != null)
+        {
+            var statusCatalog = Assets.StatusCatalog;
+            if (statusCatalog != null)
+            {
+                var statusCtrl = GetComponentInChildren<StatusEffectController>(true);
+                if (statusCtrl != null)
+                {
+                    statusCtrl.Initialize(statusCatalog);
+                }
+            }
+        }
 
         // 4) Replace（建议依赖）
         if (ReplaceController != null)

@@ -33,6 +33,20 @@ namespace CastleDB.Runtime
         private static readonly ItemDefinition[] EmptyItems = new ItemDefinition[0];
 
         /// <summary>
+        /// 是否写入日志文件（Logs/*.log）。
+        /// - 默认开启：保留现有运行时行为
+        /// - 单元测试建议关闭：避免负例测试污染项目日志文件（例如 Schema 版本不匹配用例）
+        /// </summary>
+        public bool EnableFileLogging { get; set; } = true;
+
+        /// <summary>
+        /// 是否输出 Unity 控制台日志（Debug.Log/LogWarning/LogError）。
+        /// - 默认开启：保留现有运行时行为
+        /// - 单元测试建议关闭：避免负例测试在控制台输出红色错误日志（例如 Schema 版本不匹配用例）
+        /// </summary>
+        public bool EnableUnityConsoleLogging { get; set; } = true;
+
+        /// <summary>
         /// 初始化 CastleDbService
         /// </summary>
         public void Initialize(ICastleDbSource source)
@@ -244,15 +258,10 @@ namespace CastleDB.Runtime
         {
             def = null;
 
-            // 懒加载 ItemCatalog
+            // ItemCatalog 必须由启动装配显式注入（避免在此处隐式加载资源）
             if (_itemCatalog == null)
             {
-                _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
-                if (_itemCatalog == null)
-                {
-                    // ItemCatalog 不存在，不输出日志（由调用方判断）
-                    return false;
-                }
+                return false;
             }
 
             return _itemCatalog.TryGetItem(itemId, out def);
@@ -266,15 +275,10 @@ namespace CastleDB.Runtime
         /// </summary>
         public System.Collections.Generic.IReadOnlyList<ItemDefinition> GetAllItems()
         {
-            // 懒加载 ItemCatalog
             if (_itemCatalog == null)
             {
-                _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
-                if (_itemCatalog == null)
-                {
-                    // 返回空数组，避免每次分配
-                    return EmptyItems;
-                }
+                // 返回空数组，避免每次分配
+                return EmptyItems;
             }
 
             return _itemCatalog.GetAllItems();
@@ -290,12 +294,6 @@ namespace CastleDB.Runtime
         {
             get
             {
-                // 如果 ItemCatalog 未加载，尝试懒加载
-                if (_itemCatalog == null)
-                {
-                    _itemCatalog = UnityEngine.Resources.Load<ItemCatalog>("Config/ItemCatalog");
-                }
-                
                 // ItemCatalog 不存在或损坏，返回 false
                 return _itemCatalog != null && _itemCatalog.IsValid;
             }
@@ -313,19 +311,28 @@ namespace CastleDB.Runtime
 
         private void LogInfo(string message)
         {
-            Debug.Log($"[CastleDbService] {message}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.Log($"[CastleDbService] {message}");
+            }
             AppendToLogFile(LOG_FILE, $"[INFO] {DateTime.Now:HH:mm:ss} - {message}");
         }
 
         private void LogWarning(string message)
         {
-            Debug.LogWarning($"[CastleDbService] {message}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogWarning($"[CastleDbService] {message}");
+            }
             AppendToLogFile(LOG_FILE, $"[WARN] {DateTime.Now:HH:mm:ss} - {message}");
         }
 
         private void LogError(string message)
         {
-            Debug.LogError($"[CastleDbService] {message}");
+            if (EnableUnityConsoleLogging)
+            {
+                Debug.LogError($"[CastleDbService] {message}");
+            }
             AppendToLogFile(LOG_FILE, $"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
         }
 
@@ -333,6 +340,11 @@ namespace CastleDB.Runtime
         {
             try
             {
+                if (!EnableFileLogging)
+                {
+                    return;
+                }
+
                 System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(filePath));
                 System.IO.File.AppendAllText(filePath, message + "\n");
             }

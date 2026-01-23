@@ -32,7 +32,7 @@ public class RelicDefinition
 ///
 /// 约束：
 /// - 由 Tools/CastleDB/Import All 生成/覆盖；禁止手改
-/// - Resources 路径：Assets/Resources/Config/RelicCatalog.asset（Resources.Load 路径为 "Config/RelicCatalog"）
+/// - Resources 路径：Assets/Resources/Config/RelicCatalog.asset（加载路径为 "Config/RelicCatalog"）
 /// </summary>
 [CreateAssetMenu(fileName = "RelicCatalog", menuName = "CastleDB/RelicCatalog")]
 public class RelicCatalog : ScriptableObject

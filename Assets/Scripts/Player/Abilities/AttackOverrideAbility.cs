@@ -3,11 +3,11 @@ using UnityEngine;
 using CastleDB.Runtime;
 
 /// <summary>
-/// AttackOverride ability (0.5 Phase 6).
-/// Minimal path: replace melee attack by spawning a configured projectile when Attack hook is triggered.
+/// AttackOverride 能力（0.5 Phase 6）。
+/// 最小闭环：当 Attack Hook 触发时，通过生成配置化投射物来替代近战攻击。
 /// - kind=AttackOverride
 /// - projectileId -> AbilityCatalog.projectiles
-/// - paramsJson supports:
+/// - paramsJson 支持：
 ///   { "damageMultiplier": 1.5, "animTrigger":"rangedAttack" }
 /// </summary>
 public class AttackOverrideAbility : IPlayerAbility
@@ -26,6 +26,13 @@ public class AttackOverrideAbility : IPlayerAbility
     private float _nextReadyTime;
     private GameObject _cachedPrefab;
     private bool _loggedMissingPrefab;
+
+    private const int DefaultProjectilePoolMaxSize = 16;
+    private PrefabGameObjectPool _projectilePool;
+    private GameObject _pooledPrefab;
+
+    private const int DefaultVfxPoolMaxSize = 32;
+    private VfxPoolService _vfxPool;
 
     public string AbilityId { get; }
     public int Priority { get; }
@@ -112,7 +119,7 @@ public class AttackOverrideAbility : IPlayerAbility
             return false;
         }
 
-        // Prefer animation release timing if possible (same mechanism as ProjectileRangedAttackAbility).
+        // 0.5：优先走动画事件的释放时机（与 ProjectileRangedAttackAbility 相同机制）
         if (_animator != null && TryQueueProjectileForAbilityRelease(prefabPath))
         {
             return true;
@@ -120,17 +127,17 @@ public class AttackOverrideAbility : IPlayerAbility
 
         if (_cachedPrefab == null)
         {
-            _cachedPrefab = Resources.Load<GameObject>(prefabPath);
-            if (_cachedPrefab == null)
-            {
-                if (!_loggedMissingPrefab)
+            _cachedPrefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabPath);
+                if (_cachedPrefab == null)
                 {
-                    Debug.LogError($"[AttackOverrideAbility] Resources.Load failed: '{prefabPath}' (abilityId='{AbilityId}')");
-                    _loggedMissingPrefab = true;
+                    if (!_loggedMissingPrefab)
+                    {
+                        Debug.LogError($"[AttackOverrideAbility] 资源加载失败: '{prefabPath}' (abilityId='{AbilityId}')");
+                        _loggedMissingPrefab = true;
+                    }
+                    return false;
                 }
-                return false;
             }
-        }
 
         SpawnProjectileInstance(_cachedPrefab);
         return true;
@@ -146,12 +153,12 @@ public class AttackOverrideAbility : IPlayerAbility
         GameObject prefab = _cachedPrefab;
         if (prefab == null)
         {
-            prefab = Resources.Load<GameObject>(prefabPath);
+            prefab = ResourcesGameAssetProvider.Shared.Load<GameObject>(prefabPath);
             if (prefab == null)
             {
                 if (!_loggedMissingPrefab)
                 {
-                    Debug.LogError($"[AttackOverrideAbility] Resources.Load failed: '{prefabPath}' (abilityId='{AbilityId}')");
+                    Debug.LogError($"[AttackOverrideAbility] 资源加载失败: '{prefabPath}' (abilityId='{AbilityId}')");
                     _loggedMissingPrefab = true;
                 }
 
@@ -184,14 +191,20 @@ public class AttackOverrideAbility : IPlayerAbility
 
         Transform launchPoint = _playerController.AbilityFirePoint;
         Vector3 spawnPosition = launchPoint != null ? launchPoint.position : _playerController.transform.position;
-        GameObject projectile = Object.Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+
+        PrefabGameObjectPool pool = GetOrCreateProjectilePool(prefab);
+        GameObject projectile = pool != null ? pool.Get(spawnPosition, prefab.transform.rotation) : null;
+        if (projectile == null)
+        {
+            projectile = Object.Instantiate(prefab, spawnPosition, prefab.transform.rotation);
+        }
 
         float dirSign = _playerController.IsFacingRight ? 1f : -1f;
         Vector3 scale = projectile.transform.localScale;
         scale.x = Mathf.Abs(scale.x) * dirSign;
         projectile.transform.localScale = scale;
 
-        // Structured path: disable legacy Projectile script, use AbilityProjectileController for settlement.
+        // 结构化路径：禁用旧 Projectile 脚本，启用 AbilityProjectileController 统一结算。
         var legacy = projectile.GetComponent<Projectile>();
         if (legacy != null)
         {
@@ -205,7 +218,44 @@ public class AttackOverrideAbility : IPlayerAbility
         }
 
         IReadOnlyList<AbilityOnHitNode> nodes = _onHitSequence != null ? _onHitSequence.nodes : null;
+        controller.SetRecycler(pool);
+        controller.SetVfxPool(GetOrCreateVfxPool());
         controller.Initialize(_playerController.gameObject, AbilityId, CreateScaledDefinition(_projectileDef, _damageMultiplier), nodes);
+    }
+
+    private PrefabGameObjectPool GetOrCreateProjectilePool(GameObject prefab)
+    {
+        if (_playerController == null || prefab == null)
+        {
+            return null;
+        }
+
+        if (_projectilePool == null || _pooledPrefab != prefab)
+        {
+            _pooledPrefab = prefab;
+            _projectilePool = new PrefabGameObjectPool(
+                prefab,
+                _playerController.transform,
+                $"[Pool] PlayerProjectiles({AbilityId})",
+                DefaultProjectilePoolMaxSize);
+        }
+
+        return _projectilePool;
+    }
+
+    private VfxPoolService GetOrCreateVfxPool()
+    {
+        if (_playerController == null)
+        {
+            return null;
+        }
+
+        if (_vfxPool == null)
+        {
+            _vfxPool = new VfxPoolService(_playerController.transform, DefaultVfxPoolMaxSize);
+        }
+
+        return _vfxPool;
     }
 
     private static AbilityProjectileDefinition CreateScaledDefinition(AbilityProjectileDefinition def, float multiplier)
