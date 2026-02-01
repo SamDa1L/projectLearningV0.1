@@ -97,3 +97,16 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# EditMode tests generate temporary .cdb fixtures here (do not commit).
+/[Aa]ssets/Tests/EditMode/TestData/
+
+# Ignore Docs directory
+/Docs/
+Assets/Logs/
+AGENTS.md
+CLAUDE.md
+*.md
+
+# 本地密钥（Notion token 等）
+.secrets/
