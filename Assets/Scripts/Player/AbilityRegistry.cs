@@ -11,10 +11,9 @@ using CastleDB.Runtime;
 /// - 提供"已注册能力 kind"的权威列表（Import/Runtime 共用）
 ///
 /// 兼容：
-/// - 若 AbilityCatalogEntry.kind 为 BuiltinDefault，但 paramsJson 中包含 legacy kind，则以 legacy kind 为准（兼容旧产物）
-/// - Projectile 支持两条路径：
-///   1) 结构化：projectileId → AbilityCatalog.projectiles → AbilityProjectileController
-///   2) legacy：paramsJson.projectile.prefabPath → 仅实例化 prefab（由 prefab 自身 Projectile 脚本结算）
+/// - 默认仅使用结构化字段（kind/projectileId/summonId 等），避免运行时隐式走旧链路。
+/// - 如需兼容旧产物（从 paramsJson 读取 kind/projectile/summon 等），可在 PlayerSettings 的 Scripting Define Symbols 中添加 `LEGACY_CDB_PARAMS`。
+/// - Projectile 的 legacy 路径：paramsJson.projectile.prefabPath → 仅实例化 prefab（由 prefab 自身 Projectile 脚本结算）。
 /// </summary>
 public static class AbilityRegistry
 {
@@ -59,6 +58,7 @@ public static class AbilityRegistry
         return Factories.Keys;
     }
 
+#if LEGACY_CDB_PARAMS
     /// <summary>
     /// Legacy：从 paramsJson 解析 kind（用于兼容旧产物）
     /// 规则：
@@ -99,6 +99,7 @@ public static class AbilityRegistry
         kind = NormalizeKind(kind);
         return true;
     }
+#endif
 
     public static IPlayerAbility CreateAbility(AbilityCatalogEntry entry, PlayerController playerController, AbilityCatalog catalog)
     {
@@ -126,8 +127,10 @@ public static class AbilityRegistry
             paramsObj = CastleDbJsonUtil.TryParseJsonObject(entry.paramsJson);
         }
 
-        // 0.5：优先使用结构化 kind（兼容旧产物：如果 kind=BuiltinDefault 但 paramsJson 内含 kind，则以 paramsJson 为准）
+        // 0.5：优先使用结构化 kind（默认不从 paramsJson 推断 kind，避免旧产物掩盖导入错误）
         string kind = NormalizeKind(entry.kind.ToString());
+#if LEGACY_CDB_PARAMS
+        // 兼容旧产物：如果 kind=BuiltinDefault 但 paramsJson 内含 kind，则以 paramsJson 为准
         if (string.Equals(kind, KindBuiltinDefault, StringComparison.OrdinalIgnoreCase)
             && paramsObj != null
             && paramsObj.TryGetValue(KindKey, out object legacyKindObj)
@@ -139,6 +142,7 @@ public static class AbilityRegistry
                 kind = NormalizeKind(legacyKind);
             }
         }
+#endif
 
         if (!IsKindRegistered(kind))
         {
@@ -205,7 +209,7 @@ public static class AbilityRegistry
         }
 
         // 0.5 结构化路径：projectileId → AbilityProjectileDefinition
-        if (entry.kind == AbilityKind.Projectile && catalog != null && !string.IsNullOrWhiteSpace(entry.projectileId))
+        if (catalog != null && !string.IsNullOrWhiteSpace(entry.projectileId))
         {
             if (catalog.TryGetProjectile(entry.projectileId, out var def) && def != null)
             {
@@ -224,10 +228,9 @@ public static class AbilityRegistry
                     entry.cooldown,
                     onHitSeq);
             }
-
-            Debug.LogError($"[AbilityRegistry] Projectile kind missing projectile definition for projectileId='{entry.projectileId}' (abilityId='{entry.id}'), fallback to legacy paramsJson or BuiltinDefault");
         }
 
+#if LEGACY_CDB_PARAMS
         // legacy：paramsJson.projectile.prefabPath
         if (paramsObj == null)
         {
@@ -261,6 +264,10 @@ public static class AbilityRegistry
         }
 
         return new ProjectileRangedAttackAbility(playerController, entry.id, entry.priority, entry.enabled, prefabPath);
+#else
+        Debug.LogError($"[AbilityRegistry] Projectile kind 需要 projectileId + 定义（已关闭 LEGACY_CDB_PARAMS），回退 BuiltinDefault。abilityId='{entry.id}', projectileId='{entry.projectileId}'");
+        return CreateBuiltinDefaultAbility(entry, playerController, catalog, paramsObj);
+#endif
     }
 
     private static IPlayerAbility CreateStatModifierAbility(
@@ -322,18 +329,27 @@ public static class AbilityRegistry
         Dictionary<string, object> __)
     {
         AbilitySummonDefinition def = null;
+        bool hasStructuredDef = false;
         if (catalog != null && !string.IsNullOrWhiteSpace(entry.summonId))
         {
-            if (!catalog.TryGetSummon(entry.summonId, out def) || def == null)
-            {
-                Debug.LogError(
-                    $"[AbilityRegistry] Summon kind missing summon definition for summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
-            }
+            hasStructuredDef = catalog.TryGetSummon(entry.summonId, out def) && def != null;
         }
-        else if (!string.IsNullOrWhiteSpace(entry.summonId))
+
+#if LEGACY_CDB_PARAMS
+        if (!hasStructuredDef)
         {
-            Debug.LogError(
-                $"[AbilityRegistry] Summon kind requires AbilityCatalog to resolve summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
+            if (string.IsNullOrWhiteSpace(entry.summonId))
+            {
+                Debug.LogError($"[AbilityRegistry] Summon kind missing summonId (abilityId='{entry.id}'), fallback to legacy paramsJson");
+            }
+            else if (catalog == null)
+            {
+                Debug.LogError($"[AbilityRegistry] Summon kind requires AbilityCatalog to resolve summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
+            }
+            else
+            {
+                Debug.LogError($"[AbilityRegistry] Summon kind missing summon definition for summonId='{entry.summonId}' (abilityId='{entry.id}'), fallback to legacy paramsJson");
+            }
         }
 
         return new SummonAbility(
@@ -344,6 +360,22 @@ public static class AbilityRegistry
             def,
             entry.cooldown,
             entry.paramsJson);
+#else
+        if (!hasStructuredDef)
+        {
+            Debug.LogError($"[AbilityRegistry] Summon kind 需要 summonId + 定义（已关闭 LEGACY_CDB_PARAMS），回退 BuiltinDefault。abilityId='{entry.id}', summonId='{entry.summonId}'");
+            return CreateBuiltinDefaultAbility(entry, playerController, catalog, null);
+        }
+
+        return new SummonAbility(
+            playerController,
+            entry.id,
+            entry.priority,
+            entry.enabled,
+            def,
+            entry.cooldown,
+            entry.paramsJson);
+#endif
     }
 
     private static IPlayerAbility CreateAttackOverrideAbility(

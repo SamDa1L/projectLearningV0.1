@@ -1061,9 +1061,9 @@ public class CastleDbPrefabSyncer : EditorWindow
             enemyRoot.AddComponent<Animator>();
             enemyRoot.AddComponent<Damageable>();
 
-            // 注意：EnemyAgentBase 是抽象类，不能直接添加
-            // 使用 LegacyEnemyAdapter 作为默认实现（通用适配器）
-            enemyRoot.AddComponent<LegacyEnemyAdapter>();
+            // 注意：EnemyAgentBase 是抽象类，不能直接添加。
+            // 0.5：默认使用地面敌人控制器（NpcGroundController），新建 Prefab 后可按需替换为 NpcFlyController 等实现。
+            enemyRoot.AddComponent<NpcGroundController>();
 
             // 保存为 Prefab
             PrefabUtility.SaveAsPrefabAsset(enemyRoot, prefabPath);

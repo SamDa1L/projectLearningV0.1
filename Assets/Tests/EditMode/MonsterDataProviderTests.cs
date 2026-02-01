@@ -354,7 +354,6 @@ namespace CastleDB.Tests.EditMode
                                 { "knockbackMultiplier", 1f },
                                 { "knockbackToPlayer", 1f },
                                 { "enableDeathAnimation", true },
-                                { "useLegacyLogicFallback", false },
                                 { "perceptionRadius", 5f }
                             },
                             new Dictionary<string, object>
@@ -373,7 +372,6 @@ namespace CastleDB.Tests.EditMode
                                 { "knockbackMultiplier", 0.8f },
                                 { "knockbackToPlayer", 0.5f },
                                 { "enableDeathAnimation", true },
-                                { "useLegacyLogicFallback", false },
                                 { "perceptionRadius", 6f }
                             }
                         }

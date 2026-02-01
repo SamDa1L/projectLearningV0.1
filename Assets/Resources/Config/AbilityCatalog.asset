@@ -24,6 +24,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: BasicRun
     hookType: 1
     priority: 0
@@ -35,6 +38,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: BasicJump
     hookType: 2
     priority: 0
@@ -46,6 +52,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: BasicAttack
     hookType: 3
     priority: 0
@@ -57,6 +66,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: BasicRangedAttack
     hookType: 4
     priority: 0
@@ -68,6 +80,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Fireball_Player
     hookType: 4
     priority: 1
@@ -79,6 +94,9 @@ MonoBehaviour:
     cooldown: 1
     onHitSequenceId: Fireball_Player_OnHit
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Attr_MoveSpeedUp
     hookType: 0
     priority: 100
@@ -90,6 +108,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Dash_Player
     hookType: 1
     priority: 100
@@ -101,6 +122,9 @@ MonoBehaviour:
     cooldown: 1
     onHitSequenceId: 
     paramsJson: '{"distance":3,"speed":12,"invincibleWindow":0.2}'
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Buff_AttackUp
     hookType: 4
     priority: 2
@@ -112,6 +136,9 @@ MonoBehaviour:
     cooldown: 5
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Summon_Test
     hookType: 4
     priority: 3
@@ -123,6 +150,9 @@ MonoBehaviour:
     cooldown: 2
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: AttackOverride_Bow
     hookType: 3
     priority: 100
@@ -134,6 +164,9 @@ MonoBehaviour:
     cooldown: 0.2
     onHitSequenceId: 
     paramsJson: '{"damageMultiplier":1}'
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   projectiles:
   - id: FireBall_player
     prefabPath: Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile

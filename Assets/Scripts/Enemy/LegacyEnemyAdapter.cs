@@ -101,36 +101,6 @@ public class LegacyEnemyAdapter : EnemyAgentBase
     }
 
     /// <summary>
-    /// 应用调参配置（覆盖基类以读取 useLegacyLogicFallback）
-    /// Step 4: 从 Profile 读取 useLegacyLogicFallback 并应用到适配器
-    /// </summary>
-    protected override void ApplyTuningProfile()
-    {
-        base.ApplyTuningProfile();
-
-        // 从 Profile 读取 useLegacyLogicFallback 并覆盖 Inspector 配置
-        // 优先级：Profile > Inspector（数据驱动）
-        if (TuningProfile != null)
-        {
-            bool profileFallback = _useLegacyLogicFallback;
-
-            // 如果 Profile 的值与当前 Inspector 值不同，则应用 Profile 的值
-            if (useLegacyLogic != profileFallback)
-            {
-                if (debugLegacyMigration)
-                {
-                    Debug.Log(
-                        $"[LegacyEnemyAdapter] {gameObject.name} - 从 Profile 应用 useLegacyLogicFallback: {profileFallback}\n" +
-                        $"  (Inspector 原值: {useLegacyLogic})",
-                        gameObject
-                    );
-                }
-                useLegacyLogic = profileFallback;
-            }
-        }
-    }
-
-    /// <summary>
     /// 状态更新 - 代理旧逻辑或调用新逻辑
     /// </summary>
     protected override void TickState(float deltaTime)

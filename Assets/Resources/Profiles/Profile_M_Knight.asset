@@ -33,7 +33,6 @@ MonoBehaviour:
   deathDelay: 99
   animationTrigger: Attack
   castTrigger: Attack
-  useLegacyLogicFallback: 1
   npcAbilities:
   - id: M_Knight_Rage
     npcId: M_Knight
@@ -45,6 +44,9 @@ MonoBehaviour:
     minRange: 0
     maxRange: 0
     paramsJson: '{"releaseDelay":0.2}'
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0.2
   npcPassiveAbilityBindings:
   - bindingId: M_Knight_Rage
     targetMode: 0

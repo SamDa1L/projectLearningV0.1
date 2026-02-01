@@ -6,19 +6,22 @@ using CastleDB.Runtime;
 /// 召唤能力（0.5 扩展）。
 /// - 结构化：AbilityCatalogEntry.summonId -> AbilityCatalog.summons
 ///   （prefabPath / lifetime / isDead / factionOverride / maxCount / spawnRule）。
-/// - 兼容旧版：当 summonId 缺失（或定义缺失）时，回退读取 paramsJson：
+/// - 兼容旧版（可选）：当 summonId 缺失（或定义缺失）时，可回退读取 paramsJson：
 ///   { "prefabPath":"...", "lifetime":10, "isDead":true, "factionOverride":"friend", "maxCount":2, "spawnRule":"ReplaceOldest" }。
+///   说明：该回退仅在定义了 `LEGACY_CDB_PARAMS` 时启用；默认关闭（避免旧数据掩盖导入错误）。
 /// - paramsJson 仍支持：{ "animTrigger":"..." }（施法动画 Trigger）。
 /// - 冷却使用 AbilityCatalogEntry.cooldown。
 /// </summary>
 public class SummonAbility : IPlayerAbility
 {
+#if LEGACY_CDB_PARAMS
     private const string PrefabPathKey = "prefabPath";
     private const string LifetimeKey = "lifetime";
     private const string IsDeadKey = "isDead";
     private const string FactionOverrideKey = "factionOverride";
     private const string MaxCountKey = "maxCount";
     private const string SpawnRuleKey = "spawnRule";
+#endif
     private const string AnimTriggerKey = "animTrigger";
 
     private readonly PlayerController _playerController;
@@ -104,10 +107,12 @@ public class SummonAbility : IPlayerAbility
             maxCount = Mathf.Max(1, summonDef.maxCount);
             spawnRule = summonDef.spawnRule;
         }
+#if LEGACY_CDB_PARAMS
         else if (obj != null)
         {
             ParseLegacyParams(obj, out prefabPath, out lifetimeSeconds, out isDead, out factionOverride, out maxCount, out spawnRule);
         }
+#endif
 
         if (obj != null && obj.TryGetValue(AnimTriggerKey, out var t) && t != null)
         {
@@ -308,6 +313,7 @@ public class SummonAbility : IPlayerAbility
         return 0f;
     }
 
+#if LEGACY_CDB_PARAMS
     private static bool TryParseFactionOverrideString(string raw, out FactionId faction)
     {
         faction = FactionId.None;
@@ -540,6 +546,8 @@ public class SummonAbility : IPlayerAbility
 
         return false;
     }
+
+#endif
 
     public bool OnMove(AbilityInput input) => TryCast(input);
     public bool OnRun(AbilityInput input) => TryCast(input);

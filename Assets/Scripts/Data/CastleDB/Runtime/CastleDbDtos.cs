@@ -127,9 +127,6 @@ namespace CastleDB.Runtime
         public bool enableDeathAnimation;
 
         [SerializeField]
-        public bool useLegacyLogicFallback;
-
-        [SerializeField]
         public float perceptionRadius;
 
         [SerializeField]

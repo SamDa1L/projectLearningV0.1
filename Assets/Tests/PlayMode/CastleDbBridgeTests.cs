@@ -191,18 +191,6 @@ public class CastleDbBridgeTests
     }
 
     /// <summary>
-    /// 测试：useLegacyLogicFallback 字段链路
-    /// CastleDB.useLegacyLogicFallback → NpcEntry.useLegacyLogicFallback → Profile.useLegacyLogicFallback → EnemyAgentBase._useLegacyLogicFallback
-    /// </summary>
-    [UnityTest]
-    public IEnumerator UseLegacyLogicFallbackChain()
-    {
-        yield return null;
-
-        Assert.AreEqual(knightEntry.useLegacyLogicFallback, profile.useLegacyLogicFallback, "Profile useLegacyLogicFallback should match CastleDB");
-    }
-
-    /// <summary>
     /// 测试：animationTrigger 字段链路（已在 KnightIntegrationTests 中测试，这里再次验证）
     /// CastleDB.animationTrigger → NpcEntry.animationTrigger → Profile.animationTrigger → EnemyAgentBase._attackTriggerName
     /// </summary>
@@ -249,8 +237,8 @@ public class CastleDbBridgeTests
         Assert.AreEqual(knightEntry.attackCooldown, profile.attackCooldown, "attackCooldown mismatch");
         Assert.AreEqual(knightEntry.invincibleDuration, profile.invulnerableFrameDuration, "invincibleDuration mismatch");
         Assert.AreEqual(knightEntry.knockbackMultiplier, profile.knockbackMultiplier, "knockbackMultiplier mismatch");
+        Assert.AreEqual(knightEntry.knockbackToPlayer, profile.knockbackToPlayer, "knockbackToPlayer mismatch");
         Assert.AreEqual(knightEntry.enableDeathAnimation, profile.enableDeathAnimation, "enableDeathAnimation mismatch");
-        Assert.AreEqual(knightEntry.useLegacyLogicFallback, profile.useLegacyLogicFallback, "useLegacyLogicFallback mismatch");
         Assert.AreEqual(knightEntry.animationTrigger, profile.animationTrigger, "animationTrigger mismatch");
 
         // 验证 Damageable 配置正确

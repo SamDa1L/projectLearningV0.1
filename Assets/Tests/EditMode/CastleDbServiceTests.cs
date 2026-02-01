@@ -202,8 +202,10 @@ namespace CastleDB.Tests.EditMode
 
             // 断言
             Assert.AreEqual("Knight", knight.displayName);
+            Assert.AreEqual(1, knight.faction);
             Assert.AreEqual("KnightEnemy", knight.prefabName);
             Assert.AreEqual("hasTarget", knight.animationTrigger);
+            Assert.AreEqual("hasTarget", knight.castTrigger);
             Assert.AreEqual(100, knight.maxHealth);
             Assert.AreEqual(20, knight.attackDamage);
             Assert.AreEqual(3, knight.moveSpeed);
@@ -212,7 +214,10 @@ namespace CastleDB.Tests.EditMode
             Assert.AreEqual(3, knight.invincibleDuration);
             Assert.AreEqual(2, knight.knockbackMultiplier);
             Assert.IsTrue(knight.enableDeathAnimation);
-            Assert.IsTrue(knight.useLegacyLogicFallback);
+            Assert.AreEqual(6f, knight.perceptionRadius);
+            Assert.AreEqual(1, knight.attackZonePriority);
+            Assert.AreEqual(0, knight.abilityZonePriority);
+            Assert.AreEqual(1.25f, knight.knockbackToPlayer);
         }
     }
 }

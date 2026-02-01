@@ -45,8 +45,10 @@ namespace CastleDB.Tests.EditMode.TestHelpers
                 {
                     { "id", "M_Knight" },
                     { "displayName", "Knight" },
+                    { "faction", 1 },
                     { "prefabName", "KnightEnemy" },
                     { "animationTrigger", "hasTarget" },
+                    { "castTrigger", "hasTarget" },
                     { "maxHealth", 100.0 },
                     { "attackDamage", 20.0 },
                     { "moveSpeed", 3.0 },
@@ -55,14 +57,19 @@ namespace CastleDB.Tests.EditMode.TestHelpers
                     { "invincibleDuration", 3.0 },
                     { "knockbackMultiplier", 2.0 },
                     { "enableDeathAnimation", true },
-                    { "useLegacyLogicFallback", true }
+                    { "perceptionRadius", 6.0 },
+                    { "attackZonePriority", 1 },
+                    { "abilityZonePriority", 0 },
+                    { "knockbackToPlayer", 1.25 }
                 },
                 new Dictionary<string, object>
                 {
                     { "id", "M_FlyingEye" },
                     { "displayName", "FlyingEye" },
+                    { "faction", 1 },
                     { "prefabName", "FlyingEye" },
                     { "animationTrigger", "hasTarget" },
+                    { "castTrigger", "hasTarget" },
                     { "maxHealth", 50.0 },
                     { "attackDamage", 30.0 },
                     { "moveSpeed", 4.0 },
@@ -71,7 +78,10 @@ namespace CastleDB.Tests.EditMode.TestHelpers
                     { "invincibleDuration", 3.0 },
                     { "knockbackMultiplier", 2.0 },
                     { "enableDeathAnimation", true },
-                    { "useLegacyLogicFallback", true }
+                    { "perceptionRadius", 8.0 },
+                    { "attackZonePriority", 0 },
+                    { "abilityZonePriority", 2 },
+                    { "knockbackToPlayer", 0.75 }
                 }
             };
 

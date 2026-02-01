@@ -33,7 +33,6 @@ MonoBehaviour:
   deathDelay: 1
   animationTrigger: Attack
   castTrigger: Attack
-  useLegacyLogicFallback: 1
   npcAbilities: []
   npcPassiveAbilityBindings: []
   npcPassiveAbilityConditions: []

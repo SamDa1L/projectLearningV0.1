@@ -12,13 +12,13 @@ using System.IO;
 /// </summary>
 public class PickupPrefabGenerator : Editor
 {
-    // Editor-only template; keep it out of Resources so it won't be included in builds.
+    // 这是 Editor 侧的模板资源：不要放进 Resources，避免进入 Build。
     private const string PREFAB_PATH = "Assets/_Generated/Authoring/PickupItem.prefab";
 
     [MenuItem("Tools/Authoring/Generate PickupItem.prefab Template")]
     private static void GeneratePickupItemPrefab()
     {
-        // Ensure directory exists
+        // 确保输出目录存在
         string directory = Path.GetDirectoryName(PREFAB_PATH);
         if (!Directory.Exists(directory))
         {
@@ -26,25 +26,25 @@ public class PickupPrefabGenerator : Editor
             Debug.Log($"[PickupPrefabGenerator] Created directory: {directory}");
         }
 
-        // Create GameObject
+        // 创建临时 GameObject（用于保存 Prefab）
         GameObject pickupTemplate = new GameObject("PickupItem");
 
-        // Add SpriteRenderer
+        // 添加 SpriteRenderer（sprite 由 Inspector 绑定）
         SpriteRenderer spriteRenderer = pickupTemplate.AddComponent<SpriteRenderer>();
-        spriteRenderer.sprite = null; // Will be set via Inspector
+        spriteRenderer.sprite = null; // 由 Inspector 设置
         spriteRenderer.sortingLayerName = "Default";
         spriteRenderer.sortingOrder = 0;
 
-        // Add Collider2D (BoxCollider2D by default)
+        // 添加 Collider2D（默认使用 BoxCollider2D）
         BoxCollider2D collider = pickupTemplate.AddComponent<BoxCollider2D>();
         collider.isTrigger = true;
-        collider.size = new Vector2(1f, 1f); // Default size
+        collider.size = new Vector2(1f, 1f); // 默认大小
 
-        // Add ItemPickup component
+        // 添加 ItemPickup 组件
         ItemPickup itemPickup = pickupTemplate.AddComponent<ItemPickup>();
-        // Fields will be set via Inspector
+        // 字段由 Inspector 绑定
 
-        // Save as prefab
+        // 保存为 Prefab 资产
         bool success;
         PrefabUtility.SaveAsPrefabAsset(pickupTemplate, PREFAB_PATH, out success);
 
@@ -58,7 +58,7 @@ public class PickupPrefabGenerator : Editor
             Debug.LogError($"[PickupPrefabGenerator] Failed to create PickupItem.prefab at {PREFAB_PATH}");
         }
 
-        // Clean up temporary GameObject
+        // 清理临时对象
         DestroyImmediate(pickupTemplate);
 
         AssetDatabase.SaveAssets();

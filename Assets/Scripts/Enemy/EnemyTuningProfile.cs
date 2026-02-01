@@ -131,10 +131,6 @@ public class EnemyTuningProfile : ScriptableObject
     [Tooltip("施法动画触发器名称（用于 NPC Ability/SecondaryAttack；需与Animator Controller中的Trigger参数匹配）")]
     public string castTrigger = "";
 
-    [SerializeField]
-    [Tooltip("是否使用旧版逻辑（兼容开关，用于回退到旧行为）")]
-    public bool useLegacyLogicFallback = false;
-
     [Header("NPC Abilities (0.5 Phase 3)")]
     [SerializeField]
     public List<NpcAbilityEntry> npcAbilities = new List<NpcAbilityEntry>();
@@ -277,7 +273,6 @@ public class EnemyTuningProfile : ScriptableObject
         // ===== 动画与行为控制 =====
         animationTrigger = npc.animationTrigger;
         castTrigger = !string.IsNullOrWhiteSpace(npc.castTrigger) ? npc.castTrigger : npc.animationTrigger;
-        useLegacyLogicFallback = npc.useLegacyLogicFallback;
 
         npcAbilities.Clear();
         if (abilities != null)
@@ -302,7 +297,7 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  HP={maxHealth}, Speed={moveSpeed}, Dmg={attackDamage}\n" +
                   $"  AtkRange={attackRange}, Cooldown={attackCooldown}\n" +
                   $"  Invincible={invulnerableFrameDuration}s, Knockback={knockbackMultiplier}x, KnockbackToPlayer={knockbackToPlayer}x\n" +
-                  $"  AnimTrigger='{animationTrigger}', CastTrigger='{castTrigger}', LegacyFallback={useLegacyLogicFallback}, NpcAbilities={npcAbilities.Count}, PassiveBindings={npcPassiveAbilityBindings.Count}, PassiveConditions={npcPassiveAbilityConditions.Count}");
+                  $"  AnimTrigger='{animationTrigger}', CastTrigger='{castTrigger}', NpcAbilities={npcAbilities.Count}, PassiveBindings={npcPassiveAbilityBindings.Count}, PassiveConditions={npcPassiveAbilityConditions.Count}");
         #endif
     }
 
@@ -355,7 +350,6 @@ public class EnemyTuningProfile : ScriptableObject
                   $"  Death Delay: {deathDelay}\n" +
                   $"  Animation Trigger: '{animationTrigger}'\n" +
                   $"  Cast Trigger: '{castTrigger}'\n" +
-                  $"  Use Legacy Logic Fallback: {useLegacyLogicFallback}\n" +
                   $"  Timestamp: {System.DateTime.Now:HH:mm:ss}");
     }
 
@@ -386,7 +380,6 @@ public class EnemyTuningProfile : ScriptableObject
         cloned.deathDelay = deathDelay;
         cloned.animationTrigger = animationTrigger;
         cloned.castTrigger = castTrigger;
-        cloned.useLegacyLogicFallback = useLegacyLogicFallback;
 
         cloned.npcAbilities = new List<NpcAbilityEntry>();
         if (npcAbilities != null)

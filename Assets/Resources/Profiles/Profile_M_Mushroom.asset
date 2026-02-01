@@ -33,7 +33,6 @@ MonoBehaviour:
   deathDelay: 1
   animationTrigger: Attack
   castTrigger: AttackAlt
-  useLegacyLogicFallback: 1
   npcAbilities:
   - id: M_Mushroom_Fireball
     npcId: M_Mushroom
@@ -45,5 +44,8 @@ MonoBehaviour:
     minRange: 0
     maxRange: 0
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   npcPassiveAbilityBindings: []
   npcPassiveAbilityConditions: []

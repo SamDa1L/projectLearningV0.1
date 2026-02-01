@@ -445,7 +445,6 @@ namespace CastleDB.Runtime
                 invincibleDuration = GetFloatValue(dict, "invincibleDuration"),
                 knockbackMultiplier = GetFloatValue(dict, "knockbackMultiplier"),
                 enableDeathAnimation = GetBoolValue(dict, "enableDeathAnimation"),
-                useLegacyLogicFallback = GetBoolValue(dict, "useLegacyLogicFallback"),
                 perceptionRadius = GetFloatValue(dict, "perceptionRadius"),
                 attackZonePriority = GetIntValue(dict, "attackZonePriority"),
                 abilityZonePriority = GetIntValue(dict, "abilityZonePriority"),

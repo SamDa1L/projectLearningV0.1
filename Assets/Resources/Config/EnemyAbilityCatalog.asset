@@ -24,6 +24,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Knight_Rage
     hookType: 4
     priority: 0
@@ -35,6 +38,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   - id: Debuff_Moveslow
     hookType: 4
     priority: 0
@@ -46,6 +52,9 @@ MonoBehaviour:
     cooldown: 0
     onHitSequenceId: 
     paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
   projectiles:
   - id: FireBall_enemy
     prefabPath: Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile
