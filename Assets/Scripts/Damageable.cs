@@ -4,42 +4,100 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class Damageable : MonoBehaviour
+/// <summary>
+/// 传递给 Damageable 的数据包
+/// 用于从配置（如 EnemyTuningProfile、PlayerConfig）向 Damageable 组件传递数值
+/// </summary>
+public struct DamageableStats
 {
-    public UnityEvent<int, Vector2> damageableHit;
-    public UnityEvent damageableDeath;
+    public float maxHealth;  // 阶段 3A: 迁移为 float 以支持玩家小数生命值
+    public float invincibilityTime;
+    public float knockbackMultiplier;
+}
 
-    Animator animator;
+	public class Damageable : MonoBehaviour
+	{
+	    public UnityEvent<int, Vector2> damageableHit = new UnityEvent<int, Vector2>();
+	    public UnityEvent damageableDeath = new UnityEvent();
+	    public event System.Action<DamageableStats> DamageableStateChanged;
+
+	    /// <summary>
+	    /// 阶段 7：生命值变化事件（用于 HUD 订阅）
+	    /// 契约 [C-Runtime-6]：必须在 Health 变化时触发，参数为 (current, max)
+	    /// </summary>
+	    public event Action<int, int> OnHealthChanged;
+
+    private Animator animator;
+
+    private void EnsureAnimator()
+    {
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+        }
+    }
+
+    private void EnsureEvents()
+    {
+        if (damageableHit == null)
+        {
+            damageableHit = new UnityEvent<int, Vector2>();
+        }
+
+        if (damageableDeath == null)
+        {
+            damageableDeath = new UnityEvent();
+        }
+    }
 
     [SerializeField]
-    private int _maxHealth = 100;
+    private float _maxHealth = 100;
 
-    public int MaxHealth 
+    public float MaxHealth
     {
         get
         {
             return _maxHealth;
         }
-        set 
-        { 
+        set
+        {
             _maxHealth = value;
         }
     }
 
-    [SerializeField]
-    private int _health = 100;
+    /// <summary>
+    /// 阶段 7：CurrentHealth 只读属性（用于 HUD 初始刷新）
+    /// 契约 [C-Runtime-6]：返回当前生命值（四舍五入到 int）
+    /// </summary>
+    public int CurrentHealth => Mathf.RoundToInt(_health);
 
-    public int Health 
+    public bool CanReceiveHeal => IsAlive && Health < MaxHealth;
+
+    [SerializeField]
+    private float _health = 100;
+
+    public float Health
     {
-        get 
+        get
         {
             return _health;
         }
         set
         {
+            // 阶段 7：计算变化前后的 int 值，只有实际变化时才触发事件
+            int oldHealthInt = Mathf.RoundToInt(_health);
             _health = value;
+            int newHealthInt = Mathf.RoundToInt(_health);
 
-            //���Ѫ������0���£����ɫ����
+            // 触发 OnHealthChanged 事件（阶段 7：契约 [C-Runtime-6]）
+            if (oldHealthInt != newHealthInt)
+            {
+                int current = Mathf.Clamp(newHealthInt, 0, Mathf.RoundToInt(_maxHealth));
+                int max = Mathf.RoundToInt(_maxHealth);
+                OnHealthChanged?.Invoke(current, max);
+            }
+
+            // 当生命值小于等于0时，角色死亡
             if(_health <= 0)
             {
                 IsAlive = false;
@@ -51,8 +109,37 @@ public class Damageable : MonoBehaviour
     private bool _isAlive = true;
 
     [SerializeField]
-    private bool isInvincible = false;
+    public bool isInvincible = false;
 
+    [SerializeField]
+    public float knockbackMultiplier = 1f;
+
+    // 阶段 6：外部无敌窗口（例如 Dash invincibleWindow），不污染受击 invincibilityTime 配置。
+    private float _externalInvulnerableUntilTime = 0f;
+
+    /// <summary>
+    /// 无敌状态属性（符合C#命名规范）
+    /// 用于查询当前是否处于无敌帧内
+    /// </summary>
+    public bool IsInvulnerable
+    {
+        get { return isInvincible || (Time.time < _externalInvulnerableUntilTime); }
+    }
+
+    /// <summary>
+    /// 阶段 6：授予一个“外部无敌窗口”（秒）。
+    /// - seconds<=0：忽略
+    /// - 多次调用：取更晚的结束时间（窗口可延长）
+    /// </summary>
+    public void GrantExternalInvulnerability(float seconds)
+    {
+        if (seconds <= 0f)
+        {
+            return;
+        }
+
+        _externalInvulnerableUntilTime = Mathf.Max(_externalInvulnerableUntilTime, Time.time + seconds);
+    }
 
     private float timeSinceHit = 0;
     public float invincibilityTime = 0.25f;
@@ -66,12 +153,16 @@ public class Damageable : MonoBehaviour
         set
         {
             _isAlive = value;
-            animator.SetBool(AnimationStrings.isAlive, value);
-            Debug.Log("���" +  value);
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetBool(AnimationStrings.isAlive, value);
+            }
+            Debug.Log("死亡: " +  value);
 
             if(value == false )
             {
-                damageableDeath.Invoke();
+                damageableDeath?.Invoke();
             }
 
         }
@@ -81,77 +172,144 @@ public class Damageable : MonoBehaviour
     {
         get
         {
-            return animator.GetBool(AnimationStrings.lockVelocity);
+            EnsureAnimator();
+            return animator != null && animator.GetBool(AnimationStrings.lockVelocity);
         }
         set
         {
-            animator.SetBool(AnimationStrings.lockVelocity, value);
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetBool(AnimationStrings.lockVelocity, value);
+            }
         }
     }
 
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        EnsureAnimator();
+        EnsureEvents();
+    }
+
+    /// <summary>
+    /// 使用 DamageableStats 配置此组件
+    /// 将传入的数值应用到组件（最大生命、当前生命、无敌时间等）
+    /// 阶段 7：配置后必须触发 OnHealthChanged 事件进行初始刷新
+    /// </summary>
+    /// <param name="stats">包含配置数值的结构体</param>
+    public void Configure(DamageableStats? stats)
+    {
+        if (stats.HasValue)
+        {
+            var value = stats.Value;
+            MaxHealth = value.maxHealth;
+            Health = value.maxHealth;  // 初始化当前生命为最大生命（会触发 OnHealthChanged）
+            invincibilityTime = value.invincibilityTime;
+            knockbackMultiplier = value.knockbackMultiplier;
+
+            DamageableStateChanged?.Invoke(value);
+        }
     }
 
 
 
 
-    public bool Hit(int damage, Vector2 knockback)
+    /// <summary>
+    /// 0.45 修正：添加 hitPoint 可选参数（契约 P0-2）
+    /// worldPos 来源：优先使用 hitPoint，否则使用 transform.position
+    /// </summary>
+    public bool Hit(int damage, Vector2 knockback, Vector2? hitPoint = null)
     {
-        if(IsAlive && !isInvincible)
+        if(IsAlive && !IsInvulnerable)
         {
-            Health -= damage;
-            isInvincible = true;
+            // 阶段 7：扣血前允许拦截器改写伤害（护盾优先扣等）
+            Vector2 worldPos = hitPoint ?? (Vector2)transform.position;
+            int incomingDamage = Mathf.Max(damage, 0);
+            int healthDamage = incomingDamage;
 
-            animator.SetTrigger(AnimationStrings.hitTrigger);
-            LockVelocity = true;
-            damageableHit?.Invoke(damage, knockback);
+            var interceptors = GetComponents<IDamageInterceptor>();
+            for (int i = 0; i < interceptors.Length && healthDamage > 0; i++)
+            {
+                interceptors[i]?.BeforeDamage(ref healthDamage, worldPos);
+                if (healthDamage < 0)
+                {
+                    healthDamage = 0;
+                }
+            }
 
-            CharacterEvents.characterDamaged.Invoke(gameObject, damage);
+            if (healthDamage > 0)
+            {
+                Health -= healthDamage;
+            }
+
+            // 只有真正扣血时才进入受击无敌窗口
+            if (healthDamage > 0 && invincibilityTime > 0f)
+            {
+                isInvincible = true;
+                timeSinceHit = 0f;
+            }
+
+            EnsureAnimator();
+            if (animator != null)
+            {
+                animator.SetTrigger(AnimationStrings.hitTrigger);
+                LockVelocity = true;
+            }
+            Vector2 scaledKnockback = knockback * knockbackMultiplier;
+            damageableHit?.Invoke(incomingDamage, scaledKnockback);
+
+            // 只上报真实扣血量，避免“护盾吸收也刷伤害数字”
+            if (healthDamage > 0)
+            {
+                CharacterEvents.characterDamaged?.Invoke(this, healthDamage, worldPos);
+            }
 
             return true;
         }
 
-        //���ܱ�����
+        // 无法被伤害
         return false;
     }
 
 
-    //��ɫ�Ƿ񱻻�Ѫ
+    /// <summary>
+    /// 0.45 修正：角色治疗方法（契约 P0-2）
+    /// worldPos 来源：优先使用参数，否则 transform.position
+    /// 返回值：实际治疗量（int）
+    /// </summary>
+    public int TryHeal(int healthRestore, Vector2? worldPos = null)
+    {
+        if (!IsAlive || healthRestore <= 0 || Health >= MaxHealth)
+            return 0;
+
+        // 阶段 3A: maxHealth 已迁移为 float，使用 float 运算并 clamp
+        float maxHeal = Mathf.Max(MaxHealth - Health, 0);
+        float actualHeal = Mathf.Min(maxHeal, healthRestore);
+        Health += actualHeal;
+
+        // 0.45 修正：计算 worldPos（契约 P0-2）
+        // 治疗默认使用 transform.position（不使用 offset，简化版本）
+        Vector2 actualWorldPos = worldPos ?? (Vector2)transform.position;
+
+        // 事件仍使用 int，对实际治疗量四舍五入
+        int actualHealInt = Mathf.RoundToInt(actualHeal);
+        CharacterEvents.characterHealed?.Invoke(this, actualHealInt, actualWorldPos);
+        return actualHealInt;
+    }
+
     public bool Heal(int healthRestore)
     {
-        if (IsAlive && Health < MaxHealth) 
-        {
-            int maxHeal = Mathf.Max(MaxHealth - Health, 0);
-            int actualHeal = Mathf.Min(maxHeal, healthRestore);
-            Health += actualHeal;
-            CharacterEvents.characterHealed(gameObject, actualHeal);
-            return true;
-
-
-        }
-        return false;
-
-
+        return TryHeal(healthRestore) > 0;
     }
 
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
     void Update()
     {
         if (isInvincible)
         {
             if(timeSinceHit > invincibilityTime)
             {
-                //ȡ���޵�
+                // 取消无敌状态
                 isInvincible = false ;
                 timeSinceHit = 0;
             }

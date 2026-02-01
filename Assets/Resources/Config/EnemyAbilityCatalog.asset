@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a749191cbfcee8b4cb1c909fd0777cf7, type: 3}
+  m_Name: EnemyAbilityCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - id: Fireball_Enemy
+    hookType: 4
+    priority: 0
+    enabled: 0
+    kind: 1
+    projectileId: FireBall_enemy
+    summonId: 
+    buffId: Debuff_MoveSlow
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Knight_Rage
+    hookType: 4
+    priority: 0
+    enabled: 1
+    kind: 2
+    projectileId: 
+    summonId: 
+    buffId: Knight_Rage_Buff
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Debuff_Moveslow
+    hookType: 4
+    priority: 0
+    enabled: 1
+    kind: 2
+    projectileId: 
+    summonId: 
+    buffId: Debuff_MoveSlow
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  projectiles:
+  - id: FireBall_enemy
+    prefabPath: Prefabs/EnemyAbilitys/Enemy_FireBall/Enemy_FireBallProjectile
+    speed: 5
+    lifetime: 3
+    baseDamage: 10
+    hitMask: Player
+    onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
+    onHitVfxDuration: 0.5
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0.5
+    tags: fire
+  summons: []
+  onHitSequences: []
+  buffs:
+  - id: Knight_Rage_Buff
+    duration: 0
+    stackRule: 3
+    maxStacks: 1
+    uniqueKey: 
+    modifiersJson: '{"attackMultiplier":2}'
+    prefabPath: Prefabs/Buff/AttackUpBuff/AttackUpBuffPrefab
+    prefabDuration: 99
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    attachPointPath: 
+    followTarget: 1
+  - id: Debuff_MoveSlow
+    duration: 4
+    stackRule: 0
+    maxStacks: 1
+    uniqueKey: 
+    modifiersJson: '{"moveSpeedMultiplier":0.5}'
+    prefabPath: Prefabs/Buff/MoveSlowDebuff/MoveSlowDebuffPrefab
+    prefabDuration: 5
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    attachPointPath: 
+    followTarget: 1

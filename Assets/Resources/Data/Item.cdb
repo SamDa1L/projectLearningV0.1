@@ -1,0 +1,246 @@
+{
+	"sheets": [
+		{
+			"name": "Item",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "itemType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "icon",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStack",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "abilityId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "relicId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "consumeEffectJson",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uiTag",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "potion_red",
+					"displayName": "红色药水",
+					"itemType": "Consumable",
+					"icon": "Icons/Items/Food/Sprite/Food/DragonFruit",
+					"maxStack": 99,
+					"abilityId": "",
+					"relicId": "",
+					"consumeEffectJson": "{\"heal\":50}",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_arrow",
+					"displayName": "射箭能力",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Food/Sprite/Food/Beer",
+					"maxStack": 1,
+					"abilityId": "BasicRangedAttack",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_walk",
+					"displayName": "行走能力",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Food/Sprite/Food/Bug",
+					"maxStack": 1,
+					"abilityId": "BasicMove",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_moveSpeedUp",
+					"displayName": "移速提升",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Potions/Icons/icon4",
+					"maxStack": 1,
+					"abilityId": "Attr_MoveSpeedUp",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_attack",
+					"displayName": "攻击能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicAttack",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_run",
+					"displayName": "跑步能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicRun",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_jump",
+					"displayName": "跳跃能力",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "BasicJump",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "spellbook_fireball",
+					"displayName": "火球术",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Effects/FireBall",
+					"maxStack": 1,
+					"abilityId": "Fireball_Player",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_dash",
+					"displayName": "冲刺",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "Dash_Player",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_buff_attackup",
+					"displayName": "攻击增强",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Skills/Buff_Icons/Attack_up_buff",
+					"maxStack": 1,
+					"abilityId": "Buff_AttackUp",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_summon_test",
+					"displayName": "召唤测试",
+					"itemType": "Ability",
+					"icon": "Icons/Items/Skills/Kyrise's 16x16 RPG Icon Pack - V1.3/icons/16x16/skull_01a",
+					"maxStack": 1,
+					"abilityId": "Summon_Test",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "ability_attackoverride_bow",
+					"displayName": "弓（替换攻击）",
+					"itemType": "Ability",
+					"icon": "",
+					"maxStack": 1,
+					"abilityId": "AttackOverride_Bow",
+					"relicId": "",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				},
+				{
+					"id": "relic_shield_test_item",
+					"displayName": "护盾遗物（测试）",
+					"itemType": "Relic",
+					"icon": "Icons/Items/Potions/Icons/icon4",
+					"maxStack": 1,
+					"abilityId": "",
+					"relicId": "relic_shield_test",
+					"consumeEffectJson": "",
+					"uiTag": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "Item"
+				},
+				{
+					"key": "displayName",
+					"value": "物品数据"
+				},
+				{
+					"key": "dependencies",
+					"value": "PlayerAbility,Relic"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/Item"
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Item"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

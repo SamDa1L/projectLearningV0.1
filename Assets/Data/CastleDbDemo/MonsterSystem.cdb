@@ -1,0 +1,216 @@
+{
+	"sheets": [
+		{
+			"name": "NPC",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabName",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "animationTrigger",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "maxHealth"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackDamage"
+				},
+				{
+					"typeStr": "4",
+					"name": "moveSpeed"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackRange"
+				},
+				{
+					"typeStr": "4",
+					"name": "attackCooldown"
+				},
+				{
+					"typeStr": "4",
+					"name": "invincibleDuration"
+				},
+				{
+					"typeStr": "4",
+					"name": "knockbackMultiplier"
+				},
+				{
+					"typeStr": "2",
+					"name": "enableDeathAnimation",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "useLegacyLogicFallback",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "perceptionRadius"
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight",
+					"displayName": "Knight",
+					"prefabName": "KnightEnemy",
+					"animationTrigger": "Attack",
+					"maxHealth": 200,
+					"attackDamage": 40,
+					"moveSpeed": 10,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 0.5,
+					"knockbackMultiplier": 10,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 5
+				},
+				{
+					"id": "M_FlyingEye",
+					"displayName": "FlyingEye",
+					"prefabName": "FlyingEye",
+					"animationTrigger": "Attack",
+					"maxHealth": 50,
+					"attackDamage": 30,
+					"moveSpeed": 4,
+					"attackRange": 10,
+					"attackCooldown": 0.25,
+					"invincibleDuration": 3,
+					"knockbackMultiplier": 2,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": true,
+					"perceptionRadius": 8
+				},
+				{
+					"id": "M_Goblin",
+					"displayName": "Goblin",
+					"prefabName": "Goblin",
+					"animationTrigger": "Attack",
+					"maxHealth": 60,
+					"attackDamage": 25,
+					"moveSpeed": 2.5,
+					"attackRange": 1.5,
+					"attackCooldown": 1,
+					"invincibleDuration": 0.3,
+					"knockbackMultiplier": 1,
+					"enableDeathAnimation": true,
+					"useLegacyLogicFallback": false,
+					"perceptionRadius": 4
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Ability",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "5:Meele,Projectile",
+					"name": "attackType",
+					"display": null
+				}
+			],
+			"lines": [],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Player",
+			"columns": [],
+			"lines": [],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "DetectionZone",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "6:NPC",
+					"name": "npcId",
+					"display": null
+				},
+				{
+					"typeStr": "5:PrimaryAttack,SecondaryAttack,Cliff,Alert,Lookout,Custom",
+					"name": "role"
+				},
+				{
+					"typeStr": "1",
+					"name": "childId",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "M_Knight_DZ",
+					"npcId": "M_Knight",
+					"childId": "HitboxDecetion",
+					"role": 0
+				},
+				{
+					"id": "M_FlyingEye_DZ",
+					"npcId": "M_FlyingEye",
+					"role": 0,
+					"childId": "AttackDetectionZone"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.2"
+				},
+				{
+					"key": "featureFlags",
+					"value": "UseNewDamageable=true"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

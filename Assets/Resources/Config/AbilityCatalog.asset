@@ -1,0 +1,236 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a749191cbfcee8b4cb1c909fd0777cf7, type: 3}
+  m_Name: AbilityCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - id: BasicMove
+    hookType: 0
+    priority: 0
+    enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: BasicRun
+    hookType: 1
+    priority: 0
+    enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: BasicJump
+    hookType: 2
+    priority: 0
+    enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: BasicAttack
+    hookType: 3
+    priority: 0
+    enabled: 1
+    kind: 0
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: BasicRangedAttack
+    hookType: 4
+    priority: 0
+    enabled: 0
+    kind: 0
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Fireball_Player
+    hookType: 4
+    priority: 1
+    enabled: 0
+    kind: 1
+    projectileId: FireBall_player
+    summonId: 
+    buffId: 
+    cooldown: 1
+    onHitSequenceId: Fireball_Player_OnHit
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Attr_MoveSpeedUp
+    hookType: 0
+    priority: 100
+    enabled: 0
+    kind: 2
+    projectileId: 
+    summonId: 
+    buffId: Attr_MoveSpeedUp_Buff
+    cooldown: 0
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Dash_Player
+    hookType: 1
+    priority: 100
+    enabled: 0
+    kind: 4
+    projectileId: 
+    summonId: 
+    buffId: 
+    cooldown: 1
+    onHitSequenceId: 
+    paramsJson: '{"distance":3,"speed":12,"invincibleWindow":0.2}'
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Buff_AttackUp
+    hookType: 4
+    priority: 2
+    enabled: 0
+    kind: 3
+    projectileId: 
+    summonId: 
+    buffId: Active_AttackUp_Buff
+    cooldown: 5
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: Summon_Test
+    hookType: 4
+    priority: 3
+    enabled: 0
+    kind: 5
+    projectileId: 
+    summonId: ArrowSummon_player
+    buffId: 
+    cooldown: 2
+    onHitSequenceId: 
+    paramsJson: 
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  - id: AttackOverride_Bow
+    hookType: 3
+    priority: 100
+    enabled: 0
+    kind: 6
+    projectileId: Arrow_player
+    summonId: 
+    buffId: 
+    cooldown: 0.2
+    onHitSequenceId: 
+    paramsJson: '{"damageMultiplier":1}'
+    castParamsVersion: 1
+    animTrigger: 
+    releaseDelay: 0
+  projectiles:
+  - id: FireBall_player
+    prefabPath: Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile
+    speed: 5
+    lifetime: 3
+    baseDamage: 10
+    hitMask: 
+    onHitVfxPath: Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX
+    onHitVfxDuration: 0.5
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0.5
+    tags: fire
+  - id: Arrow_player
+    prefabPath: Prefabs/Projectiles/Player/Arrow
+    speed: 10
+    lifetime: 2
+    baseDamage: 8
+    hitMask: 
+    onHitVfxPath: 
+    onHitVfxDuration: 0
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    tags: arrow
+  summons:
+  - id: ArrowSummon_player
+    prefabPath: Prefabs/Enemy/MushroomEnemy/MushroomEnemy
+    lifetime: -1
+    isDead: 1
+    factionOverride: 1
+    maxCount: 2
+    spawnRule: 0
+    tags: arrow
+  onHitSequences:
+  - sequenceId: Fireball_Player_OnHit
+    nodes:
+    - order: 1
+      nodeType: 0
+      statusId: Freeze
+      aoeId: 
+      summonId: 
+      waitMode: 
+      paramsJson: 
+  buffs:
+  - id: Attr_MoveSpeedUp_Buff
+    duration: 10
+    stackRule: 3
+    maxStacks: 1
+    uniqueKey: 
+    modifiersJson: '{"moveSpeedMultiplier":5}'
+    prefabPath: Prefabs/Buff/SpeedUpBuff/SpeedUpBuffPrefab
+    prefabDuration: 0
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    attachPointPath: 
+    followTarget: 1
+  - id: Active_AttackUp_Buff
+    duration: 5
+    stackRule: 1
+    maxStacks: 3
+    uniqueKey: AttackUp
+    modifiersJson: '{"attackMultiplier":1.5}'
+    prefabPath: Prefabs/Buff/AttackUpBuff/AttackUpBuffPrefab
+    prefabDuration: 0
+    onExpireVfxPath: 
+    onExpireVfxDuration: 0
+    attachPointPath: 
+    followTarget: 1

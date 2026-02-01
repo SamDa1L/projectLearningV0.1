@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dac3827b41c58d149afb75bbd83da032, type: 3}
+  m_Name: HudBinding
+  m_EditorClassIdentifier: 
+  hudPrefab: {fileID: 8422614021528368566, guid: 8b305d05f2a946a41be3de50ad87a4ad, type: 3}

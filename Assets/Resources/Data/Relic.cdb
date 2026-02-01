@@ -1,0 +1,79 @@
+{
+	"sheets": [
+		{
+			"name": "Relic",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "kind",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "relic_shield_test",
+					"kind": "Shield",
+					"paramsJson": "{\"shieldMaxHp\":20,\"regenCooldown\":3.0,\"regenDelay\":0.0,\"breakVfxPath\":\"\",\"breakVfxDuration\":0.0,\"regenVfxPath\":\"\",\"regenVfxDuration\":0.0}"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "Relic"
+				},
+				{
+					"key": "displayName",
+					"value": "遗物数据"
+				},
+				{
+					"key": "dependencies",
+					"value": ""
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/Relic"
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Relic"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}
+

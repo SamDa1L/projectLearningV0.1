@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b32db8b38ce404e85175caca2792bd, type: 3}
+  m_Name: Profile_M_FlyingEye
+  m_EditorClassIdentifier: 
+  version: 1.0.0
+  profileName: FlyingEye
+  faction: 0
+  maxHealth: 50
+  moveSpeed: 4
+  perceptionRadius: 8
+  attackRange: 10
+  attackDamage: 30
+  attackCooldown: 0.25
+  attackZonePriority: 0
+  abilityZonePriority: 0
+  knockbackForce: {x: 5, y: 3}
+  patrolDistance: 4
+  hitRecoveryDelay: 0.5
+  invulnerableFrameDuration: 3
+  knockbackMultiplier: 2
+  knockbackToPlayer: 1
+  enableDeathAnimation: 1
+  deathDelay: 1
+  animationTrigger: Attack
+  castTrigger: Attack
+  npcAbilities: []
+  npcPassiveAbilityBindings: []
+  npcPassiveAbilityConditions: []

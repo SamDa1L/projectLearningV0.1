@@ -1,0 +1,88 @@
+{
+	"sheets": [
+		{
+			"name": "Status",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id"
+				},
+				{
+					"typeStr": "1",
+					"name": "displayName"
+				},
+				{
+					"typeStr": "4",
+					"name": "defaultDuration"
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule"
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks"
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson"
+				}
+			],
+			"lines": [
+				{
+					"id": "Freeze",
+					"displayName": "冰冻",
+					"defaultDuration": 5,
+					"stackRule": 2,
+					"maxStacks": 1,
+					"modifiersJson": "{\"moveSpeedMultiplier\":0.1}"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key"
+				},
+				{
+					"typeStr": "1",
+					"name": "value"
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "Status"
+				},
+				{
+					"key": "displayName",
+					"value": "状态数据"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/Status"
+				},
+				{
+					"key": "dependencies",
+					"value": ""
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Status"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}

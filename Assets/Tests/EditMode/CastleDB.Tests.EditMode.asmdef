@@ -1,0 +1,32 @@
+{
+    "name": "CastleDB.Tests.EditMode",
+    "rootNamespace": "CastleDB.Tests.EditMode",
+    "references": [
+        "GUID:d06c1b6f6558c4442875281d5d543dbc",
+        "GUID:7a3e8f4c2b1d5a6e9c4f8d2a1b3e5c7a",
+        "CastleDB.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "NPOI.dll",
+        "NPOI.OOXML.dll",
+        "NPOI.OpenXml4Net.dll",
+        "NPOI.OpenXmlFormats.dll",
+        "ICSharpCode.SharpZipLib.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

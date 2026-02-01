@@ -1,8 +1,10 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+
+public interface IHealthTextRecycler
+{
+    void Recycle(HealthText text);
+}
 
 public class HealthText : MonoBehaviour
 {
@@ -14,6 +16,7 @@ public class HealthText : MonoBehaviour
 
     private float timeElapsed = 0f;
     private Color startColor;
+    private IHealthTextRecycler _recycler;
 
 
 
@@ -21,32 +24,68 @@ public class HealthText : MonoBehaviour
     {
         textTransform = GetComponent<RectTransform>();
         textMeshPro = GetComponent<TextMeshProUGUI>();
-        startColor = textMeshPro.color;
+    }
+
+    private void OnEnable()
+    {
+        // Safe default for legacy spawners that don't call ResetForSpawn().
+        ResetForSpawn();
     }
 
 
-
-    // Start is called before the first frame update
-    void Start()
+    public void SetRecycler(IHealthTextRecycler recycler)
     {
-        
+        _recycler = recycler;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void ResetForSpawn()
     {
-        textTransform.position += moveSpeed * Time.deltaTime;
+        timeElapsed = 0f;
+        if (textMeshPro != null)
+        {
+            startColor = textMeshPro.color;
+        }
+    }
+
+    private void Update()
+    {
+        if (textTransform != null)
+        {
+            textTransform.position += moveSpeed * Time.deltaTime;
+        }
 
         timeElapsed += Time.deltaTime;
 
-        if(timeElapsed < timeToFade)
+        if (timeToFade <= 0f)
         {
-            float fadeAlpha = startColor.a * (1 - (timeElapsed / timeToFade));
-            textMeshPro.color = new Color(startColor.r, startColor.g, startColor.b, fadeAlpha);
+            Expire();
+            return;
+        }
+
+        if (timeElapsed < timeToFade)
+        {
+            if (textMeshPro != null)
+            {
+                float t = Mathf.Clamp01(timeElapsed / timeToFade);
+                float fadeAlpha = startColor.a * (1f - t);
+                Color c = textMeshPro.color;
+                textMeshPro.color = new Color(c.r, c.g, c.b, fadeAlpha);
+            }
         }
         else
         {
-            Destroy(gameObject);
+            Expire();
         }
+    }
+
+    private void Expire()
+    {
+        if (_recycler != null)
+        {
+            _recycler.Recycle(this);
+            return;
+        }
+
+        Destroy(gameObject);
     }
 }

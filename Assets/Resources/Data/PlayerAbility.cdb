@@ -1,0 +1,559 @@
+{
+	"sheets": [
+		{
+			"name": "Ability",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "5:Move,Run,Jump,Attack,RangedAttack",
+					"name": "hookType"
+				},
+				{
+					"typeStr": "3",
+					"name": "priority",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "enabled",
+					"display": null
+				},
+				{
+					"typeStr": "5:BuiltinDefault,Projectile,StatModifier,Buff,Dash,Summon,AttackOverride",
+					"name": "kind",
+					"display": null
+				},
+				{
+					"typeStr": "6:AbilityProjectile",
+					"name": "projectileId",
+					"display": null
+				},
+				{
+					"typeStr": "6:AbilitySummon",
+					"name": "summonId",
+					"display": null
+				},
+				{
+					"typeStr": "6:AbilityBuff",
+					"name": "buffId",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "cooldown",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitSequenceId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "BasicMove",
+					"hookType": 0,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "BasicRun",
+					"hookType": 1,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "BasicJump",
+					"hookType": 2,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "BasicAttack",
+					"hookType": 3,
+					"priority": 0,
+					"enabled": true,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "BasicRangedAttack",
+					"hookType": 4,
+					"priority": 0,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 0,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Fireball_Player",
+					"hookType": 4,
+					"priority": 1,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 1,
+					"projectileId": "FireBall_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 1,
+					"onHitSequenceId": "Fireball_Player_OnHit"
+				},
+				{
+					"id": "Attr_MoveSpeedUp",
+					"hookType": 0,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 2,
+					"projectileId": "",
+					"summonId": "",
+					"buffId": "Attr_MoveSpeedUp_Buff",
+					"cooldown": 0,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Dash_Player",
+					"hookType": 1,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "{\"distance\":3,\"speed\":12,\"invincibleWindow\":0.2}",
+					"kind": 4,
+					"projectileId": "",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 1,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Buff_AttackUp",
+					"hookType": 4,
+					"priority": 2,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 3,
+					"projectileId": "",
+					"summonId": "",
+					"buffId": "Active_AttackUp_Buff",
+					"cooldown": 5,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "Summon_Test",
+					"hookType": 4,
+					"priority": 3,
+					"enabled": false,
+					"paramsJson": "",
+					"kind": 5,
+					"projectileId": "",
+					"summonId": "ArrowSummon_player",
+					"buffId": "",
+					"cooldown": 2,
+					"onHitSequenceId": ""
+				},
+				{
+					"id": "AttackOverride_Bow",
+					"hookType": 3,
+					"priority": 100,
+					"enabled": false,
+					"paramsJson": "{\"damageMultiplier\":1}",
+					"kind": 6,
+					"projectileId": "Arrow_player",
+					"summonId": "",
+					"buffId": "",
+					"cooldown": 0.2,
+					"onHitSequenceId": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityProjectile",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "speed",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "lifetime",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "baseDamage",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "hitMask",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onHitVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onHitVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "tags",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "FireBall_player",
+					"prefabPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBallProjectile",
+					"speed": 5,
+					"lifetime": 3,
+					"baseDamage": 10,
+					"hitMask": "",
+					"onHitVfxPath": "Prefabs/Projectiles/Abilitys/FireBall/FireBall_DeadVFX",
+					"onHitVfxDuration": 0.5,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0.5,
+					"tags": "fire"
+				},
+				{
+					"id": "Arrow_player",
+					"prefabPath": "Prefabs/Projectiles/Player/Arrow",
+					"speed": 10,
+					"lifetime": 2,
+					"baseDamage": 8,
+					"hitMask": "",
+					"onHitVfxPath": "",
+					"onHitVfxDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"tags": "arrow"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilitySummon",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "lifetime",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "isDead",
+					"display": null
+				},
+				{
+					"typeStr": "5:null,enemy,friend,Neutral",
+					"name": "factionOverride",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxCount",
+					"display": null
+				},
+				{
+					"typeStr": "5:ReplaceOldest,Reject",
+					"name": "spawnRule",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "tags",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "ArrowSummon_player",
+					"prefabPath": "Prefabs/Enemy/MushroomEnemy/MushroomEnemy",
+					"lifetime": -1,
+					"isDead": true,
+					"factionOverride": 2,
+					"maxCount": 2,
+					"spawnRule": 0,
+					"tags": "arrow"
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityBuff",
+			"columns": [
+				{
+					"typeStr": "0",
+					"name": "id",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "duration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "prefabPath",
+					"display": null
+				},
+				{
+					"typeStr": "5:Refresh,Add,Ignore,Replace",
+					"name": "stackRule",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "maxStacks",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "uniqueKey",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "modifiersJson",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "prefabDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "onExpireVfxPath",
+					"display": null
+				},
+				{
+					"typeStr": "4",
+					"name": "onExpireVfxDuration",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "attachPointPath",
+					"display": null
+				},
+				{
+					"typeStr": "2",
+					"name": "followTarget",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"id": "Attr_MoveSpeedUp_Buff",
+					"duration": 10,
+					"stackRule": 3,
+					"maxStacks": 1,
+					"uniqueKey": "",
+					"modifiersJson": "{\"moveSpeedMultiplier\":5}",
+					"prefabPath": "Prefabs/Buff/SpeedUpBuff/SpeedUpBuffPrefab",
+					"prefabDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"attachPointPath": "",
+					"followTarget": true
+				},
+				{
+					"id": "Active_AttackUp_Buff",
+					"duration": 5,
+					"stackRule": 1,
+					"maxStacks": 3,
+					"uniqueKey": "AttackUp",
+					"modifiersJson": "{\"attackMultiplier\":1.5}",
+					"prefabPath": "Prefabs/Buff/AttackUpBuff/AttackUpBuffPrefab",
+					"prefabDuration": 0,
+					"onExpireVfxPath": "",
+					"onExpireVfxDuration": 0,
+					"attachPointPath": "",
+					"followTarget": true
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "AbilityOnHitSequence",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "sequenceId",
+					"display": null
+				},
+				{
+					"typeStr": "3",
+					"name": "order",
+					"display": null
+				},
+				{
+					"typeStr": "5:ApplyStatus,PlayVfx,TriggerAOE,TriggerSummon,SpawnProjectile",
+					"name": "nodeType",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "statusId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "aoeId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "summonId",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "waitMode",
+					"display": null
+				},
+				{
+					"typeStr": "1",
+					"name": "paramsJson",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"sequenceId": "Fireball_Player_OnHit",
+					"order": 1,
+					"nodeType": 0,
+					"statusId": "Freeze",
+					"aoeId": "",
+					"summonId": "",
+					"waitMode": "",
+					"paramsJson": ""
+				}
+			],
+			"separators": [],
+			"props": {}
+		},
+		{
+			"name": "Meta",
+			"columns": [
+				{
+					"typeStr": "1",
+					"name": "key"
+				},
+				{
+					"typeStr": "1",
+					"name": "value",
+					"display": null
+				}
+			],
+			"lines": [
+				{
+					"key": "schemaVersion",
+					"value": "0.4"
+				},
+				{
+					"key": "providerId",
+					"value": "PlayerAbility"
+				},
+				{
+					"key": "displayName",
+					"value": "玩家能力数据"
+				},
+				{
+					"key": "resourcePath",
+					"value": "Data/PlayerAbility"
+				},
+				{
+					"key": "dependencies",
+					"value": "Player,Status"
+				},
+				{
+					"key": "defaultSheet",
+					"value": "Ability"
+				}
+			],
+			"separators": [],
+			"props": {}
+		}
+	],
+	"customTypes": [],
+	"compress": false
+}
